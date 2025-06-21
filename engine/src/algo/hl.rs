@@ -41,7 +41,7 @@ impl HubLabels {
 
             for dir in [&mut self.outgoing[node], &mut self.incoming[node]] {
                 dir.sort_unstable();
-                for same_hub in dir.group_by_mut(|a, b| a.0 == b.0) {
+                for same_hub in dir.chunk_by_mut(|a, b| a.0 == b.0) {
                     let min_dist = same_hub.iter().map(|&(_, w)| w).min().unwrap();
                     for label in same_hub {
                         label.1 = min_dist;

@@ -1,5 +1,4 @@
 #![feature(array_windows)]
-#![feature(slice_group_by)]
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 #![allow(clippy::collapsible_if)]
