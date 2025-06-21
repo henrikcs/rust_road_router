@@ -1,1 +1,4 @@
 rustflags = ["-C", "target-cpu=native", "-C", "target-feature=-avx512f"]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "linker=gcc"]
