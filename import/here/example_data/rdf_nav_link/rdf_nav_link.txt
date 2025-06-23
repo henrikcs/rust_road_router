@@ -1,0 +1,14 @@
+100	x	x	x	1	x	B	x	x	x	x	x	x	x	x	x	x	x	x	3	x	x	x	x	x	50	50
+101	x	x	x	2	x	B	x	x	x	x	x	x	x	x	x	x	x	x	3	x	x	x	x	x	50	50
+102	x	x	x	2	x	B	x	x	x	x	x	x	x	x	x	x	x	x	3	x	x	x	x	x	50	50
+103	x	x	x	3	x	B	x	x	x	x	x	x	x	x	x	x	x	x	3	x	x	x	x	x	50	50
+104	x	x	x	3	x	B	x	x	x	x	x	x	x	x	x	x	x	x	4	x	x	x	x	x	50	50
+105	x	x	x	3	x	B	x	x	x	x	x	x	x	x	x	x	x	x	4	x	x	x	x	x	50	50
+106	x	x	x	3	x	B	x	x	x	x	x	x	x	x	x	x	x	x	4	x	x	x	x	x	50	50
+107	x	x	x	2	x	B	x	x	x	x	x	x	x	x	x	x	x	x	4	x	x	x	x	x	50	50
+108	x	x	x	2	x	B	x	x	x	x	x	x	x	x	x	x	x	x	4	x	x	x	x	x	50	50
+109	x	x	x	1	x	B	x	x	x	x	x	x	x	x	x	x	x	x	4	x	x	x	x	x	50	50
+110	x	x	x	1	x	B	x	x	x	x	x	x	x	x	x	x	x	x	5	x	x	x	x	x	40	40
+111	x	x	x	1	x	B	x	x	x	x	x	x	x	x	x	x	x	x	5	x	x	x	x	x	40	40
+112	x	x	x	1	x	B	x	x	x	x	x	x	x	x	x	x	x	x	5	x	x	x	x	x	40	40
+113	x	x	x	1	x	B	x	x	x	x	x	x	x	x	x	x	x	x	5	x	x	x	x	x	40	40

@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug TPGR",
+      "program": "${workspaceFolder}/target/debug/import_tpgr",
+      "args": [
+        "./import/tpgr/example_data/small_road_network.tpgr",
+        "./data/imported/tpgr/example_data/small_road_network"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
