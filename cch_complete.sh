@@ -6,7 +6,7 @@
 if [ ! -f /data/first_out ]; then
   echo "importing here data from /import"
   ls -l /import
-  cargo run --release -p rust_road_router --bin import_here -- /import /data || { echo 'here import failed' ; exit 1; }
+  cargo run --release -p conversion --bin import_here -- /import /data || { echo 'here import failed' ; exit 1; }
   mv /data/weights /data/travel_time
 fi
 
