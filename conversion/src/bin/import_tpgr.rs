@@ -1,5 +1,5 @@
 // Graph processing utility to scale the weights of a tpgr graph (because KaTCH uses tenths of seconds as the base unit).
-
+// We require edges to be sorted by the tails
 use rust_road_router::{
     cli::CliErr,
     datastr::graph::{time_dependent::Timestamp, *},
@@ -45,8 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     first_out.push(0);
     first_ipp_of_arc.push(0);
 
-    for line in lines {
-        let line = line.unwrap();
+    while let Some(Ok(line)) = lines.next() {
         let mut words = line.split_whitespace();
         let tail = words.next().unwrap().parse::<usize>().unwrap();
         let edge_head = words.next().unwrap().parse::<NodeId>().unwrap();
@@ -60,12 +59,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         head.push(edge_head);
 
         for _ in 0..ipp_count {
+            let Some(Ok(line)) = lines.next() else {
+                break;
+            };
+            words = line.split_whitespace();
             let at = (words.next().unwrap().parse::<f64>().unwrap() * 1000.0) as Timestamp;
             ipp_departure_time.push(at);
             let val = (words.next().unwrap().parse::<f64>().unwrap() * 1000.0) as Weight;
             ipp_travel_time.push(val);
         }
-        debug_assert_eq!(words.next(), None);
 
         first_ipp_of_arc.push(ipp_departure_time.len() as u32);
     }
