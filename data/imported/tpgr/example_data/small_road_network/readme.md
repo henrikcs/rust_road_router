@@ -48,3 +48,7 @@ have been generated with the following command (executed in the root directory o
 The files in the folder `customized` have been generated with the following command (executed in the root directory of the project):
 
 `./target/debug/tdcch_customization ./data/imported/tpgr/example_data/small_road_network`
+
+## Issue Queries using the indexed datastructure
+
+`./target/release/tdcch_queries ./data/imported/tpgr/example_data/small_road_network`
