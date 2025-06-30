@@ -36,10 +36,12 @@ This command will print the console outputs of the benchmark, move the output in
 - Create a venv
 - Activate the venv
 - Install libsumo
+- Inject a modified duaIterate.py file into the libsumo directory
 
 ```bash
 sudo apt install python
 python -m venv lib/libsumo
 source lib/libsumo/bin/activate
 python -m pip install libsumo
+cp fastdta/duaIterate.py lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py
 ```
