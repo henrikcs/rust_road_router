@@ -5,3 +5,4 @@ target/
 *callgrind.out*
 .ipynb_checkpoints
 .history
+lib/libsumo

@@ -1,6 +1,7 @@
 use rust_road_router::datastr::graph::{time_dependent::*, *};
 
 pub mod here;
+pub mod sumo;
 
 pub fn speed_profile_to_tt_profile(speeds: &[(Timestamp, u32)], edge_len: u32) -> Vec<(Timestamp, Weight)> {
     let t_wrap = speeds.last().unwrap().0;
