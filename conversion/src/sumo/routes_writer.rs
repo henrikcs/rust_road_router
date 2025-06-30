@@ -52,7 +52,7 @@ impl RoutesWriter for SumoRoutesWriter {
     fn write(output_file: &str, _vehicles: Vec<Vehicle>) -> Result<(), Box<dyn Error>> {
         let file = File::create(output_file);
 
-        let res = serde_xml_rs::to_string(&SumoRoutesWriter::get_example_routes())?;
+        let res = serde_xml_rs::to_string(&SumoRoutesWriter::get_example_routes()).unwrap();
 
         match file {
             Ok(mut f) => {
