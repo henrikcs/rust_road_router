@@ -42,7 +42,8 @@ from sumolib.options import get_long_option_names, ArgumentParser  # noqa
 
 DEBUGLOG = None
 EDGEDATA_ADD = "edgedata.add.xml"
-CCH_ROUTER_BINARY = "../../../target/release/main"
+CCH_PREPROCESS_BINARY = "../../../target/release/sumo-tdcch-preprocessor"
+CCH_ROUTER_BINARY = "../../../target/release/sumo-tdcch-router"
 
 
 def addGenericOptions(argParser):
@@ -210,9 +211,14 @@ def call(command, log):
     return retCode
 
 
+def call_cch(binary, options, output):
+    return call_cch_bin(binary, options, output)
+
+
 def call_cch_bin(options, output):
     return subprocess.call([CCH_ROUTER_BINARY] + ["--net-file", options.net,
                                                   "--route-files", options.trips, "--output-file", output])
+
 
 # method is called exactly once for one call to duaIterate.py
 
@@ -288,6 +294,7 @@ def writeRouteConf(duarouterBinary, step, options, dua_args, file,
         # the subprocess call below will only write the configuration file and not start any simulation yet
         # we also do not want to call the duaRouter binary here, because it would not recognize the CCH value for
         # the routing algorithm
+        call_cch(CCH_PREPROCESS_BINARY, args + dua_args, output)
         return cfgname
 
     subprocess.call([duarouterBinary] + args + dua_args)
@@ -659,7 +666,7 @@ def main(args=None):
 
                 ret = 0
                 if 'CCH' in options.routing_algorithm:
-                    ret = call_cch_bin(options, output)
+                    ret = call_cch(CCH_ROUTER_BINARY, options, output)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 
