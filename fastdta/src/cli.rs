@@ -1,6 +1,6 @@
 pub use clap::Parser;
 
-/// Command-line arguments for duarouter
+/// Command-line arguments for fast-dta, inherited by the Command-line arguments for duarouter (https://sumo.dlr.de/docs/duarouter.html)
 #[derive(Parser, Debug)]
 #[command(version, about = "duarouter CLI options", long_about = None)]
 pub struct Args {
@@ -69,9 +69,6 @@ pub struct Args {
 
     #[arg(long = "gawron.beta")]
     pub gawron_beta: Option<f64>,
-
-    #[arg(long = "help", short = '?', default_value_t = String::from("False"))]
-    pub help: String,
 
     #[arg(long = "human-readable-time", short = 'H', default_value_t = String::from("False"))]
     pub human_readable_time: String,
@@ -156,6 +153,9 @@ pub struct Args {
 
     #[arg(long = "output-file", short = 'o')]
     pub output_file: Option<String>,
+
+    #[arg(long = "output-dir")]
+    pub output_dir: Option<String>,
 
     #[arg(long = "output-prefix")]
     pub output_prefix: Option<String>,
@@ -279,9 +279,6 @@ pub struct Args {
 
     #[arg(long = "verbose", short = 'v', default_value_t = String::from("False"))]
     pub verbose: String,
-
-    #[arg(long = "version", short = 'V', default_value_t = String::from("False"))]
-    pub version: String,
 
     #[arg(long = "vtype-output")]
     pub vtype_output: Option<String>,

@@ -7,7 +7,8 @@ members = [
     "catchup",
     "chpot",
     "tdpot",
-    "cchpp", "fastdta",
+    "cchpp",
+    "fastdta",
 ]
 resolver = "2"
 

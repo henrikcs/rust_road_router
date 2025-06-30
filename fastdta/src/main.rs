@@ -1,8 +1,7 @@
 use conversion::sumo::routes_writer::{RoutesWriter, SumoRoutesWriter};
+use fastdta::benchmark::write_result;
 use fastdta::cli;
 use fastdta::cli::Parser;
-use std::fs;
-use std::io::Write;
 use std::thread;
 use std::time::Instant;
 
@@ -32,29 +31,7 @@ fn main() {
 
     println!("Calculation took {} nanoseconds", nanos);
 
-    let benchmark_out_dir = "../../../out";
-    let mut bechmark_out_file = String::from(benchmark_out_dir);
-    bechmark_out_file.push_str("/benchmark.txt");
-
-    // save the current millis as a new line in the output file ./out/benchmark.txt
-    // if the file does not exist, create it
-    fs::create_dir_all(benchmark_out_dir).unwrap();
-
-    let mut file = std::fs::OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(&bechmark_out_file)
-        .unwrap_or_else(|e| {
-            // If the file cannot be opened, create a new one
-            eprintln!("Error opening file: {e}");
-            fs::File::create(&bechmark_out_file).unwrap_or_else(|e| {
-                eprintln!("Error creating file: {e}");
-                panic!("Could not create benchmark file");
-            })
-        });
-
-    writeln!(file, "{}", nanos).unwrap();
-    file.flush().unwrap();
+    write_result(&String::from("../../../out"), &nanos.to_string());
 
     // let graph = SumoGraphReader::read(&network_file).unwrap();
 

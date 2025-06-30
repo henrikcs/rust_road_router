@@ -27,3 +27,19 @@ podman run --rm -a=stdout -a=stderr -v ${PWD}/out:/app/out fast-dta:latest
 ```
 
 This command will print the console outputs of the benchmark, move the output into the current working directory's `/out` directory and remove the container once it's finished.
+
+## Run Locally (Ubuntu)
+
+### Prerequisites
+
+- Install Python
+- Create a venv
+- Activate the venv
+- Install libsumo
+
+```bash
+sudo apt install python
+python -m venv lib/libsumo
+source lib/libsumo/bin/activate
+python -m pip install libsumo
+```
