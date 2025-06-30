@@ -34,6 +34,6 @@ fn main() {
         panic!("Network could not be read.");
     };
 
-    let network_nodes = network.nodes.nodes.len();
-    println!("Number of nodes: {network_nodes}");
+    let network_edges = network.edge.len();
+    println!("Number of edges: {network_edges}");
 }

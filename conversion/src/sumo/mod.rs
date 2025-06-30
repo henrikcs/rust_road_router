@@ -1,3 +1,4 @@
+pub mod meandata;
 pub mod network;
 pub mod network_reader;
 pub mod routes;

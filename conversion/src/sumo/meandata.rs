@@ -50,14 +50,14 @@ impl DerefMut for BoolType {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub enum BoolTypeValue {
-    #[serde(rename = "True")]
-    True,
-    #[serde(rename = "False")]
-    False,
     #[serde(rename = "true")]
     SmallTrue,
     #[serde(rename = "false")]
     SmallFalse,
+    #[serde(rename = "True")]
+    True,
+    #[serde(rename = "False")]
+    False,
     #[serde(rename = "yes")]
     Yes,
     #[serde(rename = "no")]
@@ -154,106 +154,95 @@ pub struct ConflictType {
     #[serde(rename = "@endPos")]
     pub end_pos: String,
 }
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ConnectionType {
-    #[serde(rename = "@from")]
-    pub from: String,
-    #[serde(rename = "@to")]
-    pub to: String,
-    #[serde(rename = "@fromLane")]
-    pub from_lane: u32,
-    #[serde(rename = "@toLane")]
-    pub to_lane: u32,
-    #[serde(default, rename = "@pass")]
-    pub pass: Option<BoolType>,
-    #[serde(default, rename = "@keepClear")]
-    pub keep_clear: Option<BoolType>,
-    #[serde(default, rename = "@contPos")]
-    pub cont_pos: Option<String>,
-    #[serde(default, rename = "@visibility")]
-    pub visibility: Option<String>,
-    #[serde(default, rename = "@allow")]
-    pub allow: Option<String>,
-    #[serde(default, rename = "@disallow")]
-    pub disallow: Option<String>,
-    #[serde(default, rename = "@speed")]
-    pub speed: Option<String>,
-    #[serde(default, rename = "@length")]
-    pub length: Option<String>,
-    #[serde(default, rename = "@shape")]
-    pub shape: Option<String>,
-    #[serde(default, rename = "@uncontrolled")]
-    pub uncontrolled: Option<BoolType>,
-    #[serde(default, rename = "@via")]
-    pub via: Option<String>,
-    #[serde(default, rename = "@tl")]
-    pub tl: Option<String>,
-    #[serde(default, rename = "@linkIndex")]
-    pub link_index: Option<i32>,
-    #[serde(default, rename = "@linkIndex2")]
-    pub link_index_2: Option<i32>,
-    #[serde(default, rename = "@changeRight")]
-    pub change_right: Option<String>,
-    #[serde(default, rename = "@changeLeft")]
-    pub change_left: Option<String>,
-    #[serde(default, rename = "@indirect")]
-    pub indirect: Option<BoolType>,
-    #[serde(default, rename = "@type")]
-    pub type_: Option<String>,
-    #[serde(rename = "@dir")]
-    pub dir: ConnectionTypeDirType,
-    #[serde(rename = "@state")]
-    pub state: ConnectionTypeStateType,
-    #[serde(default, rename = "#content")]
-    pub content: Vec<ConnectionTypeContent>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ConnectionTypeContent {
-    #[serde(rename = "param")]
-    Param(ParamType),
-    #[serde(rename = "conflict")]
-    Conflict(ConflictType),
-}
 pub type DetectorIdType = String;
 #[derive(Debug, Serialize, Deserialize)]
-pub struct EdgeType {
+pub struct EdgeLaneDataType {
     #[serde(rename = "@id")]
     pub id: String,
-    #[serde(default, rename = "@function")]
-    pub function: Option<EdgeTypeFunctionType>,
-    #[serde(default, rename = "@from")]
-    pub from: Option<String>,
-    #[serde(default, rename = "@to")]
-    pub to: Option<String>,
-    #[serde(default, rename = "@name")]
-    pub name: Option<String>,
-    #[serde(default, rename = "@priority")]
-    pub priority: Option<i32>,
-    #[serde(default, rename = "@length")]
-    pub length: Option<f32>,
-    #[serde(default, rename = "@bidi")]
-    pub bidi: Option<String>,
-    #[serde(default, rename = "@type")]
-    pub type_: Option<String>,
-    #[serde(default, rename = "@shape")]
-    pub shape: Option<String>,
-    #[serde(default, rename = "@distance")]
-    pub distance: Option<String>,
-    #[serde(default, rename = "@spreadType")]
-    pub spread_type: Option<SpreadTypeType>,
-    #[serde(default, rename = "@crossingEdges")]
-    pub crossing_edges: Option<String>,
-    #[serde(default, rename = "#content")]
-    pub content: Vec<EdgeTypeContent>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum EdgeTypeContent {
-    #[serde(rename = "lane")]
-    Lane(LaneType),
-    #[serde(rename = "param")]
-    Param(ParamType),
-    #[serde(rename = "stopOffset")]
-    StopOffset(StopOffsetType),
+    #[serde(default, rename = "@numEdges")]
+    pub num_edges: Option<i32>,
+    #[serde(default, rename = "@sampledSeconds")]
+    pub sampled_seconds: Option<f32>,
+    #[serde(default, rename = "@traveltime")]
+    pub traveltime: Option<f32>,
+    #[serde(default, rename = "@overlapTraveltime")]
+    pub overlap_traveltime: Option<f32>,
+    #[serde(default, rename = "@density")]
+    pub density: Option<f32>,
+    #[serde(default, rename = "@laneDensity")]
+    pub lane_density: Option<f32>,
+    #[serde(default, rename = "@occupancy")]
+    pub occupancy: Option<f32>,
+    #[serde(default, rename = "@waitingTime")]
+    pub waiting_time: Option<f32>,
+    #[serde(default, rename = "@timeLoss")]
+    pub time_loss: Option<String>,
+    #[serde(default, rename = "@speed")]
+    pub speed: Option<f32>,
+    #[serde(default, rename = "@speedRelative")]
+    pub speed_relative: Option<f32>,
+    #[serde(default, rename = "@departed")]
+    pub departed: Option<i32>,
+    #[serde(default, rename = "@arrived")]
+    pub arrived: Option<i32>,
+    #[serde(default, rename = "@entered")]
+    pub entered: Option<f32>,
+    #[serde(default, rename = "@left")]
+    pub left: Option<i32>,
+    #[serde(default, rename = "@laneChangedFrom")]
+    pub lane_changed_from: Option<i32>,
+    #[serde(default, rename = "@laneChangedTo")]
+    pub lane_changed_to: Option<i32>,
+    #[serde(default, rename = "@vaporized")]
+    pub vaporized: Option<i32>,
+    #[serde(default, rename = "@vaporizedOnNextEdge")]
+    pub vaporized_on_next_edge: Option<i32>,
+    #[serde(default, rename = "@teleported")]
+    pub teleported: Option<i32>,
+    #[serde(default, rename = "@CO_abs")]
+    pub co_abs: Option<f32>,
+    #[serde(default, rename = "@CO2_abs")]
+    pub co_2_abs: Option<f32>,
+    #[serde(default, rename = "@HC_abs")]
+    pub hc_abs: Option<f32>,
+    #[serde(default, rename = "@PMx_abs")]
+    pub p_mx_abs: Option<f32>,
+    #[serde(default, rename = "@NOx_abs")]
+    pub n_ox_abs: Option<f32>,
+    #[serde(default, rename = "@fuel_abs")]
+    pub fuel_abs: Option<f32>,
+    #[serde(default, rename = "@electricity_abs")]
+    pub electricity_abs: Option<String>,
+    #[serde(default, rename = "@CO_normed")]
+    pub co_normed: Option<f32>,
+    #[serde(default, rename = "@CO2_normed")]
+    pub co_2_normed: Option<f32>,
+    #[serde(default, rename = "@HC_normed")]
+    pub hc_normed: Option<f32>,
+    #[serde(default, rename = "@PMx_normed")]
+    pub p_mx_normed: Option<f32>,
+    #[serde(default, rename = "@NOx_normed")]
+    pub n_ox_normed: Option<f32>,
+    #[serde(default, rename = "@fuel_normed")]
+    pub fuel_normed: Option<f32>,
+    #[serde(default, rename = "@electricity_normed")]
+    pub electricity_normed: Option<String>,
+    #[serde(default, rename = "@CO_perVeh")]
+    pub co_per_veh: Option<f32>,
+    #[serde(default, rename = "@CO2_perVeh")]
+    pub co_2_per_veh: Option<f32>,
+    #[serde(default, rename = "@HC_perVeh")]
+    pub hc_per_veh: Option<f32>,
+    #[serde(default, rename = "@PMx_perVeh")]
+    pub p_mx_per_veh: Option<f32>,
+    #[serde(default, rename = "@NOx_perVeh")]
+    pub n_ox_per_veh: Option<f32>,
+    #[serde(default, rename = "@fuel_perVeh")]
+    pub fuel_per_veh: Option<f32>,
+    #[serde(default, rename = "@electricity_perVeh")]
+    pub electricity_per_veh: Option<String>,
+    #[serde(default, rename = "@noise")]
+    pub noise: Option<f32>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileOptionType {
@@ -321,85 +310,15 @@ pub struct IntOptionType {
     pub help: Option<String>,
 }
 #[derive(Debug, Serialize, Deserialize)]
-pub struct JunctionType {
+pub struct IntervalType {
+    #[serde(rename = "@begin")]
+    pub begin: TimeType,
+    #[serde(rename = "@end")]
+    pub end: TimeType,
     #[serde(rename = "@id")]
     pub id: String,
-    #[serde(rename = "@x")]
-    pub x: String,
-    #[serde(rename = "@y")]
-    pub y: String,
-    #[serde(default, rename = "@z")]
-    pub z: Option<String>,
-    #[serde(rename = "@type")]
-    pub type_: JunctionTypeType,
-    #[serde(rename = "@incLanes")]
-    pub inc_lanes: String,
-    #[serde(rename = "@intLanes")]
-    pub int_lanes: String,
-    #[serde(default, rename = "@shape")]
-    pub shape: Option<String>,
-    #[serde(default, rename = "@name")]
-    pub name: Option<String>,
-    #[serde(default, rename = "@radius")]
-    pub radius: Option<f32>,
-    #[serde(default, rename = "@customShape")]
-    pub custom_shape: Option<BoolType>,
-    #[serde(default, rename = "@rightOfWay")]
-    pub right_of_way: Option<JunctionTypeRightOfWayType>,
-    #[serde(default, rename = "@fringe")]
-    pub fringe: Option<JunctionTypeFringeType>,
-    #[serde(default, rename = "request")]
-    pub request: Vec<RequestType>,
-    #[serde(default, rename = "param")]
-    pub param: Vec<ParamType>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LaneType {
-    #[serde(rename = "@id")]
-    pub id: String,
-    #[serde(rename = "@index")]
-    pub index: u32,
-    #[serde(default, rename = "@allow")]
-    pub allow: Option<String>,
-    #[serde(default, rename = "@disallow")]
-    pub disallow: Option<String>,
-    #[serde(default, rename = "@prefer")]
-    pub prefer: Option<String>,
-    #[serde(rename = "@speed")]
-    pub speed: f32,
-    #[serde(default, rename = "@friction")]
-    pub friction: Option<f32>,
-    #[serde(rename = "@length")]
-    pub length: f32,
-    #[serde(default, rename = "@endOffset")]
-    pub end_offset: Option<f32>,
-    #[serde(default, rename = "@width")]
-    pub width: Option<f32>,
-    #[serde(default, rename = "@acceleration")]
-    pub acceleration: Option<BoolType>,
-    #[serde(rename = "@shape")]
-    pub shape: String,
-    #[serde(default, rename = "@customShape")]
-    pub custom_shape: Option<BoolType>,
-    #[serde(default, rename = "@type")]
-    pub type_: Option<String>,
-    #[serde(default, rename = "@changeRight")]
-    pub change_right: Option<String>,
-    #[serde(default, rename = "@changeLeft")]
-    pub change_left: Option<String>,
-    #[serde(default, rename = "@outlineShape")]
-    pub outline_shape: Option<String>,
-    #[serde(default, rename = "#content")]
-    pub content: Vec<LaneTypeContent>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum LaneTypeContent {
-    #[serde(rename = "neigh")]
-    Neigh(NeighType),
-    #[serde(rename = "param")]
-    Param(ParamType),
-    #[serde(rename = "stopOffset")]
-    StopOffset(StopOffsetType),
+    #[serde(default, rename = "edge")]
+    pub edge: Vec<IntervalTypeEdgeElementType>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LaneTypeType {
@@ -432,6 +351,12 @@ pub struct LocationType {
     #[serde(rename = "@projParameter")]
     pub proj_parameter: String,
 }
+pub type Meandata = MeandataElementType;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MeandataElementType {
+    #[serde(default, rename = "interval")]
+    pub interval: Vec<IntervalType>,
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MesoType {
     #[serde(default, rename = "@tauff")]
@@ -454,66 +379,6 @@ pub struct MesoType {
     pub minor_penalty: Option<f32>,
     #[serde(default, rename = "@overtaking")]
     pub overtaking: Option<BoolType>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct NeighType {
-    #[serde(rename = "@lane")]
-    pub lane: String,
-}
-pub type Net = NetType;
-pub type Network = Net;
-#[derive(Debug, Serialize, Deserialize)]
-pub struct NetType {
-    #[serde(default, rename = "@version")]
-    pub version: Option<String>,
-    #[serde(default, rename = "@junctionCornerDetail")]
-    pub junction_corner_detail: Option<i32>,
-    #[serde(default, rename = "@junctionLinkDetail")]
-    pub junction_link_detail: Option<i32>,
-    #[serde(default, rename = "@lefthand")]
-    pub lefthand: Option<BoolType>,
-    #[serde(default, rename = "@rectangularLaneCut")]
-    pub rectangular_lane_cut: Option<BoolType>,
-    #[serde(default, rename = "@walkingareas")]
-    pub walkingareas: Option<BoolType>,
-    #[serde(default, rename = "@limitTurnSpeed")]
-    pub limit_turn_speed: Option<String>,
-    #[serde(default, rename = "@checkLaneFoesAll")]
-    pub check_lane_foes_all: Option<BoolType>,
-    #[serde(default, rename = "@checkLaneFoesRoundabout")]
-    pub check_lane_foes_roundabout: Option<BoolType>,
-    #[serde(default, rename = "@tlsIgnoreInternalJunctionJam")]
-    pub tls_ignore_internal_junction_jam: Option<BoolType>,
-    #[serde(default, rename = "@spreadType")]
-    pub spread_type: Option<SpreadTypeType>,
-    #[serde(default, rename = "@avoidOverlap")]
-    pub avoid_overlap: Option<BoolType>,
-    #[serde(default, rename = "@junctionHigherSpeed")]
-    pub junction_higher_speed: Option<BoolType>,
-    #[serde(default, rename = "@internalJunctionsVehicleWidth")]
-    pub internal_junctions_vehicle_width: Option<String>,
-    #[serde(default, rename = "@junctionsMinimalShape")]
-    pub junctions_minimal_shape: Option<BoolType>,
-    #[serde(default, rename = "@junctionsEndpointShape")]
-    pub junctions_endpoint_shape: Option<BoolType>,
-    #[serde(rename = "location")]
-    pub location: LocationType,
-    #[serde(default, rename = "type")]
-    pub type_: Vec<TypeType>,
-    #[serde(default, rename = "edge")]
-    pub edge: Vec<EdgeType>,
-    #[serde(default, rename = "tlLogic")]
-    pub tl_logic: Vec<TlLogicType>,
-    #[serde(default, rename = "junction")]
-    pub junction: Vec<JunctionType>,
-    #[serde(default, rename = "connection")]
-    pub connection: Vec<ConnectionType>,
-    #[serde(default, rename = "prohibition")]
-    pub prohibition: Vec<ProhibitionType>,
-    #[serde(default, rename = "roundabout")]
-    pub roundabout: Vec<RoundaboutType>,
-    #[serde(default, rename = "taz")]
-    pub taz: Vec<TazType>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NodeTypeType {
@@ -660,36 +525,11 @@ pub type PositionType = String;
 pub type PositiveFloatType = f32;
 pub type PositiveIntType = i32;
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ProhibitionType {
-    #[serde(rename = "@prohibitor")]
-    pub prohibitor: String,
-    #[serde(rename = "@prohibited")]
-    pub prohibited: String,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RequestType {
-    #[serde(rename = "@index")]
-    pub index: u32,
-    #[serde(rename = "@response")]
-    pub response: String,
-    #[serde(rename = "@foes")]
-    pub foes: String,
-    #[serde(default, rename = "@cont")]
-    pub cont: Option<BoolType>,
-}
-#[derive(Debug, Serialize, Deserialize)]
 pub struct RestrictionType {
     #[serde(rename = "@vClass")]
     pub v_class: String,
     #[serde(rename = "@speed")]
     pub speed: String,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RoundaboutType {
-    #[serde(rename = "@nodes")]
-    pub nodes: String,
-    #[serde(rename = "@edges")]
-    pub edges: String,
 }
 pub type ShapeType = String;
 pub type ShapeTypeTwoType = String;
@@ -722,50 +562,6 @@ pub struct SplitType {
     pub id_after: Option<String>,
 }
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SpreadTypeType {
-    #[serde(rename = "#text")]
-    pub value: SpreadTypeTypeValue,
-}
-impl From<SpreadTypeTypeValue> for SpreadTypeType {
-    fn from(value: SpreadTypeTypeValue) -> Self {
-        Self { value }
-    }
-}
-impl From<SpreadTypeType> for SpreadTypeTypeValue {
-    fn from(value: SpreadTypeType) -> Self {
-        value.value
-    }
-}
-impl Deref for SpreadTypeType {
-    type Target = SpreadTypeTypeValue;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl DerefMut for SpreadTypeType {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum SpreadTypeTypeValue {
-    #[serde(rename = "center")]
-    Center,
-    #[serde(rename = "roadCenter")]
-    RoadCenter,
-    #[serde(rename = "right")]
-    Right,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StopOffsetType {
-    #[serde(rename = "@value")]
-    pub value: f32,
-    #[serde(default, rename = "@vClasses")]
-    pub v_classes: Option<String>,
-    #[serde(default, rename = "@exceptions")]
-    pub exceptions: Option<String>,
-}
-#[derive(Debug, Serialize, Deserialize)]
 pub struct StrArrayOptionType {
     #[serde(rename = "@value")]
     pub value: String,
@@ -786,41 +582,6 @@ pub struct StrOptionType {
     pub type_: Option<String>,
     #[serde(default, rename = "@help")]
     pub help: Option<String>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TazSubType {
-    #[serde(rename = "@id")]
-    pub id: String,
-    #[serde(rename = "@weight")]
-    pub weight: String,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TazType {
-    #[serde(rename = "@id")]
-    pub id: String,
-    #[serde(default, rename = "@edges")]
-    pub edges: Option<String>,
-    #[serde(default, rename = "@shape")]
-    pub shape: Option<String>,
-    #[serde(default, rename = "@center")]
-    pub center: Option<String>,
-    #[serde(default, rename = "@fill")]
-    pub fill: Option<BoolType>,
-    #[serde(default, rename = "@color")]
-    pub color: Option<ColorType>,
-    #[serde(default, rename = "@name")]
-    pub name: Option<String>,
-    #[serde(default, rename = "#content")]
-    pub content: Vec<TazTypeContent>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum TazTypeContent {
-    #[serde(rename = "tazSource")]
-    TazSource(TazSubType),
-    #[serde(rename = "tazSink")]
-    TazSink(TazSubType),
-    #[serde(rename = "param")]
-    Param(ParamType),
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TimeOptionType {
@@ -951,264 +712,95 @@ pub enum TypeTypeContent {
     LaneType(LaneTypeType),
 }
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ConnectionTypeDirType {
-    #[serde(rename = "#text")]
-    pub value: ConnectionTypeDirValue,
-}
-impl From<ConnectionTypeDirValue> for ConnectionTypeDirType {
-    fn from(value: ConnectionTypeDirValue) -> Self {
-        Self { value }
-    }
-}
-impl From<ConnectionTypeDirType> for ConnectionTypeDirValue {
-    fn from(value: ConnectionTypeDirType) -> Self {
-        value.value
-    }
-}
-impl Deref for ConnectionTypeDirType {
-    type Target = ConnectionTypeDirValue;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl DerefMut for ConnectionTypeDirType {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ConnectionTypeDirValue {
-    #[serde(rename = "s")]
-    S,
-    #[serde(rename = "t")]
-    SmallT,
-    #[serde(rename = "T")]
-    T,
-    #[serde(rename = "l")]
-    SmallL,
-    #[serde(rename = "r")]
-    SmallR,
-    #[serde(rename = "L")]
-    L,
-    #[serde(rename = "R")]
-    R,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ConnectionTypeStateType {
-    #[serde(rename = "#text")]
-    pub value: ConnectionTypeStateValue,
-}
-impl From<ConnectionTypeStateValue> for ConnectionTypeStateType {
-    fn from(value: ConnectionTypeStateValue) -> Self {
-        Self { value }
-    }
-}
-impl From<ConnectionTypeStateType> for ConnectionTypeStateValue {
-    fn from(value: ConnectionTypeStateType) -> Self {
-        value.value
-    }
-}
-impl Deref for ConnectionTypeStateType {
-    type Target = ConnectionTypeStateValue;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl DerefMut for ConnectionTypeStateType {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ConnectionTypeStateValue {
-    #[serde(rename = "M")]
-    M,
-    #[serde(rename = "m")]
-    SmallM,
-    #[serde(rename = "O")]
-    O,
-    #[serde(rename = "o")]
-    SmallO,
-    #[serde(rename = "s")]
-    S,
-    #[serde(rename = "w")]
-    SmallW,
-    #[serde(rename = "Z")]
-    Z,
-    #[serde(rename = "=")]
-    Equals,
-    #[serde(rename = "-")]
-    Minus,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EdgeTypeFunctionType {
-    #[serde(rename = "#text")]
-    pub value: EdgeTypeFunctionValue,
-}
-impl From<EdgeTypeFunctionValue> for EdgeTypeFunctionType {
-    fn from(value: EdgeTypeFunctionValue) -> Self {
-        Self { value }
-    }
-}
-impl From<EdgeTypeFunctionType> for EdgeTypeFunctionValue {
-    fn from(value: EdgeTypeFunctionType) -> Self {
-        value.value
-    }
-}
-impl Deref for EdgeTypeFunctionType {
-    type Target = EdgeTypeFunctionValue;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl DerefMut for EdgeTypeFunctionType {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum EdgeTypeFunctionValue {
-    #[serde(rename = "normal")]
-    Normal,
-    #[serde(rename = "internal")]
-    Internal,
-    #[serde(rename = "connector")]
-    Connector,
-    #[serde(rename = "crossing")]
-    Crossing,
-    #[serde(rename = "walkingarea")]
-    Walkingarea,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct JunctionTypeType {
-    #[serde(rename = "#text")]
-    pub value: JunctionTypeTypeValue,
-}
-impl From<JunctionTypeTypeValue> for JunctionTypeType {
-    fn from(value: JunctionTypeTypeValue) -> Self {
-        Self { value }
-    }
-}
-impl From<JunctionTypeType> for JunctionTypeTypeValue {
-    fn from(value: JunctionTypeType) -> Self {
-        value.value
-    }
-}
-impl Deref for JunctionTypeType {
-    type Target = JunctionTypeTypeValue;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl DerefMut for JunctionTypeType {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum JunctionTypeTypeValue {
-    #[serde(rename = "traffic_light")]
-    TrafficLight,
-    #[serde(rename = "traffic_light_unregulated")]
-    TrafficLightUnregulated,
-    #[serde(rename = "traffic_light_right_on_red")]
-    TrafficLightRightOnRed,
-    #[serde(rename = "rail_signal")]
-    RailSignal,
-    #[serde(rename = "rail_crossing")]
-    RailCrossing,
-    #[serde(rename = "priority")]
-    Priority,
-    #[serde(rename = "priority_stop")]
-    PriorityStop,
-    #[serde(rename = "left_before_right")]
-    LeftBeforeRight,
-    #[serde(rename = "right_before_left")]
-    RightBeforeLeft,
-    #[serde(rename = "allway_stop")]
-    AllwayStop,
-    #[serde(rename = "zipper")]
-    Zipper,
-    #[serde(rename = "district")]
-    District,
-    #[serde(rename = "unregulated")]
-    Unregulated,
-    #[serde(rename = "internal")]
-    Internal,
-    #[serde(rename = "dead_end")]
-    DeadEnd,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct JunctionTypeRightOfWayType {
-    #[serde(rename = "#text")]
-    pub value: JunctionTypeRightOfWayValue,
-}
-impl From<JunctionTypeRightOfWayValue> for JunctionTypeRightOfWayType {
-    fn from(value: JunctionTypeRightOfWayValue) -> Self {
-        Self { value }
-    }
-}
-impl From<JunctionTypeRightOfWayType> for JunctionTypeRightOfWayValue {
-    fn from(value: JunctionTypeRightOfWayType) -> Self {
-        value.value
-    }
-}
-impl Deref for JunctionTypeRightOfWayType {
-    type Target = JunctionTypeRightOfWayValue;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl DerefMut for JunctionTypeRightOfWayType {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum JunctionTypeRightOfWayValue {
-    #[serde(rename = "default")]
-    Default,
-    #[serde(rename = "mixedPriority")]
-    MixedPriority,
-    #[serde(rename = "allwayStop")]
-    AllwayStop,
-    #[serde(rename = "edgePriority")]
-    EdgePriority,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct JunctionTypeFringeType {
-    #[serde(rename = "#text")]
-    pub value: JunctionTypeFringeValue,
-}
-impl From<JunctionTypeFringeValue> for JunctionTypeFringeType {
-    fn from(value: JunctionTypeFringeValue) -> Self {
-        Self { value }
-    }
-}
-impl From<JunctionTypeFringeType> for JunctionTypeFringeValue {
-    fn from(value: JunctionTypeFringeType) -> Self {
-        value.value
-    }
-}
-impl Deref for JunctionTypeFringeType {
-    type Target = JunctionTypeFringeValue;
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl DerefMut for JunctionTypeFringeType {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub enum JunctionTypeFringeValue {
-    #[serde(rename = "default")]
-    Default,
-    #[serde(rename = "outer")]
-    Outer,
-    #[serde(rename = "inner")]
-    Inner,
+pub struct IntervalTypeEdgeElementType {
+    #[serde(rename = "@id")]
+    pub id: String,
+    #[serde(default, rename = "@numEdges")]
+    pub num_edges: Option<i32>,
+    #[serde(default, rename = "@sampledSeconds")]
+    pub sampled_seconds: Option<f32>,
+    #[serde(default, rename = "@traveltime")]
+    pub traveltime: Option<f32>,
+    #[serde(default, rename = "@overlapTraveltime")]
+    pub overlap_traveltime: Option<f32>,
+    #[serde(default, rename = "@density")]
+    pub density: Option<f32>,
+    #[serde(default, rename = "@laneDensity")]
+    pub lane_density: Option<f32>,
+    #[serde(default, rename = "@occupancy")]
+    pub occupancy: Option<f32>,
+    #[serde(default, rename = "@waitingTime")]
+    pub waiting_time: Option<f32>,
+    #[serde(default, rename = "@timeLoss")]
+    pub time_loss: Option<String>,
+    #[serde(default, rename = "@speed")]
+    pub speed: Option<f32>,
+    #[serde(default, rename = "@speedRelative")]
+    pub speed_relative: Option<f32>,
+    #[serde(default, rename = "@departed")]
+    pub departed: Option<i32>,
+    #[serde(default, rename = "@arrived")]
+    pub arrived: Option<i32>,
+    #[serde(default, rename = "@entered")]
+    pub entered: Option<f32>,
+    #[serde(default, rename = "@left")]
+    pub left: Option<i32>,
+    #[serde(default, rename = "@laneChangedFrom")]
+    pub lane_changed_from: Option<i32>,
+    #[serde(default, rename = "@laneChangedTo")]
+    pub lane_changed_to: Option<i32>,
+    #[serde(default, rename = "@vaporized")]
+    pub vaporized: Option<i32>,
+    #[serde(default, rename = "@vaporizedOnNextEdge")]
+    pub vaporized_on_next_edge: Option<i32>,
+    #[serde(default, rename = "@teleported")]
+    pub teleported: Option<i32>,
+    #[serde(default, rename = "@CO_abs")]
+    pub co_abs: Option<f32>,
+    #[serde(default, rename = "@CO2_abs")]
+    pub co_2_abs: Option<f32>,
+    #[serde(default, rename = "@HC_abs")]
+    pub hc_abs: Option<f32>,
+    #[serde(default, rename = "@PMx_abs")]
+    pub p_mx_abs: Option<f32>,
+    #[serde(default, rename = "@NOx_abs")]
+    pub n_ox_abs: Option<f32>,
+    #[serde(default, rename = "@fuel_abs")]
+    pub fuel_abs: Option<f32>,
+    #[serde(default, rename = "@electricity_abs")]
+    pub electricity_abs: Option<String>,
+    #[serde(default, rename = "@CO_normed")]
+    pub co_normed: Option<f32>,
+    #[serde(default, rename = "@CO2_normed")]
+    pub co_2_normed: Option<f32>,
+    #[serde(default, rename = "@HC_normed")]
+    pub hc_normed: Option<f32>,
+    #[serde(default, rename = "@PMx_normed")]
+    pub p_mx_normed: Option<f32>,
+    #[serde(default, rename = "@NOx_normed")]
+    pub n_ox_normed: Option<f32>,
+    #[serde(default, rename = "@fuel_normed")]
+    pub fuel_normed: Option<f32>,
+    #[serde(default, rename = "@electricity_normed")]
+    pub electricity_normed: Option<String>,
+    #[serde(default, rename = "@CO_perVeh")]
+    pub co_per_veh: Option<f32>,
+    #[serde(default, rename = "@CO2_perVeh")]
+    pub co_2_per_veh: Option<f32>,
+    #[serde(default, rename = "@HC_perVeh")]
+    pub hc_per_veh: Option<f32>,
+    #[serde(default, rename = "@PMx_perVeh")]
+    pub p_mx_per_veh: Option<f32>,
+    #[serde(default, rename = "@NOx_perVeh")]
+    pub n_ox_per_veh: Option<f32>,
+    #[serde(default, rename = "@fuel_perVeh")]
+    pub fuel_per_veh: Option<f32>,
+    #[serde(default, rename = "@electricity_perVeh")]
+    pub electricity_per_veh: Option<String>,
+    #[serde(default, rename = "@noise")]
+    pub noise: Option<f32>,
+    #[serde(default, rename = "lane")]
+    pub lane: Vec<EdgeLaneDataType>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TypeTypeSpreadType {
