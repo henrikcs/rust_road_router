@@ -1,5 +1,5 @@
 use conversion::sumo::network_reader::{NetworkReader, SumoNetworkReader};
-use conversion::sumo::trips_reader::{SumoTripsReader, TripsReader};
+use conversion::sumo::routes_reader::{RoutesReader, SumoRoutesReader};
 use fastdta::cli;
 use fastdta::cli::Parser;
 
@@ -22,18 +22,18 @@ fn main() {
     //     panic!("No output file provided. Use --output-file <path> (or -o <path>) to specify the output file.");
     // };
 
-    let Ok(trips) = SumoTripsReader::read(trip_file.as_str()) else {
-        panic!("Trips could not be read.");
-    };
-
-    let number_of_trips = trips.len();
-
-    println!("Number of trips: {number_of_trips}");
-
     let Ok(network) = SumoNetworkReader::read(network_file.as_str()) else {
         panic!("Network could not be read.");
     };
 
     let network_edges = network.edge.len();
     println!("Number of edges: {network_edges}");
+
+    let Ok(routes) = SumoRoutesReader::read(trip_file.as_str()) else {
+        panic!("Routes could not be read.");
+    };
+
+    let number_of_routes = routes.content.len();
+
+    println!("Number of routes: {number_of_routes}");
 }
