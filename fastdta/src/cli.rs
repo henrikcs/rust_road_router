@@ -339,4 +339,8 @@ pub struct Args {
 
     #[arg(long = "xml-validation.routes")]
     pub xml_validation_routes: Option<String>,
+
+    /// the files `<input-prefix>.con.xml`, `<input-prefix>.nod.xml`, `<input-prefix>.edg.xml` will be read as input
+    #[arg(long = "input-prefix", short = 'i')]
+    pub input_prefix: Option<String>,
 }

@@ -1,4 +1,6 @@
-use conversion::sumo::routes_writer::{RoutesWriter, SumoRoutesWriter};
+use conversion::sumo::XmlWriter;
+use conversion::sumo::routes::RoutesDocumentRoot;
+use conversion::sumo::routes_writer::{self, SumoRoutesWriter};
 use fastdta::benchmark::write_result;
 use fastdta::cli;
 use fastdta::cli::Parser;
@@ -8,8 +10,8 @@ use std::time::Instant;
 fn main() {
     let args = cli::Args::parse();
 
-    let Some(_network_file) = args.net_file else {
-        panic!("No network file provided. Use --net-file <path> to specify a network file.");
+    let Some(input_prefix) = args.input_prefix else {
+        panic!("No input prefix provided to read files from. Use --input-prefix <prefix> (or -i <prefix) to specify a inputs file.");
     };
 
     let Some(_demand_file) = args.route_files else {
@@ -25,7 +27,7 @@ fn main() {
 
     thread::sleep(std::time::Duration::from_secs(1));
 
-    SumoRoutesWriter::write(output_file.as_str(), vec![]).unwrap();
+    // SumoRoutesWriter::write(output_file.as_str(), RoutesDocumentRoot {Default::default()}).unwrap();
 
     let nanos = timer.elapsed().as_nanos();
 

@@ -11,6 +11,14 @@
         "./data/imported/tpgr/example_data/small_road_network"
       ],
       "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Preprocess",
+      "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
+      "args": ["-i", "./import/sumo/grid/grid"],
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

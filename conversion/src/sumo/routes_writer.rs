@@ -1,16 +1,16 @@
 use std::{error::Error, fs::File, io::Write};
 
-pub trait RoutesWriter {
-    fn write(output_file: &str, vehicles: Vec<String>) -> Result<(), Box<dyn Error>>;
-}
+use crate::sumo::{routes::RoutesDocumentRoot, XmlWriter};
 
 pub struct SumoRoutesWriter {}
 
-impl RoutesWriter for SumoRoutesWriter {
-    fn write(output_file: &str, _vehicles: Vec<String>) -> Result<(), Box<dyn Error>> {
+impl XmlWriter for SumoRoutesWriter {
+    type R = RoutesDocumentRoot;
+
+    fn write(output_file: &str, routes: &RoutesDocumentRoot) -> Result<(), Box<dyn Error>> {
         let file = File::create(output_file);
 
-        let res = ""; //serde_xml_rs::to_string(vehicles).unwrap();
+        let res = serde_xml_rs::to_string(routes).unwrap();
 
         match file {
             Ok(mut f) => {

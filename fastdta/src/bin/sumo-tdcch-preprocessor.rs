@@ -1,39 +1,42 @@
-use conversion::sumo::network_reader::{NetworkReader, SumoNetworkReader};
-use conversion::sumo::routes_reader::{RoutesReader, SumoRoutesReader};
+use conversion::sumo::XmlReader;
+use conversion::sumo::edges_reader::SumoEdgesReader;
+use conversion::sumo::nodes_reader::SumoNodesReader;
+use conversion::sumo::trips_reader::SumoTripsReader;
 use fastdta::cli;
 use fastdta::cli::Parser;
+
+const EDG_XML: &str = ".edg.xml";
+const NOD_XML: &str = ".nod.xml";
+const CON_XML: &str = ".con.xml";
+const TRIPS_XML: &str = ".trips.xml";
 
 fn main() {
     let args = cli::Args::parse();
 
-    let Some(network_file) = args.net_file else {
-        panic!("No network file provided. Use --net-file <path> (or -n <path>) to specify a network file.");
+    let Some(input_prefix) = args.input_prefix else {
+        panic!("No input prefix provided to read files from. Use --input-prefix <prefix> (or -i <prefix) to specify a inputs file.");
     };
 
-    let Some(trip_file) = args.route_files else {
-        panic!("No route file(s) provided. Use --route-files <path> (or -t <path>) to specify route file(s)");
+    let Ok(edges) = SumoEdgesReader::read((input_prefix.clone() + EDG_XML).as_str()) else {
+        panic!("Edges could not be read.");
     };
 
-    // let Some(output_dir) = args.output_dir else {
-    //     panic!("No output directory provided. Use --output-dir <dir> to specify the output file.");
-    // };
+    let number_of_edges = edges.edges.len();
 
-    // let Some(output_file) = args.output_file else {
-    //     panic!("No output file provided. Use --output-file <path> (or -o <path>) to specify the output file.");
-    // };
+    dbg!(number_of_edges);
 
-    let Ok(network) = SumoNetworkReader::read(network_file.as_str()) else {
-        panic!("Network could not be read.");
+    let Ok(nodes) = SumoNodesReader::read((input_prefix.clone() + NOD_XML).as_str()) else {
+        panic!("Edges could not be read.");
     };
 
-    let network_edges = network.edge.len();
-    println!("Number of edges: {network_edges}");
+    let number_of_nodes = nodes.nodes.len();
 
-    let Ok(routes) = SumoRoutesReader::read(trip_file.as_str()) else {
-        panic!("Routes could not be read.");
+    dbg!(number_of_nodes);
+
+    let Ok(trips) = SumoTripsReader::read((input_prefix.clone() + TRIPS_XML).as_str()) else {
+        panic!("Trips could not be read.");
     };
 
-    let number_of_routes = routes.content.len();
-
-    println!("Number of routes: {number_of_routes}");
+    let number_of_trips = trips.vehicles.len();
+    dbg!(number_of_trips);
 }
