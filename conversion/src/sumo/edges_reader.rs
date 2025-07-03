@@ -11,9 +11,6 @@ impl XmlReader for SumoEdgesReader {
         let f = fs::read_to_string(file)?;
         let trips: EdgesDocumentRoot = serde_xml_rs::from_str(&f).unwrap();
 
-        dbg!(&f);
-        dbg!(&trips);
-
         Ok(trips)
     }
 }
