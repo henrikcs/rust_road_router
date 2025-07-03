@@ -223,9 +223,9 @@ def call(command, log):
     return retCode
 
 
-def call_cch(binary, options, output):
-    return subprocess.call([binary] + ["--net-file", options.net,
-                                       "--route-files", options.trips, "--output-file", output])
+def call_cch(binary, cch_args):
+    return subprocess.call([binary] + ["--input-dir", cch_args.input_dir,
+                                       "--input-prefix", cch_args.input_prefix])
 
 
 # method is called exactly once for one call to duaIterate.py
@@ -297,12 +297,8 @@ def writeRouteConf(duarouterBinary, step, options, dua_args, file,
     args += ["--save-configuration", cfgname]
 
     if 'CCH' in options.routing_algorithm:
-        # here, there is no need to call the cch binary.
-        # it will be called later
-        # the subprocess call below will only write the configuration file and not start any simulation yet
-        # we also do not want to call the duaRouter binary here, because it would not recognize the CCH value for
+        # we do not want to call the duaRouter binary here, because it would not recognize the CCH value for
         # the routing algorithm
-        call_cch(CCH_PREPROCESS_BINARY, args + dua_args, output)
         return cfgname
 
     subprocess.call([duarouterBinary] + args + dua_args)
@@ -602,6 +598,8 @@ def main(args=None):
         sumoBinary, 'sumo', options.remaining_args)
     dua_args = assign_remaining_args(
         duaBinary, 'duarouter', options.remaining_args)
+    cch_args = assign_remaining_args(
+        CCH_PREPROCESS_BINARY, 'cch', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
     log = open(options.dualog, "w+")
     if options.zip:
@@ -639,6 +637,18 @@ def main(args=None):
     # generate edgedata.add.xml
     generateEdgedataAddFile(EDGEDATA_ADD, options)
 
+    # do a preprocessing step if CCH is used
+    if 'CCH' in options.routing_algorithm:
+        tik = datetime.now()
+        print("> Preprocessing network for CCH")
+        print(">> Begin time: %s" % tik)
+        ret = call_cch(CCH_PREPROCESS_BINARY, cch_args)
+        tok = datetime.now()
+        if ret != 0:
+            sys.exit("Error: CCH preprocessing failed.")
+        print(">> End time: %s" % tok)
+        print(">> Duration: %s" % (tok - tik))
+
     avgTT = sumolib.miscutils.Statistics()
     ret = 0
     for step in range(options.firstStep, options.lastStep):
@@ -674,7 +684,7 @@ def main(args=None):
 
                 ret = 0
                 if 'CCH' in options.routing_algorithm:
-                    ret = call_cch(CCH_ROUTER_BINARY, options, output)
+                    ret = call_cch(CCH_ROUTER_BINARY, cch_args)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 
