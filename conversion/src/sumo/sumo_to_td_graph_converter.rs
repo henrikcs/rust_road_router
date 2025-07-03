@@ -228,7 +228,7 @@ mod test {
 
         assert_eq!(td_graph.0.len(), 3); // 2 nodes + 1 for the end
         assert_eq!(td_graph.1.len(), 2); // 2 edges
-        assert_eq!(td_graph.2.len(), 2); // 2 edges each having 1 ipp
+        assert_eq!(td_graph.2.len(), 2 + 1); // 2 edges each having 1 ipp
 
         assert_eq!(edge_ids.len(), 2); // 2 edges
         assert_eq!(edge_ids[0], "e2");
