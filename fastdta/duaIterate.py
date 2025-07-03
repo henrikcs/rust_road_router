@@ -42,11 +42,23 @@ from sumolib.options import get_long_option_names, ArgumentParser  # noqa
 
 DEBUGLOG = None
 EDGEDATA_ADD = "edgedata.add.xml"
-CCH_PREPROCESS_BINARY = "../../../target/release/sumo-tdcch-preprocessor"
-CCH_ROUTER_BINARY = "../../../target/release/sumo-tdcch-router"
+
+
+CCH_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
+"""Binary used for conversion from Sumo input to CCH Preprocessing
+
+make sure the the binary is in PATH
+"""
+
+CCH_ROUTER_BINARY = "sumo-tdcch-router"
+""" Binary used for CCH customization and querying.
+
+make sure the the binary is in PATH 
+"""
 
 
 def addGenericOptions(argParser):
+
     # add options which are used by duaIterate and cadytsIterate
     argParser.add_argument("-w", "--disable-warnings", action="store_true", dest="noWarnings",
                            default=False, help="disables warnings")
@@ -212,9 +224,8 @@ def call(command, log):
 
 
 def call_cch(binary, options, output):
-    print("CWD: %s" % os.getcwd())
-    # return subprocess.call([binary] + ["--net-file", options.net,
-    #                                    "--route-files", options.trips, "--output-file", output])
+    return subprocess.call([binary] + ["--net-file", options.net,
+                                       "--route-files", options.trips, "--output-file", output])
 
 
 # method is called exactly once for one call to duaIterate.py
