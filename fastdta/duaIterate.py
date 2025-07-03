@@ -212,12 +212,9 @@ def call(command, log):
 
 
 def call_cch(binary, options, output):
-    return call_cch_bin(binary, options, output)
-
-
-def call_cch_bin(options, output):
-    return subprocess.call([CCH_ROUTER_BINARY] + ["--net-file", options.net,
-                                                  "--route-files", options.trips, "--output-file", output])
+    print("CWD: %s" % os.getcwd())
+    # return subprocess.call([binary] + ["--net-file", options.net,
+    #                                    "--route-files", options.trips, "--output-file", output])
 
 
 # method is called exactly once for one call to duaIterate.py

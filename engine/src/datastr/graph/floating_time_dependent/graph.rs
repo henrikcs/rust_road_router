@@ -5,7 +5,7 @@ use crate::datastr::graph::Graph as GraphTrait;
 use crate::io::*;
 use crate::report::*;
 
-type IPPIndex = u32;
+pub type IPPIndex = u32;
 
 /// First out based graph data structure for time-dependent graphs.
 /// All data is owned.
@@ -213,7 +213,10 @@ impl GraphTrait for Graph {
 }
 
 impl EdgeIdGraph for Graph {
-    type IdxIter<'a> = impl Iterator<Item = EdgeIdT> + 'a where Self: 'a;
+    type IdxIter<'a>
+        = impl Iterator<Item = EdgeIdT> + 'a
+    where
+        Self: 'a;
 
     fn edge_indices(&self, from: NodeId, to: NodeId) -> Self::IdxIter<'_> {
         self.neighbor_edge_indices(from).filter(move |&e| self.head[e as usize] == to).map(EdgeIdT)

@@ -23,7 +23,15 @@ pub use self::geometry::TTFPoint;
 use self::geometry::*;
 
 mod graph;
-pub use self::graph::{Graph as TDGraph, LiveGraph, TDGraphTrait};
+pub use self::graph::{Graph as TDGraph, IPPIndex, LiveGraph, TDGraphTrait};
+/// Implicit time dependent graph representation.
+/// This is a tuple of:
+/// - `first_out`: first out index for each node
+/// - `head`: head node id for each edge
+/// - `first_ipp_of_arc`: first interpolation point index for each edge
+/// - `ipp_departure_time`: departure time for each interpolation point
+/// - `ipp_travel_time`: travel time for each interpolation point
+pub type ImplicitTDGraph = (Vec<EdgeId>, Vec<NodeId>, Vec<IPPIndex>, Vec<u32>, Vec<u32>);
 
 mod shortcut;
 pub use self::shortcut::*;

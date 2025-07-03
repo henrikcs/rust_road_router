@@ -1,11 +1,18 @@
 use std::{collections::HashMap, path::Path};
 
-use rust_road_router::datastr::graph::floating_time_dependent::TDGraph;
+use rust_road_router::datastr::graph::floating_time_dependent::{ImplicitTDGraph, TDGraph};
 
 use crate::sumo::{
-    edges::EdgesDocumentRoot, edges_reader::SumoEdgesReader, nodes::NodesDocumentRoot, nodes_reader::SumoNodesReader, trips::TripsDocumentRoot,
-    trips_reader::SumoTripsReader, XmlReader,
+    edges::{Edge, EdgesDocumentRoot},
+    edges_reader::SumoEdgesReader,
+    nodes::{Node, NodesDocumentRoot},
+    nodes_reader::SumoNodesReader,
+    trips::TripsDocumentRoot,
+    trips_reader::SumoTripsReader,
+    XmlReader,
 };
+
+type FlattenedSumoEdge<'a> = (u32, u32, &'a String, f64, f64); // (from_node_index, to_node_index, edge_id, weight, length)
 
 const EDG_XML: &str = ".edg.xml";
 const NOD_XML: &str = ".nod.xml";
@@ -33,7 +40,15 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix:
     (nodes, edges, trips)
 }
 
-pub fn convert_sumo_to_td_graph<'a>(node_document_root: &NodesDocumentRoot, edges_document_root: &'a EdgesDocumentRoot) -> (TDGraph, Vec<&'a String>) {
+pub fn getLatitudeLongitudeFromNodesDocumentRoot(node_document_root: &NodesDocumentRoot) -> Vec<(f64, f64)> {
+    // get the latitude and longitude of each node in the nodes document root
+    node_document_root.nodes.iter().map(|node| (node.x, node.y)).collect()
+}
+
+pub fn convert_sumo_to_td_graph<'a>(
+    node_document_root: &'a NodesDocumentRoot,
+    edges_document_root: &'a EdgesDocumentRoot,
+) -> (ImplicitTDGraph, Vec<&'a String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
     // interpolation points should be initialized with only one timespan (from 0 to end-of-day in seconds)
@@ -48,6 +63,96 @@ pub fn convert_sumo_to_td_graph<'a>(node_document_root: &NodesDocumentRoot, edge
     let nodes = &node_document_root.nodes;
     let edges = &edges_document_root.edges;
 
+    let edges_sorted_by_node_index = sort_edges_by_node_index(&nodes, &edges, &node_id_to_index);
+
+    let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
+        create_implicit_td_graph(nodes.len(), edges.len(), &edges_sorted_by_node_index);
+
+    // with the edge_ids we can write a file containing the edge ids in the order of the edges_sorted_by_node_index
+    // this will be used for reconstructing the edges in the TDGraph
+    let edge_ids: Vec<&String> = edges_sorted_by_node_index.iter().map(|(_, _, id, _, _)| *id).collect();
+
+    ((first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time), edge_ids)
+}
+
+fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edges_sorted_by_node_index: &Vec<FlattenedSumoEdge>) -> ImplicitTDGraph {
+    // ipp_departure time is 0 for each edge, and ipp_travel_time is the weight of the edge
+    let mut first_out = Vec::with_capacity(number_of_nodes + 1);
+    let mut head = Vec::with_capacity(number_of_edges);
+    let mut first_ipp_of_arc = Vec::with_capacity(number_of_edges + 1);
+    let mut ipp_departure_time = Vec::with_capacity(number_of_edges);
+    let mut ipp_travel_time = Vec::with_capacity(number_of_edges);
+
+    for &(from_node_index, to_node_index, _edge_id, weight, _length) in edges_sorted_by_node_index {
+        // ensure that first_out has enough space for the from_node_index
+        while first_out.len() <= from_node_index as usize {
+            first_out.push(head.len() as u32);
+        }
+        // ensure that first_ipp_of_arc has enough space for the current edge
+        while first_ipp_of_arc.len() <= head.len() {
+            first_ipp_of_arc.push(ipp_departure_time.len() as u32);
+        }
+
+        // add the head of the edge
+        head.push(to_node_index);
+
+        // add the ipp departure time and travel time
+        ipp_departure_time.push(0); // departure time is 0 for all edges
+        ipp_travel_time.push(f64::floor(weight * 1000.0) as u32); // travel time in milliseconds
+    }
+
+    first_out.push(number_of_nodes as u32); // add the end of the first_out array
+    first_ipp_of_arc.push(number_of_edges as u32);
+
+    assert_correct_number_of_vec_items(
+        number_of_nodes,
+        number_of_edges,
+        &first_out,
+        &head,
+        &first_ipp_of_arc,
+        &ipp_departure_time,
+        &ipp_travel_time,
+    );
+
+    (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time)
+}
+
+fn assert_correct_number_of_vec_items(
+    number_of_nodes: usize,
+    number_of_edges: usize,
+    first_out: &[u32],
+    head: &[u32],
+    first_ipp_of_arc: &[u32],
+    ipp_departure_time: &[u32],
+    ipp_travel_time: &[u32],
+) {
+    assert!(
+        first_out.len() == number_of_nodes + 1,
+        "The length of first_out does not match the number of nodes + 1. This is a bug.",
+    );
+
+    assert!(
+        head.len() == number_of_edges,
+        "The length of head does not match the number of edges. This is a bug.",
+    );
+
+    assert!(
+        first_ipp_of_arc.len() == number_of_edges + 1,
+        "The length of first_ipp_of_arc does not match the number of edges + 1. This is a bug.",
+    );
+
+    assert!(
+        ipp_departure_time.len() == number_of_edges,
+        "The length of ipp_departure_time does not match the number of edges. This is a bug.",
+    );
+
+    assert!(
+        ipp_travel_time.len() == number_of_edges,
+        "The length of ipp_travel_time does not match the number of edges. This is a bug.",
+    );
+}
+
+fn sort_edges_by_node_index<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>, node_id_to_index: &HashMap<&String, usize>) -> Vec<FlattenedSumoEdge<'a>> {
     // edges should be sorted by node index of the tail of the edge
     let mut edges_sorted_by_node_index = Vec::with_capacity(edges.len());
     for edge in edges {
@@ -69,40 +174,7 @@ pub fn convert_sumo_to_td_graph<'a>(node_document_root: &NodesDocumentRoot, edge
 
     edges_sorted_by_node_index.sort_by_key(|(from, to, _, _, _)| (*from, *to));
 
-    // ipp_departure time is 0 for each edge, and ipp_travel_time is the weight of the edge
-    let mut first_out = Vec::with_capacity(nodes.len() + 1);
-    let mut head = Vec::with_capacity(edges.len());
-    let mut first_ipp_of_arc = Vec::with_capacity(edges.len() + 1);
-    let mut ipp_departure_time = Vec::with_capacity(edges.len());
-    let mut ipp_travel_time = Vec::with_capacity(edges.len());
-
-    for &(from_node_index, to_node_index, _edge_id, weight, _length) in &edges_sorted_by_node_index {
-        // ensure that first_out has enough space for the from_node_index
-        while first_out.len() <= from_node_index as usize {
-            first_out.push(head.len() as u32);
-        }
-        // ensure that first_ipp_of_arc has enough space for the current edge
-        while first_ipp_of_arc.len() <= head.len() {
-            first_ipp_of_arc.push(ipp_departure_time.len() as u32);
-        }
-
-        // add the head of the edge
-        head.push(to_node_index);
-
-        // add the ipp departure time and travel time
-        ipp_departure_time.push(0); // departure time is 0 for all edges
-        ipp_travel_time.push(f64::floor(weight * 1000.0) as u32); // travel time in milliseconds
-    }
-
-    first_out.push(nodes.len() as u32); // add the end of the first_out array
-    first_ipp_of_arc.push(edges.len() as u32);
-
-    let g = TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
-
-    // with the edge_ids we can write a file containing the edge ids in the order of the edges_sorted_by_node_index
-    // this will be used for reconstructing the edges in the TDGraph
-    let edge_ids: Vec<&String> = edges_sorted_by_node_index.iter().map(|(_, _, id, _, _)| *id).collect();
-    (g, edge_ids)
+    edges_sorted_by_node_index
 }
 
 mod test {
@@ -159,9 +231,9 @@ mod test {
 
         let (td_graph, edge_ids) = convert_sumo_to_td_graph(&nodes, &edges);
 
-        assert_eq!(td_graph.first_out().len(), 3); // 2 nodes + 1 for the end
-        assert_eq!(td_graph.head().len(), 2); // 2 edges
-        assert_eq!(td_graph.num_ipps(), 2); // 2 edges each having 1 ipp
+        assert_eq!(td_graph.0.len(), 3); // 2 nodes + 1 for the end
+        assert_eq!(td_graph.1.len(), 2); // 2 edges
+        assert_eq!(td_graph.2.len(), 2); // 2 edges each having 1 ipp
 
         assert_eq!(edge_ids.len(), 2); // 2 edges
         assert_eq!(edge_ids[0], "e2");

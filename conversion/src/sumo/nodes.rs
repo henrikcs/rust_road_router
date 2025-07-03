@@ -6,6 +6,12 @@ pub struct NodesDocumentRoot {
     pub nodes: Vec<Node>,
 }
 
+impl NodesDocumentRoot {
+    pub fn get_latitude_longitude(&self) -> (Vec<f64>, Vec<f64>) {
+        self.nodes.iter().map(|node| (node.x, node.y)).collect()
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Node {
     #[serde(rename = "@id")]
