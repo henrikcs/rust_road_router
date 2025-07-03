@@ -40,11 +40,6 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix:
     (nodes, edges, trips)
 }
 
-pub fn getLatitudeLongitudeFromNodesDocumentRoot(node_document_root: &NodesDocumentRoot) -> Vec<(f64, f64)> {
-    // get the latitude and longitude of each node in the nodes document root
-    node_document_root.nodes.iter().map(|node| (node.x, node.y)).collect()
-}
-
 pub fn convert_sumo_to_td_graph<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
