@@ -223,9 +223,8 @@ def call(command, log):
     return retCode
 
 
-def call_cch(binary, cch_args):
-    return subprocess.call([binary] + ["--input-dir", cch_args.input_dir,
-                                       "--input-prefix", cch_args.input_prefix])
+def call_cch(binary, cch_args, log):
+    return subprocess.call([binary] + cch_args, stdout=log, stderr=log)
 
 
 # method is called exactly once for one call to duaIterate.py
@@ -642,7 +641,7 @@ def main(args=None):
         tik = datetime.now()
         print("> Preprocessing network for CCH")
         print(">> Begin time: %s" % tik)
-        ret = call_cch(CCH_PREPROCESS_BINARY, cch_args)
+        ret = call_cch(CCH_PREPROCESS_BINARY, cch_args, log)
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: CCH preprocessing failed.")
@@ -684,7 +683,7 @@ def main(args=None):
 
                 ret = 0
                 if 'CCH' in options.routing_algorithm:
-                    ret = call_cch(CCH_ROUTER_BINARY, cch_args)
+                    ret = call_cch(CCH_ROUTER_BINARY, cch_args, log)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 
