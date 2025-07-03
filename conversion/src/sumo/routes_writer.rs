@@ -1,4 +1,4 @@
-use std::{error::Error, fs::File, io::Write};
+use std::{error::Error, fs::File, io::Write, path::Path};
 
 use crate::sumo::{routes::RoutesDocumentRoot, XmlWriter};
 
@@ -7,7 +7,7 @@ pub struct SumoRoutesWriter {}
 impl XmlWriter for SumoRoutesWriter {
     type R = RoutesDocumentRoot;
 
-    fn write(output_file: &str, routes: &RoutesDocumentRoot) -> Result<(), Box<dyn Error>> {
+    fn write(output_file: &Path, routes: &RoutesDocumentRoot) -> Result<(), Box<dyn Error>> {
         let file = File::create(output_file);
 
         let res = serde_xml_rs::to_string(routes).unwrap();

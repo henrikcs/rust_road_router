@@ -13,9 +13,9 @@ pub struct Interval {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@begin")]
-    pub begin: f32,
+    pub begin: f64,
     #[serde(rename = "@end")]
-    pub end: f32,
+    pub end: f64,
 
     #[serde(rename = "edge")]
     pub edges: Vec<Edge>,
@@ -26,5 +26,5 @@ pub struct Edge {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@traveltime")]
-    pub traveltime: f32,
+    pub traveltime: f64,
 }

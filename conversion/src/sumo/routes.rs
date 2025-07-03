@@ -12,7 +12,7 @@ pub struct Vehicle {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@depart")]
-    pub depart: f32,
+    pub depart: f64,
     #[serde(default, rename = "@departLane")]
     pub depart_lane: Option<String>,
     #[serde(default, rename = "@departPos")]
@@ -30,9 +30,9 @@ pub struct Route {
     #[serde(default, rename = "@edges")]
     pub edges: String,
     #[serde(default, rename = "@cost")]
-    pub cost: Option<f32>,
+    pub cost: Option<f64>,
     #[serde(default, rename = "@probability")]
-    pub probability: Option<f32>,
+    pub probability: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

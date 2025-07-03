@@ -16,7 +16,7 @@ pub struct Trip {
     #[serde(rename = "@to")]
     pub to: String,
     #[serde(rename = "@depart")]
-    pub depart: f32,
+    pub depart: f64,
     #[serde(default, rename = "@departLane")]
     pub depart_lane: Option<String>,
     #[serde(default, rename = "@departPos")]
