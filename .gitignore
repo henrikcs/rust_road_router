@@ -7,3 +7,4 @@ target/
 .history
 lib/libsumo
 .vscode
+data/imported
