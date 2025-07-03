@@ -1,41 +1,36 @@
-use conversion::sumo::XmlReader;
-use conversion::sumo::edges_reader::SumoEdgesReader;
-use conversion::sumo::nodes_reader::SumoNodesReader;
-use conversion::sumo::trips_reader::SumoTripsReader;
+use std::path::Path;
+
+use conversion::sumo::sumo_to_td_graph_converter::{convert_sumo_to_td_graph, read_nodes_edges_and_trips_from_plain_xml};
+
 use fastdta::cli;
 use fastdta::cli::Parser;
-
-const EDG_XML: &str = ".edg.xml";
-const NOD_XML: &str = ".nod.xml";
-const CON_XML: &str = ".con.xml";
-const TRIPS_XML: &str = ".trips.xml";
+use rust_road_router::datastr::graph::Graph;
 
 fn main() {
     let args = cli::Args::parse();
 
+    let Some(input_dir) = args.input_dir else {
+        panic!("No input directory provided to read files from. Use --input-dir <path> to specify a directory containing all of the input files.");
+    };
+
     let Some(input_prefix) = args.input_prefix else {
-        panic!("No input prefix provided to read files from. Use --input-prefix <prefix> (or -i <prefix) to specify a inputs file.");
+        panic!("No input prefix provided. Use --input-prefix <prefix> (or -i <prefix>) to specify the prefix of each input file.");
     };
 
-    let Ok(edges) = SumoEdgesReader::read((input_prefix.clone() + EDG_XML).as_str()) else {
-        panic!("Edges could not be read.");
+    let Some(_output_dir) = args.output_dir else {
+        panic!("No output directory provided. Use --output-dir <path> to specify an output directory for the TD-CCH.");
     };
 
-    let number_of_edges = edges.edges.len();
+    let input_dir = Path::new(&input_dir);
 
-    dbg!(number_of_edges);
+    let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix);
 
-    let Ok(nodes) = SumoNodesReader::read((input_prefix.clone() + NOD_XML).as_str()) else {
-        panic!("Edges could not be read.");
-    };
+    let (g, edges_by_id) = convert_sumo_to_td_graph(&nodes, &edges);
 
-    let number_of_nodes = nodes.nodes.len();
-
-    dbg!(number_of_nodes);
-
-    let Ok(trips) = SumoTripsReader::read((input_prefix.clone() + TRIPS_XML).as_str()) else {
-        panic!("Trips could not be read.");
-    };
+    dbg!(nodes.nodes.len());
+    dbg!(edges.edges.len());
+    dbg!(g.num_nodes());
+    dbg!(g.num_arcs());
 
     let number_of_trips = trips.vehicles.len();
     dbg!(number_of_trips);
