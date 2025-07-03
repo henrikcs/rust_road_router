@@ -37,6 +37,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // necessary for creating the TD-CCH
     lat.write_to(&output_dir.join("latitude"))?;
     lon.write_to(&output_dir.join("longitude"))?;
+
+    dbg!(&lat);
+    dbg!(&lon);
+
     g.0.write_to(&output_dir.join("first_out"))?;
     g.1.write_to(&output_dir.join("head"))?;
     g.2.write_to(&output_dir.join("first_ipp_of_arc"))?;
