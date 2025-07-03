@@ -1,3 +1,4 @@
+use std::env;
 use std::error::Error;
 use std::path::Path;
 
@@ -5,7 +6,6 @@ use conversion::sumo::sumo_to_td_graph_converter::{convert_sumo_to_td_graph, rea
 
 use fastdta::cli;
 use fastdta::cli::Parser;
-use rust_road_router::datastr::graph::Graph;
 use rust_road_router::io::Store;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -19,9 +19,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         panic!("No input prefix provided. Use --input-prefix <prefix> (or -i <prefix>) to specify the prefix of each input file.");
     };
 
-    let Some(output_dir) = args.output_dir else {
-        panic!("No output directory provided. Use --output-dir <path> to specify an output directory for the TD-CCH.");
-    };
+    let output_dir = args.output_dir.unwrap_or(String::from(env::current_dir()?.to_str().unwrap()));
+
+    dbg!(&output_dir);
 
     let input_dir = Path::new(&input_dir);
     let output_dir = Path::new(&output_dir);
@@ -46,14 +46,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
 
     let output_dir_str = output_dir.to_str().ok_or("Output directory is not valid UTF-8")?;
+
+    // make sure that this project's root directory is in the PATH, such that flow_cutter_cch_cut_order.sh can be found
     let status = std::process::Command::new("bash")
         .arg("flow_cutter_cch_cut_order.sh")
         .arg(output_dir_str)
-        .current_dir(dir)
         .status()?;
 
     if !status.success() {
-        return Err(Box::new(cli::CliErr("Failed to run flow_cutter_cch_cut_order.sh script".to_string())));
+        panic!("Failed to run flow_cutter_cch_cut_order.sh script");
     }
 
     Ok(())
