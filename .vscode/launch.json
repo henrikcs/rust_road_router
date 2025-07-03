@@ -17,7 +17,14 @@
       "request": "launch",
       "name": "Debug Preprocess",
       "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
-      "args": ["-i", "./import/sumo/grid/grid"],
+      "args": [
+        "-i",
+        "./import/sumo/grid",
+        "--input-prefix",
+        "grid",
+        "--output-dir",
+        "./data/imported/sumo/grid"
+      ],
       "cwd": "${workspaceFolder}"
     }
   ]
