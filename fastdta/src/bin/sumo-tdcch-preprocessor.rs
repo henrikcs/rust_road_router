@@ -53,6 +53,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     run_inertial_flow_cutter_console(output_dir, args.seed.unwrap_or(5489), args.routing_threads.unwrap_or(-1))?;
 
+    // TODO: try again with the script
+    // TODO: try to run with known good input files
     Ok(())
 }
 
