@@ -344,7 +344,7 @@ pub struct Args {
     #[arg(long = "input-prefix")]
     pub input_prefix: Option<String>,
 
-    /// the files `<input-prefix>.con.xml`, `<input-prefix>.nod.xml`, `<input-prefix>.edg.xml` will be read as input
-    #[arg(long = "input-dir", short = 'i')]
+    /// the directory containing the input files
+    #[arg(long = "input-dir")]
     pub input_dir: Option<String>,
 }
