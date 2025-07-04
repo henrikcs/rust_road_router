@@ -96,7 +96,12 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
         ipp_travel_time.push(f64::floor(weight * 1000.0) as u32); // travel time in milliseconds
     }
 
-    first_out.push(number_of_nodes as u32); // add the end of the first_out array
+    // a loop is necessary in the case that the last node has no outgoing edges
+    while first_out.len() <= number_of_nodes {
+        first_out.push(head.len() as u32); // add the end of the first_out array
+    }
+
+    // it should not be necessary do a loop because the last edge is guaranteed to have been added
     first_ipp_of_arc.push(number_of_edges as u32);
 
     assert_correct_number_of_vec_items(

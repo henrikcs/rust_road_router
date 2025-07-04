@@ -7,7 +7,7 @@ pub struct NodesDocumentRoot {
 }
 
 impl NodesDocumentRoot {
-    pub fn get_latitude_longitude(&self) -> (Vec<f64>, Vec<f64>) {
+    pub fn get_latitude_longitude(&self) -> (Vec<f32>, Vec<f32>) {
         self.nodes.iter().map(|node| (node.x, node.y)).collect()
     }
 }
@@ -17,7 +17,7 @@ pub struct Node {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@x")]
-    pub x: f64,
+    pub x: f32,
     #[serde(rename = "@y")]
-    pub y: f64,
+    pub y: f32,
 }

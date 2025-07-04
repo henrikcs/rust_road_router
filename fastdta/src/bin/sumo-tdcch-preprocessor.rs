@@ -20,11 +20,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let output_dir = args.output_dir.unwrap_or(String::from(env::current_dir()?.to_str().unwrap()));
-
-    dbg!(&input_dir);
-    dbg!(&input_prefix);
-    dbg!(&output_dir);
-
     let input_dir = Path::new(&input_dir);
     let output_dir = Path::new(&output_dir);
 
@@ -34,12 +29,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let (lat, lon) = nodes.get_latitude_longitude();
 
-    // necessary for creating the TD-CCH
+    // necessary for creating the TD-CCH. it is also necessary for lat/lon to be f32, otherwise InternalFlowCutterConsole will fail
     lat.write_to(&output_dir.join("latitude"))?;
     lon.write_to(&output_dir.join("longitude"))?;
-
-    dbg!(&lat);
-    dbg!(&lon);
 
     g.0.write_to(&output_dir.join("first_out"))?;
     g.1.write_to(&output_dir.join("head"))?;
@@ -51,10 +43,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
 
-    run_inertial_flow_cutter_console(output_dir, args.seed.unwrap_or(5489), args.routing_threads.unwrap_or(-1))?;
+    run_inertial_flow_cutter_console(
+        output_dir,
+        args.seed.unwrap_or(5489),
+        args.routing_threads.unwrap_or(std::thread::available_parallelism().unwrap().get() as i32),
+    )?;
 
-    // TODO: try again with the script
-    // TODO: try to run with known good input files
     Ok(())
 }
 

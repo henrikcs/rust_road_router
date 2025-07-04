@@ -44,11 +44,13 @@ impl Edge {
         self.speed.unwrap_or(13.9) // default speed is 13.9 m/s (50 km/h)
     }
 
-    pub fn get_length(&self, (from_x, from_y): (f64, f64), (to_x, to_y): (f64, f64)) -> f64 {
+    pub fn get_length(&self, (from_x, from_y): (f32, f32), (to_x, to_y): (f32, f32)) -> f64 {
         self.length.unwrap_or_else(|| {
             let dx = from_x - to_x;
             let dy = from_y - to_y;
-            (dx * dx + dy * dy).sqrt() // euclidean distance
+            let a: f64 = dx.into();
+            let b: f64 = dy.into();
+            (a * a + b * b).sqrt() // euclidean distance
         })
     }
 }
