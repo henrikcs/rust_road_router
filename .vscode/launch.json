@@ -15,15 +15,30 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug Preprocess",
+      "name": "Debug Preprocess (grid)",
       "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
       "args": [
-        "-i",
+        "--input-dir",
         "./import/sumo/grid",
         "--input-prefix",
         "grid",
         "--output-dir",
         "./data/imported/sumo/grid"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Preprocess (example data)",
+      "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
+      "args": [
+        "--input-dir",
+        "./import/sumo/example-data",
+        "--input-prefix",
+        "example-data",
+        "--output-dir",
+        "./data/imported/sumo/example-data"
       ],
       "cwd": "${workspaceFolder}"
     }

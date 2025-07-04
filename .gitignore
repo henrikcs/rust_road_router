@@ -6,5 +6,5 @@ target/
 .ipynb_checkpoints
 .history
 lib/libsumo
-.vscode
+.vscode/tasks.json
 data/imported
