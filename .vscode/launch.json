@@ -25,7 +25,10 @@
         "--output-dir",
         "./data/imported/sumo/grid"
       ],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
+      }
     },
     {
       "type": "lldb",
@@ -40,7 +43,10 @@
         "--output-dir",
         "./data/imported/sumo/example-data"
       ],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
+      }
     }
   ]
 }
