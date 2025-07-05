@@ -2,9 +2,7 @@ use std::env;
 use std::error::Error;
 use std::path::Path;
 
-use conversion::sumo::sumo_to_td_graph_converter::{
-    convert_sumo_to_routing_kit, get_routing_kit_td_graph_from_sumo, read_nodes_edges_and_trips_from_plain_xml,
-};
+use conversion::sumo::sumo_to_td_graph_converter::convert_sumo_to_routing_kit;
 
 use fastdta::cli;
 use fastdta::cli::Parser;
@@ -49,6 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn preprocess(working_dir: &Path) -> Result<(), Box<dyn Error>> {
     // TODO: instead of reading from files, we should have parameters passed to the function; evaluate the memory usage
+    // use first_out and head to reconstruct the graph
     let graph = UnweightedOwnedGraph::reconstruct_from(&working_dir)?;
 
     // let mut algo_runs_ctxt = push_collection_context("algo_runs");
