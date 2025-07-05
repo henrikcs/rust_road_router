@@ -28,7 +28,8 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
-      }
+      },
+      "preLaunchTask": "Build (debug)"
     },
     {
       "type": "lldb",
@@ -46,7 +47,8 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
-      }
+      },
+      "preLaunchTask": "Build (debug)"
     }
   ]
 }
