@@ -1,6 +1,9 @@
 use std::{collections::HashMap, path::Path};
 
-use rust_road_router::datastr::graph::floating_time_dependent::{ImplicitTDGraph, TDGraph};
+use rust_road_router::{
+    datastr::graph::floating_time_dependent::{RoutingKitTDGraph, TDGraph},
+    io::Store,
+};
 
 use crate::sumo::{
     edges::{Edge, EdgesDocumentRoot},
@@ -18,6 +21,40 @@ const EDG_XML: &str = ".edg.xml";
 const NOD_XML: &str = ".nod.xml";
 const CON_XML: &str = ".con.xml";
 const TRIPS_XML: &str = ".trips.xml";
+
+/// Converts SUMO files to a time-dependent graph format defined by RoutingKit
+/// creates the following files in the output directory:
+/// - first_out: the first outgoing edge for each node
+/// - head: the head node of each edge
+/// - first_ipp_of_arc: the first interpolation point of each arc
+/// - ipp_departure_time: the departure time of each interpolation point
+/// - ipp_travel_time: the travel time of each interpolation point
+/// - edges_by_id: a file containing the edge ids in the order of the edges in the graph
+/// - latitude: the latitude of each node
+/// - longitude: the longitude of each node
+///
+/// With this data, InertialFlowCutterConsole can create a node ranking for the TD-CCH
+pub fn convert_sumo_to_routing_kit(input_dir: &Path, input_prefix: &String, output_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix);
+
+    let (g, edges_by_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+
+    let (lat, lon) = nodes.get_latitude_longitude();
+
+    // necessary for creating the TD-CCH. it is also necessary for lat/lon to be f32, otherwise InternalFlowCutterConsole will fail
+    lat.write_to(&output_dir.join("latitude"))?;
+    lon.write_to(&output_dir.join("longitude"))?;
+
+    g.0.write_to(&output_dir.join("first_out"))?;
+    g.1.write_to(&output_dir.join("head"))?;
+    g.2.write_to(&output_dir.join("first_ipp_of_arc"))?;
+    g.3.write_to(&output_dir.join("ipp_departure_time"))?;
+    g.4.write_to(&output_dir.join("ipp_travel_time"))?;
+
+    edges_by_id.write_to(&output_dir.join("edges_by_id"))?;
+
+    Ok(())
+}
 
 pub fn read_nodes_and_edges_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot) {
     let Ok(edges) = SumoEdgesReader::read(input_dir.join(files_prefix.clone() + EDG_XML).as_path()) else {
@@ -40,10 +77,10 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix:
     (nodes, edges, trips)
 }
 
-pub fn convert_sumo_to_td_graph<'a>(
+pub fn get_routing_kit_td_graph_from_sumo<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
-) -> (ImplicitTDGraph, Vec<&'a String>) {
+) -> (RoutingKitTDGraph, Vec<&'a String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
     // interpolation points should be initialized with only one timespan (from 0 to end-of-day in seconds)
@@ -70,7 +107,7 @@ pub fn convert_sumo_to_td_graph<'a>(
     ((first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time), edge_ids)
 }
 
-fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edges_sorted_by_node_index: &Vec<FlattenedSumoEdge>) -> ImplicitTDGraph {
+fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edges_sorted_by_node_index: &Vec<FlattenedSumoEdge>) -> RoutingKitTDGraph {
     // ipp_departure time is 0 for each edge, and ipp_travel_time is the weight of the edge
     let mut first_out = Vec::with_capacity(number_of_nodes + 1);
     let mut head = Vec::with_capacity(number_of_edges);
@@ -229,7 +266,7 @@ mod test {
             ],
         };
 
-        let (td_graph, edge_ids) = convert_sumo_to_td_graph(&nodes, &edges);
+        let (td_graph, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
 
         assert_eq!(td_graph.0.len(), 3); // 2 nodes + 1 for the end
         assert_eq!(td_graph.1.len(), 2); // 2 edges
