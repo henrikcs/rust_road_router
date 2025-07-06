@@ -3,6 +3,24 @@ use rust_road_router::datastr::graph::{time_dependent::*, *};
 pub mod here;
 pub mod sumo;
 
+pub const FILE_LATITUDE: &str = "latitude";
+pub const FILE_LONGITUDE: &str = "longitude";
+pub const FILE_CCH_PERM: &str = "cch_perm";
+pub const FILE_CCH_SEPARATORS: &str = "cch_separators";
+pub const FILE_CCH_NODE_ORDER: &str = "cch_node_order";
+pub const DIR_CCH: &str = "cch";
+pub const DIR_CUSTOMIZED: &str = "customized";
+pub const FILE_FIRST_OUT: &str = "first_out";
+pub const FILE_HEAD: &str = "head";
+pub const FILE_FIRST_IPP_OF_ARC: &str = "first_ipp_of_arc";
+pub const FILE_IPP_DEPARTURE_TIME: &str = "ipp_departure_time";
+pub const FILE_IPP_TRAVEL_TIME: &str = "ipp_travel_time";
+pub const FILE_QUERY_IDS: &str = "query_ids";
+pub const FILE_QUERIES_FROM: &str = "queries_from";
+pub const FILE_QUERIES_TO: &str = "queries_to";
+pub const FILE_QUERIES_DEPARTURE: &str = "queries_departure";
+pub const FILE_EDGE_INDICES_TO_ID: &str = "edge_indices_to_id";
+
 pub fn speed_profile_to_tt_profile(speeds: &[(Timestamp, u32)], edge_len: u32) -> Vec<(Timestamp, Weight)> {
     let t_wrap = speeds.last().unwrap().0;
     let last_to_exit = speeds.len() - 2;

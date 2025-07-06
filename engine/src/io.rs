@@ -224,3 +224,23 @@ pub trait Reconstruct: Sized {
         Self::reconstruct_with(Loader { path })
     }
 }
+
+/// Helper function to write a vector of strings to a file, each string on a new line.
+/// We need this method to keep track of the edge ids given by sumo
+/// We cannot let Vec<String> implement Store, because it rust says that in future versions String might implement Copy
+pub fn write_strings_to_file<P: AsRef<Path>>(path: P, strings: &Vec<&String>) -> Result<()> {
+    let mut file = File::create(path)?;
+    for s in strings {
+        writeln!(file, "{}", s)?;
+    }
+    Ok(())
+}
+
+/// Helper function to read a vector of strings from a file, each line as a separate string.
+/// We need this to convert the edge indices back to the edge ids given by sumo.
+/// We cannot let Vec<String> implement Load, because it rust says that in future versions String might implement Copy
+pub fn read_strings_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<String>> {
+    let file = File::open(path)?;
+    let reader = std::io::BufReader::new(file);
+    reader.lines().collect::<Result<Vec<_>>>()
+}

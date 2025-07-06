@@ -1,47 +1,33 @@
-use std::env;
 use std::error::Error;
 use std::path::Path;
 
 use clap::Parser;
-use conversion::sumo::sumo_to_td_graph_converter::{
-    DIR_CCH, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_QUERIES_DEPARTURE,
-    FILE_QUERIES_FROM, FILE_QUERIES_TO,
-};
-use conversion::sumo::sumo_to_td_graph_converter::{FILE_CCH_PERM, FILE_LATITUDE, FILE_LONGITUDE, convert_sumo_to_routing_kit_and_queries};
+use conversion::sumo::sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries;
+use conversion::{DIR_CCH, FILE_CCH_PERM, FILE_FIRST_OUT, FILE_HEAD, FILE_LATITUDE, FILE_LONGITUDE};
 use fastdta::cli;
 use rust_road_router::algo::customizable_contraction_hierarchy::{CCHT, contract, reorder, reorder_for_seperator_based_customization};
 use rust_road_router::datastr::graph::UnweightedOwnedGraph;
 use rust_road_router::datastr::node_order::NodeOrder;
 use rust_road_router::io::{Deconstruct, Load, Reconstruct};
 
+/// has the following parameters:
+/// - input_dir: the directory containing the input files
+/// - input_prefix: the prefix of the input files
+/// - output_dir: the directory to write the output files to (optional, defaults to current directory)
+/// - seed: the random seed to use for the inertial flow cutter (optional, defaults to 5489)
+/// - routing_threads: the number of threads to use for the routing
 fn main() -> Result<(), Box<dyn Error>> {
-    let args = cli::Args::parse();
+    let args = cli::PreprocesserArgs::parse();
 
-    let Some(input_dir) = args.input_dir else {
-        panic!("No input directory provided to read files from. Use --input-dir <path> to specify a directory containing all of the input files.");
-    };
+    let input_dir = Path::new(&args.input_dir);
+    let input_prefix = args.input_prefix;
+    let output_dir = Path::new(&args.output_dir);
 
-    let Some(input_prefix) = args.input_prefix else {
-        panic!("No input prefix provided. Use --input-prefix <prefix> (or -i <prefix>) to specify the prefix of each input file.");
-    };
-
-    let output_dir = args.output_dir.unwrap_or(String::from(env::current_dir()?.to_str().unwrap()));
-    let input_dir = Path::new(&input_dir);
-    let output_dir = Path::new(&output_dir);
     dbg!(&output_dir);
 
     convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &output_dir)?;
-
-    dbg!(&output_dir);
-
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
-    run_inertial_flow_cutter(
-        &output_dir,
-        args.seed.unwrap_or(5489),
-        args.routing_threads.unwrap_or(std::thread::available_parallelism().unwrap().get() as i32),
-    )?;
-
-    dbg!(&output_dir);
+    run_inertial_flow_cutter(&output_dir, args.seed, args.routing_threads)?;
     // run catchup proprocessing
     preprocess(&output_dir)?;
 

@@ -564,24 +564,44 @@ impl<'a> Server<'a> {
 
         path
     }
+
+    fn edge_path(&self) -> Vec<EdgeId> {
+        let node_path = self.path();
+        let mut edge_path = Vec::with_capacity(node_path.len() - 1);
+        for i in 0..node_path.len() - 1 {
+            let from = self.cch_graph.node_order().rank(node_path[i].0);
+            let to = self.cch_graph.node_order().rank(node_path[i + 1].0);
+            let edge = self
+                .customized_graph
+                .original_graph
+                .edge_indices(from, to)
+                .next()
+                .unwrap_or_else(|| panic!("No edge from {} to {} in original graph, path: {:?}", from, to, node_path));
+        }
+
+        edge_path
+    }
 }
 
 pub struct PathServerWrapper<'s, 'a>(&'s Server<'a>);
 
 impl<'s, 'a> PathServer for PathServerWrapper<'s, 'a> {
     type NodeInfo = (NodeId, Timestamp);
-    type EdgeInfo = ();
+    type EdgeInfo = EdgeId;
 
     fn reconstruct_node_path(&mut self) -> Vec<Self::NodeInfo> {
         Server::path(self.0)
     }
     fn reconstruct_edge_path(&mut self) -> Vec<Self::EdgeInfo> {
-        vec![(); self.reconstruct_node_path().len() - 1]
+        Server::edge_path(self.0)
     }
 }
 
 impl<'a> TDQueryServer<Timestamp, FlWeight> for Server<'a> {
-    type P<'s> = PathServerWrapper<'s, 'a> where Self: 's;
+    type P<'s>
+        = PathServerWrapper<'s, 'a>
+    where
+        Self: 's;
 
     fn td_query(&mut self, query: TDQuery<Timestamp>) -> QueryResult<Self::P<'_>, FlWeight> {
         QueryResult::new(self.distance(query.from, query.to, query.departure), PathServerWrapper(self))

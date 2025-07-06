@@ -1,9 +1,37 @@
+use std::env;
+
 pub use clap::Parser;
 
-/// Command-line arguments for fast-dta, inherited by the Command-line arguments for duarouter (https://sumo.dlr.de/docs/duarouter.html)
+/// Command-line arguments for fast-dta preprocessing
 #[derive(Parser, Debug)]
-#[command(version, about = "duarouter CLI options", long_about = None)]
-pub struct Args {
+#[command(version, about = "fast-dta preprocessing CLI options", long_about = None)]
+pub struct PreprocesserArgs {
+    /// the directory containing the input files
+    #[arg(long = "input-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
+    pub input_dir: String,
+
+    /// the files `<input-prefix>.con.xml`, `<input-prefix>.nod.xml`, `<input-prefix>.edg.xml` will be read as input
+    #[arg(long = "input-prefix", default_value = "")]
+    pub input_prefix: String,
+
+    /// the directory to write the output files to (optional, defaults to current directory)
+    #[arg(long = "output-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
+    pub output_dir: String,
+
+    /// the random seed to use for the inertial flow cutter (optional, defaults to 5489)
+    #[arg(long = "seed", default_value_t = 5489)]
+    pub seed: i32,
+
+    /// the number of threads to use for the routing
+    /// (optional, defaults to the number of available threads)
+    #[arg(long = "routing-threads", default_value_t = std::thread::available_parallelism().unwrap().get() as i32)]
+    pub routing_threads: i32,
+}
+
+/// Command-line arguments for fast-dta router, derived from duarouter
+#[derive(Parser, Debug)]
+#[command(version, about = "fast-dta router CLI options", long_about = None)]
+pub struct RouterArgs {
     #[arg(short = 'd', long = "additional-files")]
     pub additional_files: Option<String>,
 
@@ -340,11 +368,11 @@ pub struct Args {
     #[arg(long = "xml-validation.routes")]
     pub xml_validation_routes: Option<String>,
 
-    /// the files `<input-prefix>.con.xml`, `<input-prefix>.nod.xml`, `<input-prefix>.edg.xml` will be read as input
-    #[arg(long = "input-prefix")]
-    pub input_prefix: Option<String>,
+    /// the directory containing the files where the cch folder and the queries will be read from
+    /// default is the current working directory
+    #[arg(long = "input-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
+    pub input_dir: String,
 
-    /// the directory containing the input files
-    #[arg(long = "input-dir")]
-    pub input_dir: Option<String>,
+    #[arg(long = "iteration")]
+    pub iteration: u32,
 }

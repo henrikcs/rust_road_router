@@ -223,8 +223,12 @@ def call(command, log):
     return retCode
 
 
-def call_cch(binary, cch_args, log):
-    return subprocess.call([binary] + cch_args, stdout=log, stderr=log)
+def call_cch_preprocess(cch_args, log):
+    return subprocess.call([CCH_PREPROCESS_BINARY] + cch_args, stdout=log, stderr=log)
+
+
+def call_cch_routing(cch_args, log):
+    return subprocess.call([CCH_ROUTER_BINARY] + cch_args, stdout=log, stderr=log)
 
 
 # method is called exactly once for one call to duaIterate.py
@@ -597,8 +601,10 @@ def main(args=None):
         sumoBinary, 'sumo', options.remaining_args)
     dua_args = assign_remaining_args(
         duaBinary, 'duarouter', options.remaining_args)
-    cch_args = assign_remaining_args(
-        CCH_PREPROCESS_BINARY, 'cch', options.remaining_args)
+    cch_preprocessing_args = assign_remaining_args(
+        CCH_PREPROCESS_BINARY, 'cch-preprocessor', options.remaining_args)
+    cch_routing_args = assign_remaining_args(
+        CCH_ROUTER_BINARY, 'cch-router', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
     log = open(options.dualog, "w+")
     if options.zip:
@@ -641,7 +647,7 @@ def main(args=None):
         tik = datetime.now()
         print("> Preprocessing network for CCH")
         print(">> Begin time: %s" % tik)
-        ret = call_cch(CCH_PREPROCESS_BINARY, cch_args, log)
+        ret = call_cch_preprocess(cch_preprocessing_args, log)
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: CCH preprocessing failed.")
@@ -683,7 +689,8 @@ def main(args=None):
 
                 ret = 0
                 if 'CCH' in options.routing_algorithm:
-                    ret = call_cch(CCH_ROUTER_BINARY, cch_args, log)
+                    ret = call_cch_routing(
+                        ["--iteration", str(step)], log)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 

@@ -1,38 +1,24 @@
 use std::{collections::HashMap, path::Path};
 
-use rust_road_router::{datastr::graph::floating_time_dependent::RoutingKitTDGraph, io::Store};
-
-use crate::sumo::{
-    edges::{Edge, EdgesDocumentRoot},
-    edges_reader::SumoEdgesReader,
-    nodes::{Node, NodesDocumentRoot},
-    nodes_reader::SumoNodesReader,
-    trips::TripsDocumentRoot,
-    trips_reader::SumoTripsReader,
-    XmlReader,
+use rust_road_router::{
+    datastr::graph::floating_time_dependent::RoutingKitTDGraph,
+    io::{write_strings_to_file, Store},
 };
 
-pub const FILE_LATITUDE: &str = "latitude";
-pub const FILE_LONGITUDE: &str = "longitude";
-pub const FILE_CCH_PERM: &str = "cch_perm";
-pub const FILE_CCH_SEPARATORS: &str = "cch_separators";
-pub const FILE_CCH_NODE_ORDER: &str = "cch_node_order";
-pub const DIR_CCH: &str = "cch";
-pub const DIR_CUSTOMIZED: &str = "customized";
-pub const FILE_FIRST_OUT: &str = "first_out";
-pub const FILE_HEAD: &str = "head";
-pub const FILE_FIRST_IPP_OF_ARC: &str = "first_ipp_of_arc";
-pub const FILE_IPP_DEPARTURE_TIME: &str = "ipp_departure_time";
-pub const FILE_IPP_TRAVEL_TIME: &str = "ipp_travel_time";
-pub const FILE_QUERIES_FROM: &str = "queries_from";
-pub const FILE_QUERIES_TO: &str = "queries_to";
-pub const FILE_QUERIES_DEPARTURE: &str = "queries_departure";
-pub const FILE_EDGE_INDICES_TO_ID: &str = "edge_indices_to_id";
+use crate::{
+    sumo::{
+        edges::{Edge, EdgesDocumentRoot},
+        edges_reader::SumoEdgesReader,
+        nodes::{Node, NodesDocumentRoot},
+        nodes_reader::SumoNodesReader,
+        trips::TripsDocumentRoot,
+        trips_reader::SumoTripsReader,
+        XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
+    },
+    FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE,
+    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS,
+};
 
-const EDG_XML: &str = ".edg.xml";
-const NOD_XML: &str = ".nod.xml";
-const CON_XML: &str = ".con.xml";
-const TRIPS_XML: &str = ".trips.xml";
 pub struct FlattenedSumoEdge<'a> {
     from_node_index: u32,
     to_node_index: u32,
@@ -53,8 +39,6 @@ impl Clone for FlattenedSumoEdge<'_> {
     }
 }
 
-pub fn convert_sumo_trips_to_queries() {}
-
 /// Converts SUMO files to a time-dependent graph format defined by RoutingKit
 /// creates the following files in the output directory:
 /// - first_out: the first outgoing edge for each node
@@ -74,7 +58,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
     let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix);
 
     let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
-    let (from, to, departure) = get_queries_from_trips(&trips, &edge_ids_to_index);
+    let (trip_ids, from, to, departure) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
     let (lat, lon) = nodes.get_latitude_longitude();
 
@@ -88,7 +72,8 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
     g.3.write_to(&output_dir.join(FILE_IPP_DEPARTURE_TIME))?;
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
-    edge_indices_to_id.write_to(&output_dir.join(FILE_EDGE_INDICES_TO_ID))?;
+    write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id)?;
+    write_strings_to_file(&output_dir.join(FILE_QUERY_IDS), &trip_ids)?;
 
     from.write_to(&output_dir.join(FILE_QUERIES_FROM))?;
     to.write_to(&output_dir.join(FILE_QUERIES_TO))?;
@@ -118,23 +103,25 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix:
     (nodes, edges, trips)
 }
 
-pub fn get_queries_from_trips(
-    trips_document_root: &TripsDocumentRoot,
+pub fn get_queries_from_trips<'a>(
+    trips_document_root: &'a TripsDocumentRoot,
     edge_id_to_index_map: &HashMap<&String, (usize, FlattenedSumoEdge)>,
-) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<f64>) {
     // create a vector of from nodes, to nodes and departure times
+    let mut trip_ids = Vec::with_capacity(trips_document_root.vehicles.len());
     let mut from_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
     let mut to_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
     let mut departure_times = Vec::with_capacity(trips_document_root.vehicles.len());
 
     for veh in &trips_document_root.vehicles {
+        trip_ids.push(&veh.id);
         // vehicles go from an edge to an edge, so we need to get the from and to nodes of the edges
         from_nodes.push(edge_id_to_index_map.get(&veh.from).unwrap().1.from_node_index);
         to_nodes.push(edge_id_to_index_map.get(&veh.to).unwrap().1.to_node_index);
         departure_times.push(veh.depart);
     }
 
-    (from_nodes, to_nodes, departure_times)
+    (trip_ids, from_nodes, to_nodes, departure_times)
 }
 
 pub fn get_routing_kit_td_graph_from_sumo<'a>(

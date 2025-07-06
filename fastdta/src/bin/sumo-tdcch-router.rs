@@ -1,42 +1,55 @@
-use std::env;
 use std::path::Path;
 
-use conversion::sumo::sumo_to_td_graph_converter::{DIR_CCH, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO};
+use conversion::sumo::ROUTES;
+use conversion::sumo::paths_to_sumo_routes_converter::{self, write_paths_as_sumo_routes};
+use conversion::{DIR_CCH, FILE_EDGE_INDICES_TO_ID, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS};
 use fastdta::cli;
 use fastdta::cli::Parser;
 use rust_road_router::algo::catchup::Server;
 use rust_road_router::algo::customizable_contraction_hierarchy::{CCHReconstrctor, ftd_cch};
-use rust_road_router::algo::{TDQuery, TDQueryServer};
-use rust_road_router::datastr::graph::floating_time_dependent::{FlWeight, TDGraph, Timestamp};
-use rust_road_router::io::{Load, Reconstruct, ReconstructPrepared};
+use rust_road_router::algo::{PathServer, TDQuery, TDQueryServer};
+use rust_road_router::datastr::graph::floating_time_dependent::{TDGraph, Timestamp};
+use rust_road_router::io::{Load, Reconstruct, ReconstructPrepared, read_strings_from_file};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let _reporter = enable_reporting("tdcch_customization");
     // report!("num_threads", rayon::current_num_threads());
 
-    let args = cli::Args::parse();
+    let args = cli::RouterArgs::parse();
 
-    let output_dir = args.output_dir.unwrap_or(String::from(env::current_dir()?.to_str().unwrap()));
-    let output_dir = Path::new(&output_dir);
+    let input_dir = Path::new(&args.input_dir);
+    let iteration = args.iteration;
 
-    let graph = TDGraph::reconstruct_from(&output_dir).expect("Failed to reconstruct the time-dependent graph");
+    let current_iteration_dir = input_dir.join(format!("{iteration:0>3}"));
+
+    let graph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
+
+    // if iteration > 0, we load the previous iteration's travel times
+    if iteration > 0 {
+        let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
+
+        // TODO: implement
+    }
 
     // let mut algo_runs_ctxt = push_collection_context("algo_runs");
 
-    let cch_folder = output_dir.join(DIR_CCH);
+    let cch_folder = input_dir.join(DIR_CCH);
     let cch = CCHReconstrctor(&graph).reconstruct_from(&cch_folder).unwrap();
 
     // let _cch_customization_ctxt = algo_runs_ctxt.push_collection_item();
+    // customize the cch with the given graph having new travel time functions for each edge
     let customized_graph = ftd_cch::customize(&cch, &graph);
 
-    // read queries from output_dir
-    let queries_from = Vec::<u32>::load_from(output_dir.join(FILE_QUERIES_FROM)).unwrap();
-    let queries_to = Vec::<u32>::load_from(output_dir.join(FILE_QUERIES_TO)).unwrap();
-    let queries_departure = Vec::<f64>::load_from(output_dir.join(FILE_QUERIES_DEPARTURE)).unwrap();
+    // read queries from input_dir
+    let queries_from = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_FROM)).unwrap();
+    let queries_to = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_TO)).unwrap();
+    let queries_departure = Vec::<f64>::load_from(input_dir.join(FILE_QUERIES_DEPARTURE)).unwrap();
 
     assert!(queries_from.len() == queries_to.len());
     assert!(queries_from.len() == queries_departure.len());
 
     let mut query_server = Server::new(&cch, &customized_graph);
+
+    let mut paths = Vec::new();
 
     for i in 0..queries_from.len() {
         let result = query_server.td_query(TDQuery {
@@ -44,8 +57,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             to: queries_to[i] as u32,
             departure: Timestamp::new(queries_departure[i]),
         });
-        if let Some(result) = result.found() {
-            let ea = FlWeight::new(queries_departure[i]) + result.distance();
+        if let Some(mut result) = result.found() {
+            let ea = result.distance();
+            paths.push(result.data().reconstruct_edge_path());
+
             println!(
                 "From: {}, To: {}, Departure: {}, Earliest Arrival: {:?}",
                 queries_from[i], queries_to[i], queries_departure[i], ea
@@ -55,7 +70,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // TODO: write query results to a file
+    let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
+    let trip_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
+
+    write_paths_as_sumo_routes(
+        &current_iteration_dir.join(format!("test_{iteration:0>3}{ROUTES}")),
+        &paths,
+        &edge_ids,
+        &trip_ids,
+        &queries_departure,
+    );
 
     Ok(())
 }
