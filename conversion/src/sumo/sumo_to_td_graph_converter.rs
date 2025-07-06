@@ -1,9 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
-use rust_road_router::{
-    datastr::graph::floating_time_dependent::{RoutingKitTDGraph, TDGraph},
-    io::Store,
-};
+use rust_road_router::{datastr::graph::floating_time_dependent::RoutingKitTDGraph, io::Store};
 
 use crate::sumo::{
     edges::{Edge, EdgesDocumentRoot},
@@ -15,12 +12,47 @@ use crate::sumo::{
     XmlReader,
 };
 
-type FlattenedSumoEdge<'a> = (u32, u32, &'a String, f64, f64); // (from_node_index, to_node_index, edge_id, weight, length)
+pub const FILE_LATITUDE: &str = "latitude";
+pub const FILE_LONGITUDE: &str = "longitude";
+pub const FILE_CCH_PERM: &str = "cch_perm";
+pub const FILE_CCH_SEPARATORS: &str = "cch_separators";
+pub const FILE_CCH_NODE_ORDER: &str = "cch_node_order";
+pub const DIR_CCH: &str = "cch";
+pub const FILE_FIRST_OUT: &str = "first_out";
+pub const FILE_HEAD: &str = "head";
+pub const FILE_FIRST_IPP_OF_ARC: &str = "first_ipp_of_arc";
+pub const FILE_IPP_DEPARTURE_TIME: &str = "ipp_departure_time";
+pub const FILE_IPP_TRAVEL_TIME: &str = "ipp_travel_time";
+pub const FILE_QUERIES_FROM: &str = "queries_from";
+pub const FILE_QUERIES_TO: &str = "queries_to";
+pub const FILE_QUERIES_DEPARTURE: &str = "queries_departure";
+pub const FILE_EDGE_INDICES_TO_ID: &str = "edge_indices_to_id";
 
 const EDG_XML: &str = ".edg.xml";
 const NOD_XML: &str = ".nod.xml";
 const CON_XML: &str = ".con.xml";
 const TRIPS_XML: &str = ".trips.xml";
+pub struct FlattenedSumoEdge<'a> {
+    from_node_index: u32,
+    to_node_index: u32,
+    edge_id: &'a String,
+    weight: f64,
+    length: f64,
+}
+
+impl Clone for FlattenedSumoEdge<'_> {
+    fn clone(&self) -> Self {
+        FlattenedSumoEdge {
+            from_node_index: self.from_node_index,
+            to_node_index: self.to_node_index,
+            edge_id: self.edge_id,
+            weight: self.weight,
+            length: self.length,
+        }
+    }
+}
+
+pub fn convert_sumo_trips_to_queries() {}
 
 /// Converts SUMO files to a time-dependent graph format defined by RoutingKit
 /// creates the following files in the output directory:
@@ -32,26 +64,34 @@ const TRIPS_XML: &str = ".trips.xml";
 /// - edges_by_id: a file containing the edge ids in the order of the edges in the graph
 /// - latitude: the latitude of each node
 /// - longitude: the longitude of each node
+/// - queries-from: a file containing the from nodes of the queries
+/// - queries-to: a file containing the to nodes of the queries
+/// - queries-departure: a file containing the departure times of the queries
 ///
 /// With this data, InertialFlowCutterConsole can create a node ranking for the TD-CCH
-pub fn convert_sumo_to_routing_kit(input_dir: &Path, input_prefix: &String, output_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &String, output_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix);
 
-    let (g, edges_by_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+    let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+    let (from, to, departure) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
     let (lat, lon) = nodes.get_latitude_longitude();
 
     // necessary for creating the TD-CCH. it is also necessary for lat/lon to be f32, otherwise InternalFlowCutterConsole will fail
-    lat.write_to(&output_dir.join("latitude"))?;
-    lon.write_to(&output_dir.join("longitude"))?;
+    lat.write_to(&output_dir.join(FILE_LATITUDE))?;
+    lon.write_to(&output_dir.join(FILE_LONGITUDE))?;
 
-    g.0.write_to(&output_dir.join("first_out"))?;
-    g.1.write_to(&output_dir.join("head"))?;
-    g.2.write_to(&output_dir.join("first_ipp_of_arc"))?;
-    g.3.write_to(&output_dir.join("ipp_departure_time"))?;
-    g.4.write_to(&output_dir.join("ipp_travel_time"))?;
+    g.0.write_to(&output_dir.join(FILE_FIRST_OUT))?;
+    g.1.write_to(&output_dir.join(FILE_HEAD))?;
+    g.2.write_to(&output_dir.join(FILE_FIRST_IPP_OF_ARC))?;
+    g.3.write_to(&output_dir.join(FILE_IPP_DEPARTURE_TIME))?;
+    g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
-    edges_by_id.write_to(&output_dir.join("edges_by_id"))?;
+    edge_indices_to_id.write_to(&output_dir.join(FILE_EDGE_INDICES_TO_ID))?;
+
+    from.write_to(&output_dir.join(FILE_QUERIES_FROM))?;
+    to.write_to(&output_dir.join(FILE_QUERIES_TO))?;
+    departure.write_to(&output_dir.join(FILE_QUERIES_DEPARTURE))?;
 
     Ok(())
 }
@@ -70,17 +110,36 @@ pub fn read_nodes_and_edges_from_plain_xml(input_dir: &Path, files_prefix: &Stri
 
 pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot, TripsDocumentRoot) {
     let (nodes, edges) = read_nodes_and_edges_from_plain_xml(input_dir, files_prefix);
-    let Ok(trips) = SumoTripsReader::read(input_dir.join(files_prefix.clone() + NOD_XML).as_path()) else {
+    let Ok(trips) = SumoTripsReader::read(input_dir.join(files_prefix.clone() + TRIPS_XML).as_path()) else {
         panic!("Trips could not be read.");
     };
 
     (nodes, edges, trips)
 }
 
+pub fn get_queries_from_trips(
+    trips_document_root: &TripsDocumentRoot,
+    edge_id_to_index_map: &HashMap<&String, (usize, FlattenedSumoEdge)>,
+) -> (Vec<u32>, Vec<u32>, Vec<f64>) {
+    // create a vector of from nodes, to nodes and departure times
+    let mut from_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
+    let mut to_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
+    let mut departure_times = Vec::with_capacity(trips_document_root.vehicles.len());
+
+    for veh in &trips_document_root.vehicles {
+        // vehicles go from an edge to an edge, so we need to get the from and to nodes of the edges
+        from_nodes.push(edge_id_to_index_map.get(&veh.from).unwrap().1.from_node_index);
+        to_nodes.push(edge_id_to_index_map.get(&veh.to).unwrap().1.to_node_index);
+        departure_times.push(veh.depart);
+    }
+
+    (from_nodes, to_nodes, departure_times)
+}
+
 pub fn get_routing_kit_td_graph_from_sumo<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
-) -> (RoutingKitTDGraph, Vec<&'a String>) {
+) -> (RoutingKitTDGraph, HashMap<&'a String, (usize, FlattenedSumoEdge<'a>)>, Vec<&'a String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
     // interpolation points should be initialized with only one timespan (from 0 to end-of-day in seconds)
@@ -95,16 +154,26 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     let nodes = &node_document_root.nodes;
     let edges = &edges_document_root.edges;
 
-    let edges_sorted_by_node_index = sort_edges_by_node_index(&nodes, &edges, &node_id_to_index);
+    let edges_sorted_by_node_index: Vec<FlattenedSumoEdge<'a>> = sort_edges_by_node_index(&nodes, &edges, &node_id_to_index);
 
     let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
         create_implicit_td_graph(nodes.len(), edges.len(), &edges_sorted_by_node_index);
 
     // with the edge_ids we can write a file containing the edge ids in the order of the edges_sorted_by_node_index
     // this will be used for reconstructing the edges in the TDGraph
-    let edge_ids: Vec<&String> = edges_sorted_by_node_index.iter().map(|(_, _, id, _, _)| *id).collect();
+    let edge_index_to_edge_id: Vec<&String> = edges_sorted_by_node_index.iter().map(|edge| edge.edge_id).collect();
 
-    ((first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time), edge_ids)
+    let edge_id_to_index: HashMap<&String, (usize, FlattenedSumoEdge<'a>)> = edges_sorted_by_node_index
+        .iter()
+        .enumerate()
+        .map(|(index, e)| (e.edge_id, (index, e.clone())))
+        .collect();
+
+    (
+        (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time),
+        edge_id_to_index,
+        edge_index_to_edge_id,
+    )
 }
 
 fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edges_sorted_by_node_index: &Vec<FlattenedSumoEdge>) -> RoutingKitTDGraph {
@@ -115,9 +184,9 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
     let mut ipp_departure_time = Vec::with_capacity(number_of_edges);
     let mut ipp_travel_time = Vec::with_capacity(number_of_edges);
 
-    for &(from_node_index, to_node_index, _edge_id, weight, _length) in edges_sorted_by_node_index {
+    for edge in edges_sorted_by_node_index {
         // ensure that first_out has enough space for the from_node_index
-        while first_out.len() <= from_node_index as usize {
+        while first_out.len() <= edge.from_node_index as usize {
             first_out.push(head.len() as u32);
         }
         // ensure that first_ipp_of_arc has enough space for the current edge
@@ -126,11 +195,11 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
         }
 
         // add the head of the edge
-        head.push(to_node_index);
+        head.push(edge.to_node_index);
 
         // add the ipp departure time and travel time
         ipp_departure_time.push(0); // departure time is 0 for all edges
-        ipp_travel_time.push(f64::floor(weight * 1000.0) as u32); // travel time in milliseconds
+        ipp_travel_time.push(f64::floor(edge.weight * 1000.0) as u32); // travel time in milliseconds
     }
 
     // a loop is necessary in the case that the last node has no outgoing edges
@@ -206,10 +275,16 @@ fn sort_edges_by_node_index<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>, node
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
 
-        edges_sorted_by_node_index.push((from_node_index, to_node_index, &edge.id, weight, length));
+        edges_sorted_by_node_index.push(FlattenedSumoEdge {
+            from_node_index,
+            to_node_index,
+            edge_id: &edge.id,
+            weight,
+            length,
+        });
     }
 
-    edges_sorted_by_node_index.sort_by_key(|(from, to, _, _, _)| (*from, *to));
+    edges_sorted_by_node_index.sort_by_key(|e| (e.from_node_index, e.to_node_index));
 
     edges_sorted_by_node_index
 }
@@ -266,14 +341,14 @@ mod test {
             ],
         };
 
-        let (td_graph, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+        let (td_graph, edge_ids, edge_indices) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
 
         assert_eq!(td_graph.0.len(), 3); // 2 nodes + 1 for the end
         assert_eq!(td_graph.1.len(), 2); // 2 edges
         assert_eq!(td_graph.2.len(), 2 + 1); // 2 edges each having 1 ipp
 
         assert_eq!(edge_ids.len(), 2); // 2 edges
-        assert_eq!(edge_ids[0], "e2");
-        assert_eq!(edge_ids[1], "e1");
+        assert_eq!(edge_indices[0], "e2");
+        assert_eq!(edge_indices[1], "e1");
     }
 }

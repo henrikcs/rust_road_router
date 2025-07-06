@@ -2,10 +2,13 @@ use std::env;
 use std::error::Error;
 use std::path::Path;
 
-use conversion::sumo::sumo_to_td_graph_converter::convert_sumo_to_routing_kit;
-
+use clap::Parser;
+use conversion::sumo::sumo_to_td_graph_converter::{
+    DIR_CCH, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_QUERIES_DEPARTURE,
+    FILE_QUERIES_FROM, FILE_QUERIES_TO,
+};
+use conversion::sumo::sumo_to_td_graph_converter::{FILE_CCH_PERM, FILE_LATITUDE, FILE_LONGITUDE, convert_sumo_to_routing_kit_and_queries};
 use fastdta::cli;
-use fastdta::cli::Parser;
 use rust_road_router::algo::customizable_contraction_hierarchy::{CCHT, contract, reorder, reorder_for_seperator_based_customization};
 use rust_road_router::datastr::graph::UnweightedOwnedGraph;
 use rust_road_router::datastr::node_order::NodeOrder;
@@ -27,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let output_dir = Path::new(&output_dir);
     dbg!(&output_dir);
 
-    convert_sumo_to_routing_kit(&input_dir, &input_prefix, &output_dir)?;
+    convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &output_dir)?;
 
     dbg!(&output_dir);
 
@@ -52,15 +55,15 @@ fn preprocess(working_dir: &Path) -> Result<(), Box<dyn Error>> {
 
     // let mut algo_runs_ctxt = push_collection_context("algo_runs");
 
-    let cch_folder = working_dir.join("cch");
+    let cch_folder = working_dir.join(DIR_CCH);
 
-    let cch_order = NodeOrder::from_node_order(Vec::load_from(working_dir.join("cch_perm"))?);
+    let cch_order = NodeOrder::from_node_order(Vec::load_from(working_dir.join(FILE_CCH_PERM))?);
     // let cch_build_ctxt = algo_runs_ctxt.push_collection_item();
     let cch = contract(&graph, cch_order);
     // drop(cch_build_ctxt);
 
-    let latitude = Vec::<f32>::load_from(working_dir.join("latitude"))?;
-    let longitude = Vec::<f32>::load_from(working_dir.join("longitude"))?;
+    let latitude = Vec::<f32>::load_from(working_dir.join(FILE_LATITUDE))?;
+    let longitude = Vec::<f32>::load_from(working_dir.join(FILE_LONGITUDE))?;
 
     let cch_order = reorder(&cch, &latitude, &longitude);
 
@@ -87,12 +90,12 @@ fn run_inertial_flow_cutter(directory: &Path, seed: i32, threads: i32) -> Result
     dbg!(&directory);
     let status = std::process::Command::new("console")
         .arg("load_routingkit_unweighted_graph")
-        .arg(directory.join("first_out").to_str().unwrap())
-        .arg(directory.join("head").to_str().unwrap())
+        .arg(directory.join(FILE_FIRST_OUT).to_str().unwrap())
+        .arg(directory.join(FILE_HEAD).to_str().unwrap())
         .arg("load_routingkit_longitude")
-        .arg(directory.join("longitude").to_str().unwrap())
+        .arg(directory.join(FILE_LONGITUDE).to_str().unwrap())
         .arg("load_routingkit_latitude")
-        .arg(directory.join("latitude").to_str().unwrap())
+        .arg(directory.join(FILE_LATITUDE).to_str().unwrap())
         .arg("remove_multi_arcs")
         .arg("remove_loops")
         .arg("add_back_arcs")
@@ -135,7 +138,7 @@ fn run_inertial_flow_cutter(directory: &Path, seed: i32, threads: i32) -> Result
         .arg("do_not_report_time")
         .arg("examine_chordal_supergraph")
         .arg("save_routingkit_node_permutation_since_last_load")
-        .arg(directory.join("cch_perm").to_str().unwrap())
+        .arg(directory.join(FILE_CCH_PERM).to_str().unwrap())
         .status()?;
 
     if !status.success() {
