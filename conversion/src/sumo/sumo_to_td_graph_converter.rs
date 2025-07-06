@@ -18,6 +18,7 @@ pub const FILE_CCH_PERM: &str = "cch_perm";
 pub const FILE_CCH_SEPARATORS: &str = "cch_separators";
 pub const FILE_CCH_NODE_ORDER: &str = "cch_node_order";
 pub const DIR_CCH: &str = "cch";
+pub const DIR_CUSTOMIZED: &str = "customized";
 pub const FILE_FIRST_OUT: &str = "first_out";
 pub const FILE_HEAD: &str = "head";
 pub const FILE_FIRST_IPP_OF_ARC: &str = "first_ipp_of_arc";
