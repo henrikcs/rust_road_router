@@ -24,14 +24,6 @@ use self::geometry::*;
 
 mod graph;
 pub use self::graph::{Graph as TDGraph, IPPIndex, LiveGraph, TDGraphTrait};
-/// Implicit time dependent graph representation defined by RoutingKit.
-/// This is a tuple of:
-/// - `first_out`: first out index for each node (length n+1)
-/// - `head`: head node id for each edge (length m)
-/// - `first_ipp_of_arc`: first interpolation point index for each edge (length m+1)
-/// - `ipp_departure_time`: departure time for each interpolation point (length m)
-/// - `ipp_travel_time`: travel time for each interpolation point (length m)
-pub type RoutingKitTDGraph = (Vec<EdgeId>, Vec<NodeId>, Vec<IPPIndex>, Vec<u32>, Vec<u32>);
 
 mod shortcut;
 pub use self::shortcut::*;

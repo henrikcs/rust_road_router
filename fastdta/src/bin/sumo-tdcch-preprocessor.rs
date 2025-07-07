@@ -3,7 +3,7 @@ use std::path::Path;
 
 use clap::Parser;
 use conversion::sumo::sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries;
-use conversion::{DIR_CCH, FILE_CCH_PERM, FILE_FIRST_OUT, FILE_HEAD, FILE_LATITUDE, FILE_LONGITUDE};
+use conversion::{DIR_CCH, FILE_CCH_PERM, FILE_FIRST_OUT, FILE_HEAD, FILE_LATITUDE, FILE_LONGITUDE, SerializedPosition};
 use fastdta::cli;
 use rust_road_router::algo::customizable_contraction_hierarchy::{CCHT, contract, reorder, reorder_for_seperator_based_customization};
 use rust_road_router::datastr::graph::UnweightedOwnedGraph;
@@ -48,8 +48,8 @@ fn preprocess(working_dir: &Path) -> Result<(), Box<dyn Error>> {
     let cch = contract(&graph, cch_order);
     // drop(cch_build_ctxt);
 
-    let latitude = Vec::<f32>::load_from(working_dir.join(FILE_LATITUDE))?;
-    let longitude = Vec::<f32>::load_from(working_dir.join(FILE_LONGITUDE))?;
+    let latitude = Vec::<SerializedPosition>::load_from(working_dir.join(FILE_LATITUDE))?;
+    let longitude = Vec::<SerializedPosition>::load_from(working_dir.join(FILE_LONGITUDE))?;
 
     let cch_order = reorder(&cch, &latitude, &longitude);
 

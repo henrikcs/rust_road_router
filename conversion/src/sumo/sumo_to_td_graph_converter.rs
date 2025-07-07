@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use rust_road_router::{
-    datastr::graph::floating_time_dependent::RoutingKitTDGraph,
+    datastr::graph::{floating_time_dependent::IPPIndex, EdgeId, NodeId},
     io::{write_strings_to_file, Store},
 };
 
@@ -13,11 +13,11 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
+        RoutingKitTDGraph, SumoTravelTime, XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
     },
-    DefaultTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME,
-    FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS,
-    FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
+    SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC,
+    FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM,
+    FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 
 pub struct FlattenedSumoEdge<'a> {
@@ -25,9 +25,9 @@ pub struct FlattenedSumoEdge<'a> {
     to_node_index: u32,
     edge_id: &'a String,
     // travel time in seconds
-    weight: DefaultTravelTime,
+    weight: SumoTravelTime,
     // length in meters
-    length: f64,
+    length: SumoTravelTime,
 }
 
 impl Clone for FlattenedSumoEdge<'_> {
@@ -63,7 +63,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
     let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
     let (trip_ids, from, to, departure, original_trip_from_edges, original_trip_to_edges) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
-    let (lat, lon) = nodes.get_latitude_longitude();
+    let (lat, lon) = get_lan_lon_from_nodes(&nodes);
 
     // necessary for creating the TD-CCH. it is also necessary for lat/lon to be f32, otherwise InternalFlowCutterConsole will fail
     lat.write_to(&output_dir.join(FILE_LATITUDE))?;
@@ -76,11 +76,11 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
     // extract default weights of all edges and write them to a file
-    let edge_default_travel_times: Vec<DefaultTravelTime> = edge_indices_to_id
+    let edge_default_travel_times: Vec<SerializedTravelTime> = edge_indices_to_id
         .iter()
         .map(|edge| {
             // weight is calculated in method `initialize_edges_for_td_graph`
-            edge_ids_to_index.get(edge).unwrap().1.weight
+            (edge_ids_to_index.get(edge).unwrap().1.weight * 1000.0) as u32 // convert seconds to milliseconds
         })
         .collect();
 
@@ -127,7 +127,7 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix:
 pub fn get_queries_from_trips<'a>(
     trips_document_root: &'a TripsDocumentRoot,
     edge_id_to_index_map: &HashMap<&String, (usize, FlattenedSumoEdge)>,
-) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<f64>, Vec<&'a String>, Vec<&'a String>) {
+) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<SerializedTimestamp>, Vec<&'a String>, Vec<&'a String>) {
     // create a vector of from nodes, to nodes and departure times
     let mut trip_ids = Vec::with_capacity(trips_document_root.vehicles.len());
     let mut from_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
@@ -142,7 +142,7 @@ pub fn get_queries_from_trips<'a>(
         from_nodes.push(edge_id_to_index_map.get(&veh.from).unwrap().1.to_node_index);
         to_nodes.push(edge_id_to_index_map.get(&veh.to).unwrap().1.from_node_index);
         // TODO: maybe add the time it takes from the starting point of the edge to the first node of the query
-        departure_times.push(veh.depart);
+        departure_times.push((veh.depart * 1000.0) as SerializedTimestamp); // convert seconds to milliseconds);
         original_trip_from_edges.push(&veh.from);
         original_trip_to_edges.push(&veh.to);
     }
@@ -197,6 +197,13 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     )
 }
 
+fn get_lan_lon_from_nodes(nodes: &NodesDocumentRoot) -> (Vec<SerializedPosition>, Vec<SerializedPosition>) {
+    let lat: Vec<SerializedPosition> = nodes.nodes.iter().map(|n| n.y as SerializedPosition).collect();
+    let lon: Vec<SerializedPosition> = nodes.nodes.iter().map(|n| n.x as SerializedPosition).collect();
+
+    (lat, lon)
+}
+
 fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edges_sorted_by_node_index: &Vec<FlattenedSumoEdge>) -> RoutingKitTDGraph {
     // ipp_departure time is 0 for each edge, and ipp_travel_time is the weight of the edge
     let mut first_out = Vec::with_capacity(number_of_nodes + 1);
@@ -220,7 +227,8 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
 
         // add the ipp departure time and travel time
         ipp_departure_time.push(0); // departure time is 0 for all edges
-        ipp_travel_time.push(f64::floor(edge.weight * 1000.0) as u32); // travel time in milliseconds
+        ipp_travel_time.push((edge.weight * 1000.0) as SerializedTravelTime); // convert seconds to milliseconds
+                                                                              // travel time in milliseconds
     }
 
     // a loop is necessary in the case that the last node has no outgoing edges
@@ -250,8 +258,8 @@ fn assert_correct_number_of_vec_items(
     first_out: &[u32],
     head: &[u32],
     first_ipp_of_arc: &[u32],
-    ipp_departure_time: &[u32],
-    ipp_travel_time: &[u32],
+    ipp_departure_time: &[SerializedTimestamp],
+    ipp_travel_time: &[SerializedTravelTime],
 ) {
     assert!(
         first_out.len() == number_of_nodes + 1,
@@ -296,8 +304,6 @@ fn initialize_edges_for_td_graph<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>,
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
 
-        dbg!(weight);
-
         edges_sorted_by_node_index.push(FlattenedSumoEdge {
             from_node_index,
             to_node_index,
@@ -312,9 +318,8 @@ fn initialize_edges_for_td_graph<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>,
     edges_sorted_by_node_index
 }
 
-mod test {
-    use std::path::Path;
-
+#[cfg(test)]
+mod tests {
     use super::*;
 
     use crate::sumo::{
