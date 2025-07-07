@@ -11,9 +11,6 @@ impl XmlReader for SumoMeandataReader {
         let f = fs::read_to_string(output_file)?;
         let meandata: MeandataDocumentRoot = serde_xml_rs::from_str(&f).unwrap();
 
-        dbg!(&f);
-        dbg!(&meandata);
-
         Ok(meandata)
     }
 }
