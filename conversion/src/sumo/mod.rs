@@ -1,5 +1,9 @@
 use std::{error::Error, path::Path};
 
+use rust_road_router::datastr::graph::{floating_time_dependent::IPPIndex, EdgeId, NodeId};
+
+use crate::{SerializedTimestamp, SerializedTravelTime};
+
 pub mod base_types;
 pub mod edges;
 pub mod edges_reader;
@@ -21,6 +25,22 @@ pub const CON_XML: &str = ".con.xml";
 pub const TRIPS_XML: &str = ".trips.xml";
 pub const ROUTES: &str = ".rou.xml";
 pub const ALT_ROUTES: &str = ".rou.alt.xml";
+
+/// in seconds
+pub type SumoTravelTime = f64;
+/// in seconds
+pub type SumoTimestamp = f64;
+/// in meters
+pub type SumoPosition = f64;
+
+/// Implicit time dependent graph representation defined by RoutingKit.
+/// This is a tuple of:
+/// - `first_out`: first out index for each node (length n+1)
+/// - `head`: head node id for each edge (length m)
+/// - `first_ipp_of_arc`: first interpolation point index for each edge (length m+1)
+/// - `ipp_departure_time`: departure time for each interpolation point in milliseconds (length m)
+/// - `ipp_travel_time`: travel time for each interpolation point in milliseconds (length m)
+pub type RoutingKitTDGraph = (Vec<EdgeId>, Vec<NodeId>, Vec<IPPIndex>, Vec<SerializedTimestamp>, Vec<SerializedTravelTime>);
 
 pub trait XmlReader {
     type R;

@@ -1,6 +1,6 @@
 use serde_derive::Deserialize;
 
-use crate::sumo::base_types::Param;
+use crate::sumo::{base_types::Param, SumoPosition, SumoTravelTime};
 
 #[derive(Debug, Deserialize)]
 pub struct EdgesDocumentRoot {
@@ -25,11 +25,11 @@ pub struct Edge {
 
     /// if speed is not set, it's 13.9 m/s (50km/h)
     #[serde(rename = "@speed")]
-    pub speed: Option<f64>,
+    pub speed: Option<SumoTravelTime>,
 
     /// if length is not set, the length will be the euclidean distance between `from` and `to`
     #[serde(rename = "@length")]
-    pub length: Option<f64>,
+    pub length: Option<SumoTravelTime>,
 
     #[serde(rename = "lane", default)]
     pub lanes: Vec<Lane>,
@@ -40,17 +40,15 @@ pub struct Edge {
 }
 
 impl Edge {
-    pub fn get_speed(&self) -> f64 {
+    pub fn get_speed(&self) -> SumoTravelTime {
         self.speed.unwrap_or(13.9) // default speed is 13.9 m/s (50 km/h)
     }
 
-    pub fn get_length(&self, (from_x, from_y): (f32, f32), (to_x, to_y): (f32, f32)) -> f64 {
+    pub fn get_length(&self, (from_x, from_y): (SumoPosition, SumoPosition), (to_x, to_y): (SumoPosition, SumoPosition)) -> SumoTravelTime {
         self.length.unwrap_or_else(|| {
             let dx = from_x - to_x;
             let dy = from_y - to_y;
-            let a: f64 = dx.into();
-            let b: f64 = dy.into();
-            (a * a + b * b).sqrt() // euclidean distance
+            (dx * dx + dy * dy).sqrt() // euclidean distance
         })
     }
 }

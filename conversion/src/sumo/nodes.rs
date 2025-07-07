@@ -17,7 +17,7 @@ pub struct Node {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@x")]
-    pub x: f32,
+    pub x: SumoPosition,
     #[serde(rename = "@y")]
-    pub y: f32,
+    pub y: SumoPosition,
 }

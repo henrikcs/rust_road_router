@@ -1,5 +1,7 @@
 use serde_derive::Deserialize;
 
+use crate::sumo::{SumoTimestamp, SumoTravelTime};
+
 /// this is read from `dump_*.xml` files
 #[derive(Debug, Deserialize)]
 #[serde(rename = "meandata")]
@@ -13,11 +15,11 @@ pub struct Interval {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@begin")]
-    pub begin: f64,
+    pub begin: SumoTimestamp,
     #[serde(rename = "@end")]
-    pub end: f64,
+    pub end: SumoTimestamp,
 
-    #[serde(rename = "edge")]
+    #[serde(rename = "edge", default)]
     pub edges: Vec<Edge>,
 }
 
@@ -26,5 +28,5 @@ pub struct Edge {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@traveltime")]
-    pub traveltime: f64,
+    pub traveltime: Option<SumoTravelTime>,
 }

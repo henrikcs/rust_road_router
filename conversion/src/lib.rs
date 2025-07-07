@@ -23,10 +23,15 @@ pub const FILE_QUERIES_TO: &str = "queries_to";
 pub const FILE_QUERIES_DEPARTURE: &str = "queries_departure";
 pub const FILE_EDGE_INDICES_TO_ID: &str = "edge_indices_to_id";
 // contains the default travel times calculated during the preprocessing step
-// the travel times are encoded as f64 in seconds
+// the travel times are encoded as SerializedTravelTime in milliseconds
 pub const FILE_EDGE_DEFAULT_TRAVEL_TIMES: &str = "edge_default_travel_times";
 
-pub type DefaultTravelTime = f64; // in seconds
+/// in milliseconds
+pub type SerializedTravelTime = u32;
+/// in milliseconds
+pub type SerializedTimestamp = u32;
+/// in meters
+pub type SerializedPosition = f32;
 
 pub fn speed_profile_to_tt_profile(speeds: &[(Timestamp, u32)], edge_len: u32) -> Vec<(Timestamp, Weight)> {
     let t_wrap = speeds.last().unwrap().0;

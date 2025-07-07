@@ -1,9 +1,12 @@
 use std::path::Path;
 
-use crate::sumo::{
-    routes::{Route, RoutesDocumentRoot, Vehicle},
-    routes_writer::SumoRoutesWriter,
-    XmlWriter,
+use crate::{
+    sumo::{
+        routes::{Route, RoutesDocumentRoot, Vehicle},
+        routes_writer::SumoRoutesWriter,
+        XmlWriter,
+    },
+    SerializedTimestamp,
 };
 
 pub fn write_paths_as_sumo_routes(
@@ -13,7 +16,7 @@ pub fn write_paths_as_sumo_routes(
     trip_indices_to_id: &Vec<String>,
     original_from_edges: &Vec<String>,
     original_to_edges: &Vec<String>,
-    departures: &Vec<f64>,
+    departures: &Vec<SerializedTimestamp>,
 ) {
     // create RoutesDocumentRoot
     let mut routes = RoutesDocumentRoot { vehicles: Vec::new() };
@@ -35,7 +38,7 @@ pub fn write_paths_as_sumo_routes(
 
         let vehicle = Vehicle {
             id: trip_indices_to_id[i].clone(),
-            depart: departures[i],
+            depart: departures[i].into(),
             depart_lane: Some(String::from("best")),
             depart_pos: Some(String::from("random")),
             depart_speed: Some(String::from("max")),
