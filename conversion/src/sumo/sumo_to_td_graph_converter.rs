@@ -192,11 +192,11 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
     let mut ipp_travel_time = Vec::with_capacity(number_of_edges);
 
     for edge in edges_sorted_by_node_index {
-        // ensure that first_out has enough space for the from_node_index
+        // skip nodes which do not have outgoing edges
         while first_out.len() <= edge.from_node_index as usize {
             first_out.push(head.len() as u32);
         }
-        // ensure that first_ipp_of_arc has enough space for the current edge
+        // skip edges which do not have interpolation points
         while first_ipp_of_arc.len() <= head.len() {
             first_ipp_of_arc.push(ipp_departure_time.len() as u32);
         }
