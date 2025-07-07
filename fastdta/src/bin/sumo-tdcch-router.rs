@@ -1,10 +1,12 @@
+use std::fs;
 use std::path::Path;
 
 use conversion::sumo::ROUTES;
 use conversion::sumo::paths_to_sumo_routes_converter::write_paths_as_sumo_routes;
+use conversion::sumo::sumo_to_new_graph_weights::set_new_graph_weights_from_meandata_file;
 use conversion::{
-    DIR_CCH, FILE_EDGE_INDICES_TO_ID, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES,
-    FILE_QUERY_ORIGINAL_TO_EDGES,
+    DIR_CCH, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS,
+    FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 use fastdta::cli;
 use fastdta::cli::Parser;
@@ -26,12 +28,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let current_iteration_dir = input_dir.join(format!("{iteration:0>3}"));
 
     let graph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
+    let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
 
     // if iteration > 0, we load the previous iteration's travel times
     if iteration > 0 {
         let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
 
-        // TODO: implement
+        // dump file starts with "dump_" and ends with ".xml"
+        let dump_file = fs::read_dir(previous_iteration_dir)
+            .unwrap()
+            .find(|entry| {
+                // check if entry is a file
+                entry.is_ok()
+                    && entry.as_ref().unwrap().file_type().unwrap().is_file()
+                    && entry
+                        .as_ref()
+                        .unwrap()
+                        .file_name()
+                        .to_str()
+                        .unwrap()
+                        // check if file name starts with "dump_" and ends with ".xml"
+                        .starts_with("dump_")
+                    && entry.as_ref().unwrap().file_name().to_str().unwrap().ends_with(".xml")
+            })
+            .map(|entry| entry.unwrap().path())
+            .unwrap();
+
+        set_new_graph_weights_from_meandata_file(
+            &input_dir,
+            &dump_file,
+            &edge_ids,
+            &Vec::<f64>::load_from(input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap(),
+        );
     }
 
     // let mut algo_runs_ctxt = push_collection_context("algo_runs");
@@ -78,7 +106,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
     let trip_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
     let original_from_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES)).unwrap();
     let original_to_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES)).unwrap();

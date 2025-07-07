@@ -10,6 +10,7 @@ pub mod nodes_reader;
 pub mod paths_to_sumo_routes_converter;
 pub mod routes;
 pub mod routes_writer;
+pub mod sumo_to_new_graph_weights;
 pub mod sumo_to_td_graph_converter;
 pub mod trips;
 pub mod trips_reader;

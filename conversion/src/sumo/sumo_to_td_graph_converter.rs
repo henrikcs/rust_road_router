@@ -15,15 +15,18 @@ use crate::{
         trips_reader::SumoTripsReader,
         XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
     },
-    FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE,
-    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
+    FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
+    FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES,
+    FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 
 pub struct FlattenedSumoEdge<'a> {
     from_node_index: u32,
     to_node_index: u32,
     edge_id: &'a String,
+    // travel time in seconds
     weight: f64,
+    // length in meters
     length: f64,
 }
 
@@ -71,6 +74,17 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
     g.2.write_to(&output_dir.join(FILE_FIRST_IPP_OF_ARC))?;
     g.3.write_to(&output_dir.join(FILE_IPP_DEPARTURE_TIME))?;
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
+
+    // extract default weights of all edges and write them to a file
+    let edge_default_travel_times: Vec<u32> = edge_indices_to_id
+        .iter()
+        .map(|edge| {
+            // weight is calculated in method `initialize_edges_for_td_graph`
+            edge_ids_to_index.get(edge).unwrap().1.weight as u32 // convert weight to u32 (in milliseconds)
+        })
+        .collect();
+
+    edge_default_travel_times.write_to(&output_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES))?;
 
     write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id)?;
     write_strings_to_file(&output_dir.join(FILE_QUERY_IDS), &trip_ids)?;
@@ -161,7 +175,7 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     let nodes = &node_document_root.nodes;
     let edges = &edges_document_root.edges;
 
-    let edges_sorted_by_node_index: Vec<FlattenedSumoEdge<'a>> = sort_edges_by_node_index(&nodes, &edges, &node_id_to_index);
+    let edges_sorted_by_node_index: Vec<FlattenedSumoEdge<'a>> = initialize_edges_for_td_graph(&nodes, &edges, &node_id_to_index);
 
     let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
         create_implicit_td_graph(nodes.len(), edges.len(), &edges_sorted_by_node_index);
@@ -265,7 +279,7 @@ fn assert_correct_number_of_vec_items(
     );
 }
 
-fn sort_edges_by_node_index<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>, node_id_to_index: &HashMap<&String, usize>) -> Vec<FlattenedSumoEdge<'a>> {
+fn initialize_edges_for_td_graph<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>, node_id_to_index: &HashMap<&String, usize>) -> Vec<FlattenedSumoEdge<'a>> {
     // edges should be sorted by node index of the tail of the edge
     let mut edges_sorted_by_node_index = Vec::with_capacity(edges.len());
     for edge in edges {
@@ -281,6 +295,8 @@ fn sort_edges_by_node_index<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>, node
 
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
+
+        dbg!(weight);
 
         edges_sorted_by_node_index.push(FlattenedSumoEdge {
             from_node_index,
