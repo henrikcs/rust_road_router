@@ -15,9 +15,9 @@ use crate::{
         trips_reader::SumoTripsReader,
         XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
     },
-    FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
-    FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES,
-    FILE_QUERY_ORIGINAL_TO_EDGES,
+    DefaultTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME,
+    FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS,
+    FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 
 pub struct FlattenedSumoEdge<'a> {
@@ -25,7 +25,7 @@ pub struct FlattenedSumoEdge<'a> {
     to_node_index: u32,
     edge_id: &'a String,
     // travel time in seconds
-    weight: f64,
+    weight: DefaultTravelTime,
     // length in meters
     length: f64,
 }
@@ -76,11 +76,11 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
     // extract default weights of all edges and write them to a file
-    let edge_default_travel_times: Vec<u32> = edge_indices_to_id
+    let edge_default_travel_times: Vec<DefaultTravelTime> = edge_indices_to_id
         .iter()
         .map(|edge| {
             // weight is calculated in method `initialize_edges_for_td_graph`
-            edge_ids_to_index.get(edge).unwrap().1.weight as u32 // convert weight to u32 (in milliseconds)
+            edge_ids_to_index.get(edge).unwrap().1.weight
         })
         .collect();
 
