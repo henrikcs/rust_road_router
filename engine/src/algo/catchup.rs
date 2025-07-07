@@ -569,14 +569,15 @@ impl<'a> Server<'a> {
         let node_path = self.path();
         let mut edge_path = Vec::with_capacity(node_path.len() - 1);
         for i in 0..node_path.len() - 1 {
-            let from = self.cch_graph.node_order().rank(node_path[i].0);
-            let to = self.cch_graph.node_order().rank(node_path[i + 1].0);
+            let from = node_path[i].0;
+            let to = node_path[i + 1].0;
             let edge = self
                 .customized_graph
                 .original_graph
                 .edge_indices(from, to)
                 .next()
                 .unwrap_or_else(|| panic!("No edge from {} to {} in original graph, path: {:?}", from, to, node_path));
+            edge_path.push(edge);
         }
 
         edge_path
@@ -587,7 +588,7 @@ pub struct PathServerWrapper<'s, 'a>(&'s Server<'a>);
 
 impl<'s, 'a> PathServer for PathServerWrapper<'s, 'a> {
     type NodeInfo = (NodeId, Timestamp);
-    type EdgeInfo = EdgeId;
+    type EdgeInfo = EdgeIdT;
 
     fn reconstruct_node_path(&mut self) -> Vec<Self::NodeInfo> {
         Server::path(self.0)
