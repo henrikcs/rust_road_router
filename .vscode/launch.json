@@ -49,6 +49,44 @@
         "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
       },
       "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Router (example data)",
+      "program": "${workspaceFolder}/target/debug/sumo-tdcch-router",
+      "args": [
+        "--input-dir",
+        "./data/imported/sumo/example-data",
+        "--input-prefix",
+        "example-data",
+        "--iteration",
+        "0"
+      ],
+      "cwd": "${workspaceFolder}/data/imported/sumo/example-data",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
+      },
+      "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Router (grid)",
+      "program": "${workspaceFolder}/target/debug/sumo-tdcch-router",
+      "args": [
+        "--input-dir",
+        "./data/imported/sumo/grid",
+        "--input-prefix",
+        "grid",
+        "--iteration",
+        "0"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
+      },
+      "preLaunchTask": "Build (debug)"
     }
   ]
 }
