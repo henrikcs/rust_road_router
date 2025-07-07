@@ -61,7 +61,7 @@
         "--input-prefix",
         "example-data",
         "--iteration",
-        "0"
+        "1"
       ],
       "cwd": "${workspaceFolder}/data/imported/sumo/example-data",
       "env": {
@@ -80,7 +80,7 @@
         "--input-prefix",
         "grid",
         "--iteration",
-        "0"
+        "1"
       ],
       "cwd": "${workspaceFolder}",
       "env": {
