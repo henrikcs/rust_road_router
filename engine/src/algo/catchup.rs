@@ -316,7 +316,7 @@ impl<'a> Server<'a> {
         debug_assert!(
             FlWeight::ZERO.fuzzy_eq(self.lower_bounds_to_target[self.to as usize]) || tentative_distance.0.fuzzy_eq(FlWeight::INFINITY),
             "{:?}",
-            dbg_each!(self.lower_bounds_to_target[self.to as usize])
+            dbg_each!((self.lower_bounds_to_target[self.to as usize], self.from, self.to))
         );
         let lower_bounds_to_target = &mut self.lower_bounds_to_target;
 
