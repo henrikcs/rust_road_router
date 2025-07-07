@@ -5,10 +5,10 @@
     <location netOffset="0.00,0.00" convBoundary="0.00,0.00,3600.00,3600.00"
         origBoundary="0.00,0.00,3600.00,3600.00" projParameter="!" />
 
-    <node id="v0" x="52.5200" y="13.4050" type="priority" />
-    <node id="v1" x="52.5205" y="13.4060" type="priority" />
-    <node id="v2" x="52.5210" y="13.4070" type="priority" />
-    <node id="v3" x="52.5215" y="13.4080" type="priority" />
-    <node id="v4" x="52.5220" y="13.4090" type="priority" />
+    <node id="v0" x="52000" y="40500" type="priority" />
+    <node id="v1" x="52050" y="40600" type="priority" />
+    <node id="v2" x="52100" y="40700" type="priority" />
+    <node id="v3" x="52150" y="40800" type="priority" />
+    <node id="v4" x="52200" y="40900" type="priority" />
 
 </nodes>
