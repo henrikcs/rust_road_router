@@ -690,7 +690,7 @@ def main(args=None):
                 ret = 0
                 if 'CCH' in options.routing_algorithm:
                     ret = call_cch_routing(
-                        ["--iteration", str(step)], log)
+                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])], log)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 

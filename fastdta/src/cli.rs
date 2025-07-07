@@ -373,6 +373,10 @@ pub struct RouterArgs {
     #[arg(long = "input-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
     pub input_dir: String,
 
+    /// the files `<input-prefix>_{iteration:3>0}.rou.xml`, `<input-prefix>_{iteration:3>0}.rou.alt.xml` will be read as input
+    #[arg(long = "input-prefix", default_value = "")]
+    pub input_prefix: String,
+
     #[arg(long = "iteration")]
     pub iteration: u32,
 }
