@@ -16,7 +16,7 @@ use crate::{
         XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
     },
     FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE,
-    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS,
+    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 
 pub struct FlattenedSumoEdge<'a> {
@@ -58,7 +58,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
     let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix);
 
     let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
-    let (trip_ids, from, to, departure) = get_queries_from_trips(&trips, &edge_ids_to_index);
+    let (trip_ids, from, to, departure, original_trip_from_edges, original_trip_to_edges) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
     let (lat, lon) = nodes.get_latitude_longitude();
 
@@ -74,6 +74,8 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
 
     write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id)?;
     write_strings_to_file(&output_dir.join(FILE_QUERY_IDS), &trip_ids)?;
+    write_strings_to_file(&output_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES), &original_trip_from_edges)?;
+    write_strings_to_file(&output_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES), &original_trip_to_edges)?;
 
     from.write_to(&output_dir.join(FILE_QUERIES_FROM))?;
     to.write_to(&output_dir.join(FILE_QUERIES_TO))?;
@@ -103,25 +105,42 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix:
     (nodes, edges, trips)
 }
 
+/// Extract queries from the trips document root.
+/// The queries from SUMO start and end in edges. However, Catchup is based on nodes.
+/// We Transform the edges to nodes by using the to node of the from and and the from node of the to edge.
+/// The resulting path of a query then is prepended with the from edge of the query and appended with the to edge of the query to make the path complete.
+/// We add to the departure time of the query the time it takes to travel from a random point from the edge to the first node of the query.
 pub fn get_queries_from_trips<'a>(
     trips_document_root: &'a TripsDocumentRoot,
     edge_id_to_index_map: &HashMap<&String, (usize, FlattenedSumoEdge)>,
-) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<f64>) {
+) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<f64>, Vec<&'a String>, Vec<&'a String>) {
     // create a vector of from nodes, to nodes and departure times
     let mut trip_ids = Vec::with_capacity(trips_document_root.vehicles.len());
     let mut from_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
     let mut to_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
     let mut departure_times = Vec::with_capacity(trips_document_root.vehicles.len());
+    let mut original_trip_from_edges = Vec::with_capacity(trips_document_root.vehicles.len());
+    let mut original_trip_to_edges = Vec::with_capacity(trips_document_root.vehicles.len());
 
     for veh in &trips_document_root.vehicles {
         trip_ids.push(&veh.id);
         // vehicles go from an edge to an edge, so we need to get the from and to nodes of the edges
-        from_nodes.push(edge_id_to_index_map.get(&veh.from).unwrap().1.from_node_index);
-        to_nodes.push(edge_id_to_index_map.get(&veh.to).unwrap().1.to_node_index);
+        from_nodes.push(edge_id_to_index_map.get(&veh.from).unwrap().1.to_node_index);
+        to_nodes.push(edge_id_to_index_map.get(&veh.to).unwrap().1.from_node_index);
+        // TODO: maybe add the time it takes from the starting point of the edge to the first node of the query
         departure_times.push(veh.depart);
+        original_trip_from_edges.push(&veh.from);
+        original_trip_to_edges.push(&veh.to);
     }
 
-    (trip_ids, from_nodes, to_nodes, departure_times)
+    (
+        trip_ids,
+        from_nodes,
+        to_nodes,
+        departure_times,
+        original_trip_from_edges,
+        original_trip_to_edges,
+    )
 }
 
 pub fn get_routing_kit_td_graph_from_sumo<'a>(

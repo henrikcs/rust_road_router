@@ -1,8 +1,11 @@
 use std::path::Path;
 
 use conversion::sumo::ROUTES;
-use conversion::sumo::paths_to_sumo_routes_converter::{self, write_paths_as_sumo_routes};
-use conversion::{DIR_CCH, FILE_EDGE_INDICES_TO_ID, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS};
+use conversion::sumo::paths_to_sumo_routes_converter::write_paths_as_sumo_routes;
+use conversion::{
+    DIR_CCH, FILE_EDGE_INDICES_TO_ID, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES,
+    FILE_QUERY_ORIGINAL_TO_EDGES,
+};
 use fastdta::cli;
 use fastdta::cli::Parser;
 use rust_road_router::algo::catchup::Server;
@@ -17,6 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::RouterArgs::parse();
 
     let input_dir = Path::new(&args.input_dir);
+    let input_prefix = args.input_prefix;
     let iteration = args.iteration;
 
     let current_iteration_dir = input_dir.join(format!("{iteration:0>3}"));
@@ -52,6 +56,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut paths = Vec::new();
 
     for i in 0..queries_from.len() {
+        println!(
+            "Find Earliest Arrival #{i} From: {}, To: {}, Departure: {}",
+            queries_from[i], queries_to[i], queries_departure[i]
+        );
         let result = query_server.td_query(TDQuery {
             from: queries_from[i] as u32,
             to: queries_to[i] as u32,
@@ -59,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
         if let Some(mut result) = result.found() {
             let ea = result.distance();
-            paths.push(result.data().reconstruct_edge_path());
+            paths.push(result.data().reconstruct_edge_path().iter().map(|edge| edge.0).collect());
 
             println!(
                 "From: {}, To: {}, Departure: {}, Earliest Arrival: {:?}",
@@ -72,12 +80,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
     let trip_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
+    let original_from_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES)).unwrap();
+    let original_to_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES)).unwrap();
 
     write_paths_as_sumo_routes(
-        &current_iteration_dir.join(format!("test_{iteration:0>3}{ROUTES}")),
+        &current_iteration_dir.join(format!("{input_prefix}_{iteration:0>3}{ROUTES}")),
         &paths,
         &edge_ids,
         &trip_ids,
+        &original_from_edges,
+        &original_to_edges,
         &queries_departure,
     );
 
