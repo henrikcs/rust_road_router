@@ -565,7 +565,7 @@ impl<'a> Server<'a> {
         path
     }
 
-    fn edge_path(&self) -> Vec<EdgeId> {
+    fn edge_path(&self) -> Vec<EdgeIdT> {
         let node_path = self.path();
         let mut edge_path = Vec::with_capacity(node_path.len() - 1);
         for i in 0..node_path.len() - 1 {
