@@ -3,10 +3,10 @@ use std::path::Path;
 
 use conversion::sumo::ROUTES;
 use conversion::sumo::paths_to_sumo_routes_converter::write_paths_as_sumo_routes;
-use conversion::sumo::sumo_to_new_graph_weights::set_new_graph_weights_from_meandata_file;
+use conversion::sumo::sumo_to_new_graph_weights::extract_travel_times_from_previous_iteration;
 use conversion::{
-    DIR_CCH, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS,
-    FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
+    DIR_CCH, FILE_EDGE_INDICES_TO_ID, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES,
+    FILE_QUERY_ORIGINAL_TO_EDGES, SerializedTimestamp,
 };
 use fastdta::cli;
 use fastdta::cli::Parser;
@@ -27,41 +27,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let current_iteration_dir = input_dir.join(format!("{iteration:0>3}"));
 
-    let graph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
+    dbg!(&current_iteration_dir);
+    dbg!(&input_prefix);
+    dbg!(&input_dir);
+
     let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
 
     // if iteration > 0, we load the previous iteration's travel times
     if iteration > 0 {
         let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
 
-        // dump file starts with "dump_" and ends with ".xml"
-        let dump_file = fs::read_dir(previous_iteration_dir)
-            .unwrap()
-            .find(|entry| {
-                // check if entry is a file
-                entry.is_ok()
-                    && entry.as_ref().unwrap().file_type().unwrap().is_file()
-                    && entry
-                        .as_ref()
-                        .unwrap()
-                        .file_name()
-                        .to_str()
-                        .unwrap()
-                        // check if file name starts with "dump_" and ends with ".xml"
-                        .starts_with("dump_")
-                    && entry.as_ref().unwrap().file_name().to_str().unwrap().ends_with(".xml")
-            })
-            .map(|entry| entry.unwrap().path())
-            .unwrap();
-
-        set_new_graph_weights_from_meandata_file(
-            &input_dir,
-            &dump_file,
-            &edge_ids,
-            &Vec::<f64>::load_from(input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap(),
-        );
+        extract_travel_times_from_previous_iteration(&previous_iteration_dir, &input_dir, &edge_ids);
     }
 
+    let graph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
     // let mut algo_runs_ctxt = push_collection_context("algo_runs");
 
     let cch_folder = input_dir.join(DIR_CCH);
@@ -74,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // read queries from input_dir
     let queries_from = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_FROM)).unwrap();
     let queries_to = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_TO)).unwrap();
-    let queries_departure = Vec::<f64>::load_from(input_dir.join(FILE_QUERIES_DEPARTURE)).unwrap();
+    let queries_departure = Vec::<SerializedTimestamp>::load_from(input_dir.join(FILE_QUERIES_DEPARTURE)).unwrap();
 
     assert!(queries_from.len() == queries_to.len());
     assert!(queries_from.len() == queries_departure.len());
@@ -84,25 +63,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut paths = Vec::new();
 
     for i in 0..queries_from.len() {
+        let dep = queries_departure[i];
         println!(
-            "Find Earliest Arrival #{i} From: {}, To: {}, Departure: {}",
-            queries_from[i], queries_to[i], queries_departure[i]
+            "Find Earliest Arrival #{i} From: {}, To: {}, Departure: {dep:?}",
+            queries_from[i], queries_to[i],
         );
         let result = query_server.td_query(TDQuery {
             from: queries_from[i] as u32,
             to: queries_to[i] as u32,
-            departure: Timestamp::new(queries_departure[i]),
+            departure: Timestamp::new(queries_departure[i] as f64 / 1000.0),
         });
         if let Some(mut result) = result.found() {
             let ea = result.distance();
             paths.push(result.data().reconstruct_edge_path().iter().map(|edge| edge.0).collect());
 
             println!(
-                "From: {}, To: {}, Departure: {}, Earliest Arrival: {:?}",
-                queries_from[i], queries_to[i], queries_departure[i], ea
+                "From: {}, To: {}, Departure: {dep:?}, Earliest Arrival: {:?}",
+                queries_from[i], queries_to[i], ea
             );
         } else {
-            println!("No path found from {} to {} at {}", queries_from[i], queries_to[i], queries_departure[i]);
+            println!("No path found from {} to {} at {dep:?}", queries_from[i], queries_to[i]);
         }
     }
 
