@@ -1,11 +1,11 @@
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use rust_road_router::{
-    datastr::graph::{
-        floating_time_dependent::{FlWeight, Timestamp},
-        EdgeId,
-    },
-    io::{Load, Store},
+    datastr::graph::{floating_time_dependent::TDGraph, EdgeId},
+    io::{Load, Reconstruct, Store},
 };
 
 use crate::{
@@ -13,26 +13,21 @@ use crate::{
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
 };
 
+pub fn get_graph_with_travel_times_from_previous_iteration(input_dir: &Path, iteration: u32, edge_ids: &Vec<String>) -> TDGraph {
+    // if iteration > 0, we load the previous iteration's travel times
+    if iteration > 0 {
+        let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
+
+        extract_travel_times_from_previous_iteration(&previous_iteration_dir, &input_dir, &edge_ids);
+    }
+
+    // TODO: instead of reconstructing the graph from a file, we could create it in memory
+    TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph")
+}
+
 pub fn extract_travel_times_from_previous_iteration(previous_iteration_dir: &Path, path_to_graph_weights: &Path, edge_indices_to_id: &Vec<String>) {
     // dump file starts with "dump_" and ends with ".xml"
-    let dump_file = fs::read_dir(previous_iteration_dir)
-        .unwrap()
-        .find(|entry| {
-            // check if entry is a file
-            entry.is_ok()
-                && entry.as_ref().unwrap().file_type().unwrap().is_file()
-                && entry
-                    .as_ref()
-                    .unwrap()
-                    .file_name()
-                    .to_str()
-                    .unwrap()
-                    // check if file name starts with "dump_" and ends with ".xml"
-                    .starts_with("dump_")
-                && entry.as_ref().unwrap().file_name().to_str().unwrap().ends_with(".xml")
-        })
-        .map(|entry| entry.unwrap().path())
-        .unwrap();
+    let dump_file = get_meandata_file(&previous_iteration_dir);
 
     set_new_graph_weights_from_meandata_file(
         &path_to_graph_weights,
@@ -93,6 +88,27 @@ pub fn extract_interpolation_points_from_meandata(
     first_ipp_of_arc.push(added);
 
     (first_ipp_of_arc, ipp_travel_time, ipp_departure_time)
+}
+
+fn get_meandata_file(previous_iteration_dir: &Path) -> PathBuf {
+    fs::read_dir(previous_iteration_dir)
+        .unwrap()
+        .find(|entry| {
+            // check if entry is a file
+            entry.is_ok()
+                && entry.as_ref().unwrap().file_type().unwrap().is_file()
+                && entry
+                    .as_ref()
+                    .unwrap()
+                    .file_name()
+                    .to_str()
+                    .unwrap()
+                    // check if file name starts with "dump_" and ends with ".xml"
+                    .starts_with("dump_")
+                && entry.as_ref().unwrap().file_name().to_str().unwrap().ends_with(".xml")
+        })
+        .map(|entry| entry.unwrap().path())
+        .unwrap()
 }
 
 // Tests for the extract_interpolation_points_from_meandata function

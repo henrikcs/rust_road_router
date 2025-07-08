@@ -1,15 +1,15 @@
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::sumo::{SumoTimestamp, SumoTravelTime};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename = "routes")]
 pub struct RoutesDocumentRoot {
     #[serde(rename = "vehicle")]
     pub vehicles: Vec<Vehicle>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Vehicle {
     #[serde(rename = "@id")]
     pub id: String,
@@ -27,7 +27,7 @@ pub struct Vehicle {
     pub route_distribution: Option<RouteDistribution>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Route {
     #[serde(default, rename = "@edges")]
     pub edges: String,
@@ -37,7 +37,7 @@ pub struct Route {
     pub probability: Option<f64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RouteDistribution {
     #[serde(default, rename = "@last")]
     pub last: u32,
