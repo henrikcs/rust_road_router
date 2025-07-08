@@ -9,6 +9,7 @@ pub const FILE_CCH_PERM: &str = "cch_perm";
 pub const FILE_CCH_SEPARATORS: &str = "cch_separators";
 pub const FILE_CCH_NODE_ORDER: &str = "cch_node_order";
 pub const DIR_CCH: &str = "cch";
+pub const DIR_DTA: &str = "dta";
 pub const DIR_CUSTOMIZED: &str = "customized";
 pub const FILE_FIRST_OUT: &str = "first_out";
 pub const FILE_HEAD: &str = "head";
@@ -21,6 +22,28 @@ pub const FILE_QUERY_ORIGINAL_TO_EDGES: &str = "query_original_to_edges";
 pub const FILE_QUERIES_FROM: &str = "queries_from";
 pub const FILE_QUERIES_TO: &str = "queries_to";
 pub const FILE_QUERIES_DEPARTURE: &str = "queries_departure";
+/// contains all edges of all alternative paths of queries used during DTA, where edges are encoded as u32 indices
+pub const FILE_DTA_QUERIES_EDGE_IDS: &str = "edge_ids";
+/// contains the index of the first alternative to a set of alternative paths.
+/// Query with index i has its first alternative path starting at edge_ids[first_edge_of_alternative[first_alternative_of_query[i]]]
+/// Number of alternatives for query i is given by first_alternative_of_query[i + 1] - first_alternative_of_query[i]
+pub const FILE_DTA_QUERIES_FIRST_ALTERNATIVE_PATH: &str = "first_alternative_of_query";
+/// Contains the index of the first edge of the alternative path.
+/// length of a path is given by first_edge_of_alternative[i + 1] - first_edge_of_alternative[i]
+pub const FILE_DTA_QUERIES_FIRST_EDGE_OF_ALTERNATIVE: &str = "first_edge_of_alternative";
+/// contains the stochastic cost of an alternative path
+/// the cost of the i-th alternative path of query j is given by
+/// alternative_costs[first_alternative_of_query[j] + i]
+pub const FILE_DTA_QUERIES_ALTERNATIVE_COST: &str = "alternative_cost";
+/// contains information which alternative path was chosen for each query
+/// if i-th alternative path of query j was chosen, then
+/// alternative_choice[j] = i
+pub const FILE_DTA_QUERIES_ALTERNATIVE_CHOICE: &str = "alternative_choice";
+/// contains the probability of choosing an alternative path
+/// the probability of the i-th alternative path of query j is given by
+/// alternative_probabilities[first_alternative_of_query[j] + i]
+pub const FILE_DTA_QUERIES_ALTNERNATIVE_PROBABILITIES: &str = "alternative_probabilities";
+
 pub const FILE_EDGE_INDICES_TO_ID: &str = "edge_indices_to_id";
 // contains the default travel times calculated during the preprocessing step
 // the travel times are encoded as SerializedTravelTime in milliseconds
