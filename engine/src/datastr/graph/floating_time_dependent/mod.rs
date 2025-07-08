@@ -238,6 +238,10 @@ mod time {
                 Timestamp::new(self.0.rem_euclid(super::period().0)),
             )
         }
+
+        pub fn from_millis(millis: u32) -> Self {
+            Timestamp::new(millis as f64 / 1000.0)
+        }
     }
 
     impl Eq for Timestamp {} // TODO ensure that the val will never be NAN

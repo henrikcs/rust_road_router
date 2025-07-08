@@ -30,7 +30,7 @@ pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, inp
         let result = query_server.td_query(TDQuery {
             from: queries_from[i] as u32,
             to: queries_to[i] as u32,
-            departure: Timestamp::new(queries_departure[i] as f64 / 1000.0),
+            departure: Timestamp::from_millis(queries_departure[i]),
         });
         if let Some(mut result) = result.found() {
             let ea = result.distance();

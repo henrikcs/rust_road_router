@@ -92,11 +92,11 @@ pub struct RouterArgs {
     #[arg(long = "exit-times", default_value_t = String::from("False"))]
     pub exit_times: String,
 
-    #[arg(long = "gawron.a")]
-    pub gawron_a: Option<f64>,
+    #[arg(long = "gawron.a", default_value = "0.5")]
+    pub gawron_a: f64,
 
-    #[arg(long = "gawron.beta")]
-    pub gawron_beta: Option<f64>,
+    #[arg(long = "gawron.beta", default_value = "0.9")]
+    pub gawron_beta: f64,
 
     #[arg(long = "human-readable-time", short = 'H', default_value_t = String::from("False"))]
     pub human_readable_time: String,
@@ -140,14 +140,14 @@ pub struct RouterArgs {
     #[arg(long = "logit", default_value_t = String::from("False"))]
     pub logit: String,
 
-    #[arg(long = "logit.beta")]
-    pub logit_beta: Option<f64>,
+    #[arg(long = "logit.beta", default_value = "0.15")]
+    pub logit_beta: f64,
 
-    #[arg(long = "logit.gamma")]
-    pub logit_gamma: Option<f64>,
+    #[arg(long = "logit.gamma", default_value = "1.0")]
+    pub logit_gamma: f64,
 
-    #[arg(long = "logit.theta")]
-    pub logit_theta: Option<f64>,
+    #[arg(long = "logit.theta", default_value = "-1.0")]
+    pub logit_theta: f64,
 
     #[arg(long = "mapmatch.distance")]
     pub mapmatch_distance: Option<f64>,
@@ -158,8 +158,8 @@ pub struct RouterArgs {
     #[arg(long = "mapmatch.taz", default_value_t = String::from("False"))]
     pub mapmatch_taz: String,
 
-    #[arg(long = "max-alternatives")]
-    pub max_alternatives: Option<i32>,
+    #[arg(long = "max-alternatives", default_value = "5")]
+    pub max_alternatives: u32,
 
     #[arg(long = "message-log")]
     pub message_log: Option<String>,
@@ -254,8 +254,8 @@ pub struct RouterArgs {
     #[arg(long = "restriction-params")]
     pub restriction_params: Option<String>,
 
-    #[arg(long = "route-choice-method")]
-    pub route_choice_method: Option<String>,
+    #[arg(long = "route-choice-method", default_value_t = String::from("gawron"))]
+    pub route_choice_method: String,
 
     #[arg(long = "route-files", short = 't')]
     pub route_files: Option<String>,
