@@ -7,3 +7,4 @@ edition = "2024"
 clap = { version = "4.5.38", features = ["derive"] }
 rust_road_router = { path = "../engine" }
 conversion = { path = "../conversion" }
+rand = { version = "0.9.1" }
