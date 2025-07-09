@@ -212,7 +212,7 @@ impl AlternativePathsForDTA {
 impl Into<AlternativePathsForDTA> for AlternativePathsForDTAFlattened {
     fn into(self) -> AlternativePathsForDTA {
         let mut alternatives = Vec::new();
-        let q = self.alternative_choice.len() - 1;
+        let q = self.alternative_choice.len();
 
         for i in 0..q {
             let start = self.first_alternative_of_query[i] as usize;
@@ -252,19 +252,31 @@ impl From<AlternativePathsForDTA> for AlternativePathsForDTAFlattened {
         let mut alternative_choice = Vec::new();
         let mut alternative_probabilities = Vec::new();
 
-        first_alternative_of_query.push(0);
-        for alt in &value.alternatives {
-            first_edge_of_alternative.push(egdes.len() as u32);
-            for path in &alt.paths {
-                first_alternative_of_query.push(egdes.len() as u32);
-                egdes.extend(path.edges.iter().map(|e| e));
-                alternative_costs.extend(&alt.costs);
-                alternative_probabilities.extend(&alt.probabilities);
+        let mut added_edges = 0;
+        let mut added_alternatives = 0;
+
+        for alternative_paths in value.alternatives.iter() {
+            first_alternative_of_query.push(added_alternatives as u32);
+            alternative_choice.push(alternative_paths.choice as u32);
+
+            for (alt_index, path) in alternative_paths.paths.iter().enumerate() {
+                added_alternatives += 1;
+                first_edge_of_alternative.push(added_edges as u32);
+                // add edges of the path
+                egdes.extend(path.edges.iter().map(|&e| e));
+                // add costs and probabilities
+                alternative_costs.push(alternative_paths.costs[alt_index]);
+                alternative_probabilities.push(alternative_paths.probabilities[alt_index]);
+
+                // update edge index
+                added_edges += path.edges.len();
             }
-            first_edge_of_alternative.push(egdes.len() as u32);
-            alternative_choice.push(alt.choice as u32);
         }
-        first_alternative_of_query.push(egdes.len() as u32);
+
+        // add the last edge index
+        first_edge_of_alternative.push(added_edges as u32);
+        // add the last alternative
+        first_alternative_of_query.push(added_alternatives as u32);
 
         Self {
             egdes,
