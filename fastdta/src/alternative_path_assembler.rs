@@ -33,6 +33,7 @@ pub fn assemble_alternative_paths(
 
     // init all_routes with the previous alternatives
     if dta_dir.exists() {
+        dbg!("Assemble alternative paths...");
         let alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
 
         let mut new_alternative_paths = merge_alternative_paths_with_new_travel_times(&alternative_paths, &shortest_paths, &travel_times, &departures, &graph);
@@ -40,6 +41,7 @@ pub fn assemble_alternative_paths(
         new_alternative_paths.perform_choice_model(&alternative_paths, &choice_algorithm, max_alternatives, seed);
         new_alternative_paths.deconstruct(&previous_iteration_dir.join(DIR_DTA)).unwrap();
     } else {
+        dbg!("No alternative paths found. Nothing to assemble. Creating new alternatives from shortest paths...");
         // initialize with alternatives consisting of the shortest paths
         let alternative_paths = AlternativePathsForDTA {
             alternatives: shortest_paths
