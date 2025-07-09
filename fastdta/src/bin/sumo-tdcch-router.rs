@@ -38,13 +38,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let customized_graph = customize(&cch, &graph);
 
-    let (paths, travel_times, departures) = get_paths_from_queries(&cch, &customized_graph, &input_dir);
+    let (shortest_paths, travel_times, departures) = get_paths_from_queries(&cch, &customized_graph, &input_dir);
 
     assemble_alternative_paths(
         &input_dir,
         &input_prefix,
         iteration,
-        &paths,
+        &shortest_paths,
         &travel_times,
         &departures,
         &graph,
