@@ -17,7 +17,7 @@ impl ChoiceAlgorithm {
 }
 
 pub fn gawron(choice_set: &Vec<Vec<u32>>, weights: &Vec<f64>, a: f64, beta: f64) -> Vec<f64> {
-    let mut probabilities = vec![0.0; choice_set.len()];
+    let mut probabilities = vec![1.0; choice_set.len()];
 
     // TODO: Implement the Gawron choice model
 

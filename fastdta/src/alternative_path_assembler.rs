@@ -1,7 +1,10 @@
 use std::path::Path;
 
 use conversion::{DIR_DTA, SerializedTimestamp, sumo::paths_to_sumo_routes_converter::write_paths_as_sumo_routes};
-use rust_road_router::datastr::graph::floating_time_dependent::{FlWeight, TDGraph, Timestamp};
+use rust_road_router::datastr::graph::{
+    EdgeId,
+    floating_time_dependent::{FlWeight, TDGraph, Timestamp},
+};
 
 use crate::{
     choice::ChoiceAlgorithm,
@@ -27,28 +30,28 @@ pub fn assemble_alternative_paths(
     seed: i32,
     edge_indices_to_id: &Vec<String>,
 ) {
-    // load previous alternatives from input_dir
-    let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
-    let dta_dir = previous_iteration_dir.join(DIR_DTA);
+    let current_iteration_dir = input_dir.join(format!("{:0>3}", iteration));
 
     // init all_routes with the previous alternatives
-    if dta_dir.exists() {
-        dbg!("Assemble alternative paths...");
+    if iteration > 0 {
+        // load previous alternatives from input_dir
+        let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
         let alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
 
         let mut new_alternative_paths = merge_alternative_paths_with_new_travel_times(&alternative_paths, &shortest_paths, &travel_times, &departures, &graph);
 
         new_alternative_paths.perform_choice_model(&alternative_paths, &choice_algorithm, max_alternatives, seed);
-        new_alternative_paths.deconstruct(&previous_iteration_dir.join(DIR_DTA)).unwrap();
+        new_alternative_paths.deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
     } else {
-        dbg!("No alternative paths found. Nothing to assemble. Creating new alternatives from shortest paths...");
         // initialize with alternatives consisting of the shortest paths
         let alternative_paths = AlternativePathsForDTA {
             alternatives: shortest_paths
                 .iter()
                 .enumerate()
                 .map(|(i, path)| AlternativePaths {
-                    paths: path.into_iter().map(|_| AlternativePath { edges: path.clone() }).collect(),
+                    paths: vec![AlternativePath {
+                        edges: path.iter().map(|&e| e as EdgeId).collect(),
+                    }],
                     costs: vec![travel_times[i].into()],
                     probabilities: vec![1.0],
                     choice: 0,
@@ -56,7 +59,7 @@ pub fn assemble_alternative_paths(
                 .collect(),
         };
 
-        alternative_paths.deconstruct(&previous_iteration_dir.join(DIR_DTA)).unwrap();
+        alternative_paths.deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
     };
 
     write_paths_as_sumo_routes(&input_dir, &input_prefix, iteration, &shortest_paths, &departures, &edge_indices_to_id);

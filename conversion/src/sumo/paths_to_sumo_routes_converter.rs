@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use rust_road_router::io::read_strings_from_file;
+use rust_road_router::{datastr::graph::floating_time_dependent::Timestamp, io::read_strings_from_file};
 
 use crate::{
     sumo::{
@@ -54,7 +54,7 @@ fn convert_to_sumo_routes(dir: &Path, paths: &Vec<Vec<u32>>, edge_indices_to_id:
 
         let vehicle = Vehicle {
             id: trip_ids[i].clone(),
-            depart: departures[i].into(),
+            depart: Timestamp::from_millis(departures[i]).into(),
             depart_lane: Some(String::from("best")),
             depart_pos: Some(String::from("random")),
             depart_speed: Some(String::from("max")),
