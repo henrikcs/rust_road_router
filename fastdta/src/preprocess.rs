@@ -53,7 +53,6 @@ pub fn get_cch(input_dir: &Path, graph: &TDGraph) -> CCH {
 pub fn run_inertial_flow_cutter(directory: &Path, seed: i32, threads: i32) -> Result<(), Box<dyn Error>> {
     // make sure that "console" is in the PATH (i.e. lib/InertialFlowCutter/build/console)
     // the values have been copied from flow_cutter_cch_order.sh:
-    dbg!(&directory);
     let status = std::process::Command::new("console")
         .arg("load_routingkit_unweighted_graph")
         .arg(directory.join(FILE_FIRST_OUT).to_str().unwrap())

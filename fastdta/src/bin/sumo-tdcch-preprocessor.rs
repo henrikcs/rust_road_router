@@ -19,8 +19,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input_prefix = args.input_prefix;
     let output_dir = Path::new(&args.output_dir);
 
-    dbg!(&output_dir);
-
     convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &output_dir)?;
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
     run_inertial_flow_cutter(&output_dir, args.seed, args.routing_threads)?;

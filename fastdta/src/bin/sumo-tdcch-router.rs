@@ -20,9 +20,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_prefix = args.input_prefix;
     let iteration = args.iteration;
 
-    dbg!(&input_prefix);
-    dbg!(&input_dir);
-
     let choice_algorithm = match args.route_choice_method.as_str() {
         choice::LOGIT => choice::ChoiceAlgorithm::create_logit(args.logit_theta),
         choice::GAWRON => choice::ChoiceAlgorithm::create_gawron(args.gawron_a, args.gawron_beta),

@@ -84,9 +84,11 @@ impl AlternativePaths {
     pub fn set_probabilities(&mut self, choice_algorithm: &ChoiceAlgorithm) {
         match choice_algorithm {
             ChoiceAlgorithm::Gawron { a, beta } => {
+                dbg!("Setting probabilities using Gawron with a: {}, beta: {}", a, beta);
                 self.probabilities = gawron(&self.paths.iter().map(|p| p.edges.clone()).collect(), &self.costs, *a, *beta);
             }
             ChoiceAlgorithm::Logit { theta } => {
+                dbg!("Setting probabilities using logit with theta: {}", theta);
                 self.probabilities = logit(&self.costs, *theta);
             }
         }
@@ -115,7 +117,6 @@ impl AlternativePathsForDTAFlattened {
     pub fn reconstruct(dir: &Path) -> Self {
         // read from given directory the files with the same name as the fields of this struct
         // we can use Vec<>::load_from() for easier reading
-
         let edges: Vec<u32> = Vec::<u32>::load_from(dir.join(FILE_DTA_QUERIES_EDGE_IDS)).unwrap();
         let first_alternative_of_query: Vec<u32> = Vec::<u32>::load_from(dir.join(FILE_DTA_QUERIES_FIRST_ALTERNATIVE_PATH)).unwrap();
         let first_edge_of_alternative: Vec<u32> = Vec::<u32>::load_from(dir.join(FILE_DTA_QUERIES_FIRST_EDGE_OF_ALTERNATIVE)).unwrap();
@@ -204,6 +205,9 @@ impl AlternativePathsForDTA {
     }
 
     pub fn deconstruct(self, dir: &Path) -> Result<(), std::io::Error> {
+        if !dir.exists() {
+            std::fs::create_dir(dir)?;
+        }
         let flattened: AlternativePathsForDTAFlattened = self.into();
         flattened.deconstruct(dir)
     }
