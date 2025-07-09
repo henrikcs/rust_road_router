@@ -55,9 +55,9 @@ fn convert_to_sumo_routes(dir: &Path, paths: &Vec<Vec<u32>>, edge_indices_to_id:
         let vehicle = Vehicle {
             id: trip_ids[i].clone(),
             depart: Timestamp::from_millis(departures[i]).into(),
-            depart_lane: Some(String::from("best")),
-            depart_pos: Some(String::from("random")),
-            depart_speed: Some(String::from("max")),
+            depart_lane: None,
+            depart_pos: None,
+            depart_speed: None,
             route: Some(Route {
                 edges,
                 cost: None,
