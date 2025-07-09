@@ -40,11 +40,11 @@
         "CCH",
         "--mesosim",
         "--aggregation",
-        "30",
+        "100",
         "--begin",
         "0",
         "--end",
-        "90",
+        "1200",
         "cch-preprocessor--input-prefix",
         "grid",
         "cch-preprocessor--input-dir",
@@ -72,11 +72,11 @@
         "CH",
         "--mesosim",
         "--aggregation",
-        "30",
+        "100",
         "--begin",
         "0",
         "--end",
-        "90"
+        "1200"
       ]
     },
     {
@@ -98,11 +98,11 @@
         "${workspaceFolder}/import/sumo/grid/grid.trips.xml",
         "--mesosim",
         "--aggregation",
-        "30",
+        "100",
         "--begin",
         "0",
         "--end",
-        "90"
+        "1200"
       ]
     },
     {
@@ -130,11 +130,11 @@
         "CCH",
         "--mesosim",
         "--aggregation",
-        "30",
+        "100",
         "--begin",
         "0",
         "--end",
-        "90",
+        "1200",
         "cch-preprocessor--input-prefix",
         "example-data",
         "cch-preprocessor--input-dir",
