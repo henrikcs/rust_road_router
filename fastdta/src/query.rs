@@ -4,10 +4,11 @@ use conversion::{FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, Ser
 use rust_road_router::algo::catchup::Server;
 use rust_road_router::algo::customizable_contraction_hierarchy::CCH;
 use rust_road_router::algo::{PathServer, TDQuery, TDQueryServer};
+use rust_road_router::datastr::graph::EdgeId;
 use rust_road_router::datastr::graph::floating_time_dependent::{CustomizedGraph, FlWeight, Timestamp};
 use rust_road_router::io::Load;
 
-pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, input_dir: &Path) -> (Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, input_dir: &Path) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     // read queries from input_dir
     let queries_from = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_FROM)).unwrap();
     let queries_to = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_TO)).unwrap();
@@ -18,7 +19,7 @@ pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, inp
     assert!(queries_from.len() == queries_to.len());
     assert!(queries_from.len() == queries_departure.len());
 
-    let mut paths = Vec::with_capacity(queries_from.len());
+    let mut paths: Vec<Vec<EdgeId>> = Vec::with_capacity(queries_from.len());
     let mut distances = Vec::with_capacity(queries_from.len());
 
     for i in 0..queries_from.len() {

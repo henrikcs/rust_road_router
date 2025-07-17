@@ -1,4 +1,4 @@
-use crate::dta_alternative_paths::AlternativePaths;
+use crate::alternative_paths::AlternativePaths;
 
 pub fn gawron(alternatives: &AlternativePaths, a: f64, _beta: f64) -> Vec<f64> {
     let mut probabilities = alternatives.probabilities.clone();

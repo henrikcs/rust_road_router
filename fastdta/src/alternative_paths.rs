@@ -2,7 +2,7 @@ use std::path::Path;
 
 use conversion::{
     FILE_DTA_QUERIES_ALTERNATIVE_CHOICE, FILE_DTA_QUERIES_ALTERNATIVE_COST, FILE_DTA_QUERIES_ALTNERNATIVE_PROBABILITIES, FILE_DTA_QUERIES_EDGE_IDS,
-    FILE_DTA_QUERIES_FIRST_ALTERNATIVE_PATH, FILE_DTA_QUERIES_FIRST_EDGE_OF_ALTERNATIVE,
+    FILE_DTA_QUERIES_FIRST_ALTERNATIVE_PATH, FILE_DTA_QUERIES_FIRST_EDGE_OF_ALTERNATIVE, SerializedTimestamp,
 };
 use rand::{
     SeedableRng,
@@ -10,7 +10,10 @@ use rand::{
     rngs::StdRng,
 };
 use rust_road_router::{
-    datastr::graph::EdgeId,
+    datastr::graph::{
+        EdgeId,
+        floating_time_dependent::{FlWeight, TDGraph, Timestamp},
+    },
     io::{Load, Store},
 };
 
@@ -22,7 +25,6 @@ use crate::logit::logit;
 pub struct AlternativePathsForDTA {
     /// queries i has alternatives alternatives[i]
     pub alternatives_in_query: Vec<AlternativePaths>,
-    pub new_path_in_query: Vec<bool>,
 }
 
 /// paths, costs, probabilities and choice for one query
@@ -37,40 +39,11 @@ pub struct AlternativePaths {
 }
 
 impl AlternativePaths {
-    pub fn perform_choice_model(&mut self, choice_algorithm: &ChoiceAlgorithm, max_alternatives: u32, has_new_route: bool, previous_costs: Option<&Vec<f64>>) {
-        // If we have a new route, update costs using beta smoothing for the chosen route
-        if has_new_route {
-            if let Some(prev_costs) = previous_costs {
-                if let ChoiceAlgorithm::Gawron { beta, .. } = choice_algorithm {
-                    // Apply beta smoothing to the chosen route's cost: beta * new_cost + (1-beta) * old_cost
-                    if self.choice < prev_costs.len() {
-                        let old_cost = prev_costs[self.choice];
-                        let new_cost = self.costs[self.choice];
-                        self.costs[self.choice] = beta * new_cost + (1.0 - beta) * old_cost;
-                    }
-                }
-            }
-        }
-
-        // Initialize probabilities if needed
-        if self.paths.len() == 1 {
-            self.probabilities = vec![1.0];
-        } else {
-            // Scale probabilities for new route
-            if has_new_route && self.paths.len() > 1 {
-                let scale = (self.paths.len() - 1) as f64 / self.paths.len() as f64;
-                for prob in self.probabilities.iter_mut() {
-                    *prob *= scale;
-                }
-                // Add probability for new route (initially equal share)
-                self.probabilities.push(1.0 / self.paths.len() as f64);
-            }
-        }
-
+    pub fn perform_choice_model(&mut self, choice_algorithm: &ChoiceAlgorithm, max_alternatives: u32, previous_costs: &Vec<f64>) {
         // Calculate probabilities using the choice algorithm
-        self.set_probabilities(&choice_algorithm);
+        self.apply_choice_algorithm(&choice_algorithm, previous_costs);
 
-        // Check if we have more alternatives than allowed
+        // Check if we have more alternatives than allowed and adapt alternatives with probabilities if necessary
         if self.paths.len() > max_alternatives as usize {
             self.remove_least_probable_routes(max_alternatives, choice_algorithm);
         }
@@ -108,16 +81,6 @@ impl AlternativePaths {
         self.costs = new_costs;
         self.probabilities = new_probabilities;
 
-        // Adjust choice index if needed
-        let removed_before_choice = indices_to_remove.iter().filter(|&&i| i < self.choice).count();
-        if indices_to_remove.contains(&self.choice) {
-            // If chosen route was removed, select first route
-            self.choice = 0;
-        } else {
-            // Adjust choice index based on removed routes
-            self.choice -= removed_before_choice;
-        }
-
         // Rescale probabilities to sum to 1
         let prob_sum: f64 = self.probabilities.iter().sum();
         if prob_sum > 0.0 {
@@ -136,16 +99,26 @@ impl AlternativePaths {
         self.choice = prob.sample(rng);
     }
 
-    pub fn set_probabilities(&mut self, choice_algorithm: &ChoiceAlgorithm) {
+    pub fn apply_choice_algorithm(&mut self, choice_algorithm: &ChoiceAlgorithm, previous_costs: &Vec<f64>) {
         match choice_algorithm {
             ChoiceAlgorithm::Gawron { a, beta } => {
                 dbg!("Setting probabilities using Gawron with a: {}, beta: {}", a, beta);
+
+                // update self.cost[self.choice] using beta smoothing
+                self.costs[self.choice] = self.costs[self.choice] * beta + previous_costs[self.choice] * (1.0 - beta);
+
                 self.probabilities = gawron(&self, *a, *beta);
             }
             ChoiceAlgorithm::Logit { beta, gamma, theta } => {
                 dbg!("Setting probabilities using logit with theta: {}", theta);
                 self.probabilities = logit(&self, *beta, *gamma, *theta);
             }
+        }
+    }
+
+    pub fn scale_probabilities(&mut self, scale: f64) {
+        for prob in &mut self.probabilities {
+            *prob *= scale;
         }
     }
 }
@@ -161,17 +134,82 @@ impl AlternativePathsForDTA {
         let mut rng: StdRng = StdRng::seed_from_u64(seed.abs() as u64);
 
         for (i, alternative_paths) in self.alternatives_in_query.iter_mut().enumerate() {
-            let has_new_route = i < self.new_path_in_query.len() && self.new_path_in_query[i];
-            let previous_costs = if i < previous_alternatives.alternatives_in_query.len() {
-                Some(&previous_alternatives.alternatives_in_query[i].costs)
-            } else {
-                None
-            };
+            let previous_costs = &previous_alternatives.alternatives_in_query[i].costs;
 
-            alternative_paths.perform_choice_model(choice_algorithm, max_alternatives, has_new_route, previous_costs);
+            alternative_paths.perform_choice_model(choice_algorithm, max_alternatives, previous_costs);
 
             alternative_paths.choose(&mut rng);
         }
+    }
+
+    pub fn init(shortest_paths: &Vec<Vec<u32>>, travel_times: &Vec<FlWeight>) -> Self {
+        debug_assert_eq!(
+            shortest_paths.len(),
+            travel_times.len(),
+            "shortest_paths and travel_times must have the same length",
+        );
+
+        AlternativePathsForDTA {
+            alternatives_in_query: shortest_paths
+                .iter()
+                .enumerate()
+                .map(|(i, path)| AlternativePaths {
+                    paths: vec![AlternativePath {
+                        edges: path.iter().map(|&e| e as EdgeId).collect(),
+                    }],
+                    costs: vec![travel_times[i].into()],
+                    probabilities: vec![1.0],
+                    choice: 0,
+                })
+                .collect(),
+        }
+    }
+
+    /// merges the previous alternatives with the current shortest paths
+    /// adds new paths without computing travel times yet (will be done in perform_choice_model)
+    pub fn update_alternatives_with_new_paths(
+        &self,
+        shortest_paths: &Vec<Vec<EdgeId>>,
+        travel_times: &Vec<FlWeight>,
+        departures: &Vec<SerializedTimestamp>,
+        graph: &TDGraph,
+    ) -> AlternativePathsForDTA {
+        let mut merged_alternative_paths = self.clone();
+
+        // merge previous alternatives with current paths
+        for (i, alternatives) in merged_alternative_paths.alternatives_in_query.iter_mut().enumerate() {
+            let mut is_shortest_path_among_alternatives = false;
+
+            // Update costs for existing paths
+            for (j, alternative_path) in alternatives.paths.iter().enumerate() {
+                if alternative_path.edges == shortest_paths[i].iter().map(|&e| e as EdgeId).collect::<Vec<EdgeId>>() {
+                    // path already exists, mark it and update its cost
+                    is_shortest_path_among_alternatives = true;
+                    alternatives.costs[j] = travel_times[i].into();
+                } else {
+                    // Recompute cost for existing alternative path
+                    alternatives.costs[j] = graph
+                        .get_travel_time_along_path(Timestamp::from_millis(departures[i]), &alternative_path.edges)
+                        .into();
+                }
+            }
+
+            // Add new shortest path if it's not among existing alternatives
+            if !is_shortest_path_among_alternatives {
+                alternatives.paths.push(AlternativePath {
+                    edges: shortest_paths[i].iter().map(|&e| e as EdgeId).collect(),
+                });
+                alternatives.costs.push(travel_times[i].into());
+
+                let scale = (alternatives.paths.len() - 1) as f64 / alternatives.paths.len() as f64;
+                alternatives.scale_probabilities(scale);
+
+                // Extend probabilities vector with initial probability for new route
+                alternatives.probabilities.push(1.0 / alternatives.paths.len() as f64);
+            }
+        }
+
+        merged_alternative_paths
     }
 }
 
@@ -307,7 +345,6 @@ impl Into<AlternativePathsForDTA> for AlternativePathsForDTAFlattened {
 
         AlternativePathsForDTA {
             alternatives_in_query: alternatives,
-            new_path_in_query: vec![false; q], // Initialize with false, indicating no new paths
         }
     }
 }
@@ -379,7 +416,6 @@ mod tests {
                     choice: 0,
                 },
             ],
-            new_path_in_query: vec![false, false],
         };
 
         let expected = AlternativePathsForDTAFlattened {
@@ -426,7 +462,6 @@ mod tests {
                     choice: 0,
                 },
             ],
-            new_path_in_query: vec![false, false],
         };
 
         let alt_paths: AlternativePathsForDTA = flattened.into();
@@ -444,39 +479,6 @@ mod tests {
     }
 
     #[test]
-    fn test_perform_choice_model_with_new_route() {
-        let choice_algorithm = ChoiceAlgorithm::Gawron { a: 0.1, beta: 0.7 };
-        let mut alternatives = AlternativePaths {
-            paths: vec![
-                AlternativePath { edges: vec![1, 2] },
-                AlternativePath { edges: vec![3, 4] },
-                AlternativePath { edges: vec![5, 6] }, // New route added
-            ],
-            costs: vec![10.0, 15.0, 20.0], // Cost for new route
-            probabilities: vec![0.6, 0.4], // Original probabilities before new route
-            choice: 0,
-        };
-        let previous_costs = vec![8.0, 12.0]; // Previous costs for the original routes
-
-        alternatives.perform_choice_model(&choice_algorithm, 5, true, Some(&previous_costs));
-
-        // Check that beta smoothing was applied to the chosen route (choice = 0)
-        let expected_cost = 0.7 * 10.0 + 0.3 * 8.0; // beta * new_cost + (1-beta) * old_cost
-        assert!((alternatives.costs[0] - expected_cost).abs() < 0.001);
-
-        // Second route cost should remain unchanged
-        assert_eq!(alternatives.costs[1], 15.0);
-
-        // Third route cost should remain unchanged
-        assert_eq!(alternatives.costs[2], 20.0);
-
-        // Probabilities should have been recalculated for all 3 routes
-        assert_eq!(alternatives.probabilities.len(), 3);
-        let prob_sum: f64 = alternatives.probabilities.iter().sum();
-        assert!((prob_sum - 1.0).abs() < 0.001); // Should sum to 1
-    }
-
-    #[test]
     fn test_perform_choice_model_without_new_route() {
         let choice_algorithm = ChoiceAlgorithm::Gawron { a: 0.1, beta: 0.7 };
         let mut alternatives = AlternativePaths {
@@ -485,12 +487,12 @@ mod tests {
             probabilities: vec![0.6, 0.4],
             choice: 0,
         };
-        let previous_costs = vec![8.0, 12.0];
+        let old_cost = vec![8.0, 12.0];
 
-        alternatives.perform_choice_model(&choice_algorithm, 5, false, Some(&previous_costs));
+        alternatives.perform_choice_model(&choice_algorithm, 5, &old_cost);
 
-        // Costs should remain unchanged when no new route is added
-        assert_eq!(alternatives.costs[0], 10.0);
+        let expected_cost = 0.7 * 10.0 + 0.3 * 8.0; // beta * new_cost + (1-beta) * old_cost
+        assert_eq!(alternatives.costs[0], expected_cost);
         assert_eq!(alternatives.costs[1], 15.0);
 
         // Probabilities should have been recalculated
@@ -514,7 +516,9 @@ mod tests {
             choice: 0,
         };
 
-        alternatives.perform_choice_model(&choice_algorithm, 3, false, None);
+        let previous_costs = vec![10.0, 15.0, 20.0, 25.0];
+
+        alternatives.perform_choice_model(&choice_algorithm, 3, &previous_costs);
 
         // Should have only 3 routes after removal
         assert_eq!(alternatives.paths.len(), 3);
@@ -523,34 +527,6 @@ mod tests {
 
         // Route with lowest probability should be removed
         // (Note: exact routes depend on Gawron calculation, but we check basic constraints)
-        let prob_sum: f64 = alternatives.probabilities.iter().sum();
-        assert!((prob_sum - 1.0).abs() < 0.001); // Should sum to 1
-    }
-
-    #[test]
-    fn test_remove_least_probable_routes_with_chosen_route_removed() {
-        let choice_algorithm = ChoiceAlgorithm::Gawron { a: 0.1, beta: 0.7 };
-        let mut alternatives = AlternativePaths {
-            paths: vec![
-                AlternativePath { edges: vec![1, 2] },
-                AlternativePath { edges: vec![3, 4] },
-                AlternativePath { edges: vec![5, 6] },
-            ],
-            costs: vec![10.0, 15.0, 20.0],
-            probabilities: vec![0.1, 0.8, 0.1], // Chosen route (0) has low probability
-            choice: 0,
-        };
-
-        alternatives.perform_choice_model(&choice_algorithm, 2, false, None);
-
-        // Should have only 2 routes after removal
-        assert_eq!(alternatives.paths.len(), 2);
-        assert_eq!(alternatives.costs.len(), 2);
-        assert_eq!(alternatives.probabilities.len(), 2);
-
-        // If chosen route was removed, choice should be reset to 0
-        assert_eq!(alternatives.choice, 0);
-
         let prob_sum: f64 = alternatives.probabilities.iter().sum();
         assert!((prob_sum - 1.0).abs() < 0.001); // Should sum to 1
     }
@@ -565,7 +541,9 @@ mod tests {
             choice: 0,
         };
 
-        alternatives.perform_choice_model(&choice_algorithm, 5, false, None);
+        let previous_costs = vec![10.0];
+
+        alternatives.perform_choice_model(&choice_algorithm, 5, &previous_costs);
 
         // Single route should have probability 1.0
         assert_eq!(alternatives.probabilities.len(), 1);
@@ -583,7 +561,6 @@ mod tests {
                 probabilities: vec![1.0],
                 choice: 0,
             }],
-            new_path_in_query: vec![false],
         };
 
         let mut current_alternatives = AlternativePathsForDTA {
@@ -593,7 +570,6 @@ mod tests {
                 probabilities: vec![0.6, 0.4],
                 choice: 0,
             }],
-            new_path_in_query: vec![true], // New route added
         };
 
         current_alternatives.perform_choice_model(&previous_alternatives, &choice_algorithm, 5, 123);

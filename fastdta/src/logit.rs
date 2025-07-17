@@ -1,4 +1,4 @@
-use crate::dta_alternative_paths::AlternativePaths;
+use crate::alternative_paths::AlternativePaths;
 
 pub fn logit(alternatives: &AlternativePaths, beta: f64, gamma: f64, theta: f64) -> Vec<f64> {
     let n_alternatives = alternatives.paths.len();
