@@ -83,9 +83,9 @@
       "label": "Run DTA (grid; dijkstra)",
       "type": "shell",
       "command": "python",
-      "dependsOn": ["Copy duaIterate.py to SUMO", "Clean grid-ch"],
+      "dependsOn": ["Copy duaIterate.py to SUMO", "Clean grid-dijkstra"],
       "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/grid-ch",
+        "cwd": "${workspaceFolder}/data/imported/sumo/grid-dijkstra",
         "env": {
           "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}"
         }
@@ -160,6 +160,16 @@
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
       "args": ["-rf", "grid-ch/*"],
+      "hide": true
+    },
+    {
+      "label": "Clean grid-dijkstra",
+      "type": "shell",
+      "command": "rm",
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo"
+      },
+      "args": ["-rf", "grid-dijkstra/*"],
       "hide": true
     },
     {
