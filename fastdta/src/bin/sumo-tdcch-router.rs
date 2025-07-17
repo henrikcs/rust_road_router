@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let iteration = args.iteration;
 
     let choice_algorithm = match args.route_choice_method.as_str() {
-        choice::LOGIT => choice::ChoiceAlgorithm::create_logit(args.logit_theta),
+        choice::LOGIT => choice::ChoiceAlgorithm::create_logit(args.logit_beta, args.logit_gamma, args.logit_theta),
         choice::GAWRON => choice::ChoiceAlgorithm::create_gawron(args.gawron_a, args.gawron_beta),
         _ => panic!("Unknown choice algorithm: {}", args.route_choice_method),
     };

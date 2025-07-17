@@ -45,7 +45,7 @@ pub fn assemble_alternative_paths(
     } else {
         // initialize with alternatives consisting of the shortest paths
         let alternative_paths = AlternativePathsForDTA {
-            alternatives: shortest_paths
+            alternatives_in_query: shortest_paths
                 .iter()
                 .enumerate()
                 .map(|(i, path)| AlternativePaths {
@@ -57,6 +57,7 @@ pub fn assemble_alternative_paths(
                     choice: 0,
                 })
                 .collect(),
+            new_path_in_query: vec![true; shortest_paths.len()],
         };
 
         alternative_paths.deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
@@ -66,8 +67,7 @@ pub fn assemble_alternative_paths(
 }
 
 /// merges the previous alternatives with the current shortest paths
-/// calculates the travel times for each alternative path using the edge weights from the current graph
-/// update the `alternative_paths` with the new paths and their travel times
+/// adds new paths without computing travel times yet (will be done in perform_choice_model)
 fn merge_alternative_paths_with_new_travel_times(
     alternative_paths: &AlternativePathsForDTA,
     shortest_paths: &Vec<Vec<u32>>,
@@ -76,26 +76,42 @@ fn merge_alternative_paths_with_new_travel_times(
     graph: &TDGraph,
 ) -> AlternativePathsForDTA {
     let mut merged_alternative_paths = alternative_paths.clone();
+
+    // Ensure new_path_in_query has the right size
+    if merged_alternative_paths.new_path_in_query.len() != shortest_paths.len() {
+        merged_alternative_paths.new_path_in_query.resize(shortest_paths.len(), false);
+    }
+
     // merge previous alternatives with current paths
-    for (i, alternatives) in merged_alternative_paths.alternatives.iter_mut().enumerate() {
+    for (i, alternatives) in merged_alternative_paths.alternatives_in_query.iter_mut().enumerate() {
         let mut is_shortest_path_among_alternatives = false;
+        merged_alternative_paths.new_path_in_query[i] = false;
+
+        // Update costs for existing paths
         for (j, alternative_path) in alternatives.paths.iter().enumerate() {
-            if alternative_path.edges == *shortest_paths[i] {
-                // path already exists, skip it
+            if alternative_path.edges == shortest_paths[i].iter().map(|&e| e as EdgeId).collect::<Vec<EdgeId>>() {
+                // path already exists, mark it and update its cost
                 is_shortest_path_among_alternatives = true;
                 alternatives.costs[j] = travel_times[i].into();
             } else {
+                // Recompute cost for existing alternative path
                 alternatives.costs[j] = graph
                     .get_travel_time_along_path(Timestamp::from_millis(departures[i]), &alternative_path.edges)
                     .into();
             }
         }
 
+        // Add new shortest path if it's not among existing alternatives
         if !is_shortest_path_among_alternatives {
             alternatives.paths.push(AlternativePath {
-                edges: shortest_paths[i].clone(),
+                edges: shortest_paths[i].iter().map(|&e| e as EdgeId).collect(),
             });
             alternatives.costs.push(travel_times[i].into());
+
+            // Extend probabilities vector with initial probability for new route
+            alternatives.probabilities.push(1.0 / alternatives.paths.len() as f64);
+
+            merged_alternative_paths.new_path_in_query[i] = true; // Mark that a new path was added
         }
     }
 
