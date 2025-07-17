@@ -11,12 +11,11 @@ use crate::{
     dta_alternative_paths::{AlternativePath, AlternativePaths, AlternativePathsForDTA},
 };
 
-// assemble the alternatives
-// merge previous alternatives with current paths (make sure there are no duplicates)
-// calculate costs for each path in the current graph
-// choose a path based on the choice algorithm
-// return alternative paths, choice, probabilities and costs
-
+/// assemble the alternatives
+/// merge previous alternatives with current paths (make sure there are no duplicates)
+/// calculate costs for each path in the current graph
+/// choose a path based on the choice algorithm
+/// return alternative paths, choice, probabilities and costs
 pub fn assemble_alternative_paths(
     input_dir: &Path,
     input_prefix: &String,
