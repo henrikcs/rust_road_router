@@ -29,7 +29,7 @@ pub fn assemble_alternative_paths(
     let current_iteration_dir = input_dir.join(format!("{:0>3}", iteration));
 
     // init all_routes with the previous alternatives
-    if iteration > 0 {
+    let alternative_paths = if iteration > 0 {
         // load previous alternatives from input_dir
         let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
         let old_alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
@@ -39,13 +39,48 @@ pub fn assemble_alternative_paths(
 
         new_alternative_paths.perform_choice_model(&old_alternative_paths, &choice_algorithm, max_alternatives, seed);
 
-        new_alternative_paths.deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
+        new_alternative_paths
     } else {
         // initialize with alternatives consisting of the shortest paths
-        let alternative_paths = AlternativePathsForDTA::init(shortest_paths, travel_times);
-
-        alternative_paths.deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
+        AlternativePathsForDTA::init(shortest_paths, travel_times)
     };
 
-    write_paths_as_sumo_routes(&input_dir, &input_prefix, iteration, &shortest_paths, &departures, &edge_indices_to_id);
+    let (path_sets, costs, probabilities, choices) = transform_alternative_paths_for_dta_to_vectors(&alternative_paths);
+
+    write_paths_as_sumo_routes(
+        &input_dir,
+        &input_prefix,
+        iteration,
+        &path_sets,
+        &costs,
+        &probabilities,
+        &choices,
+        &departures,
+        &edge_indices_to_id,
+    );
+
+    alternative_paths.deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
+}
+
+fn transform_alternative_paths_for_dta_to_vectors(
+    alternative_paths: &AlternativePathsForDTA,
+) -> (Vec<Vec<Vec<u32>>>, Vec<Vec<f64>>, Vec<Vec<f64>>, Vec<usize>) {
+    let mut path_sets = vec![vec![]; alternative_paths.alternatives_in_query.len()];
+    let mut costs = vec![vec![]; alternative_paths.alternatives_in_query.len()];
+    let mut probabilities = vec![vec![]; alternative_paths.alternatives_in_query.len()];
+    let mut choices = vec![0 as usize; alternative_paths.alternatives_in_query.len()];
+
+    for (i, alternatives) in alternative_paths.alternatives_in_query.iter().enumerate() {
+        let mut path_set = vec![];
+        for path in alternatives.paths.iter() {
+            // add the path to the path set
+            path_set.push(path.edges.clone());
+        }
+        path_sets[i].append(&mut path_set);
+        costs[i].append(&mut alternatives.costs.clone());
+        probabilities[i].append(&mut alternatives.probabilities.clone());
+        choices[i] = alternatives.choice;
+    }
+
+    (path_sets, costs, probabilities, choices)
 }
