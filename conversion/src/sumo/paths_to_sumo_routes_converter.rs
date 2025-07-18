@@ -1,6 +1,9 @@
 use std::path::Path;
 
-use rust_road_router::{datastr::graph::floating_time_dependent::Timestamp, io::read_strings_from_file};
+use rust_road_router::{
+    datastr::graph::{floating_time_dependent::Timestamp, EdgeId},
+    io::read_strings_from_file,
+};
 
 use crate::{
     sumo::{
@@ -16,18 +19,25 @@ pub fn write_paths_as_sumo_routes(
     input_dir: &Path,
     input_prefix: &String,
     iteration: u32,
-    path_sets: &Vec<Vec<Vec<u32>>>,
+    path_sets: &Vec<Vec<Vec<EdgeId>>>,
     costs: &Vec<Vec<f64>>,
     probabilities: &Vec<Vec<f64>>,
     choices: &Vec<usize>,
     departures: &Vec<SerializedTimestamp>,
     edge_indices_to_id: &Vec<String>,
 ) {
-    // extract paths from alternative_lists from choices:
-    let paths: Vec<Vec<u32>> = get_chosen_paths_from_alternatives(path_sets, choices);
+    let trip_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
+    let original_from_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES)).unwrap();
+    let original_to_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES)).unwrap();
 
-    let sumo_routes = convert_to_sumo_routes(&input_dir, &paths, &edge_indices_to_id, &departures);
-    let sumo_alt_routes = convert_to_sumo_alt_routes(&input_dir, edge_indices_to_id, path_sets, costs, probabilities, choices, departures);
+    // transform path_sets from EdgeId to Sumo Ids (which are strings) using the edge_indices_to_id mapping
+    let path_sets: Vec<Vec<String>> = transform_to_sumo_paths(&path_sets, &original_from_edges, &original_to_edges, edge_indices_to_id);
+
+    // extract paths from alternative_lists from choices:
+    let paths: Vec<&String> = get_chosen_paths_from_alternatives(&path_sets, &choices);
+
+    let sumo_routes = convert_to_sumo_routes(paths, &trip_ids, departures);
+    let sumo_alt_routes = convert_to_sumo_alt_routes(&path_sets, &trip_ids, costs, probabilities, choices, departures);
 
     let current_iteration_dir = input_dir.join(format!("{iteration:0>3}"));
     let route_file_prefix = format!("{input_prefix}_{iteration:0>3}");
@@ -39,29 +49,11 @@ pub fn write_paths_as_sumo_routes(
 }
 
 /// prepares a datastructure which can be serialized into a *.rou.xml for SUMO
-fn convert_to_sumo_routes(dir: &Path, paths: &Vec<Vec<u32>>, edge_indices_to_id: &Vec<String>, departures: &Vec<SerializedTimestamp>) -> RoutesDocumentRoot {
-    let trip_ids: Vec<String> = read_strings_from_file(&dir.join(FILE_QUERY_IDS)).unwrap();
-    let original_from_edges: Vec<String> = read_strings_from_file(&dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES)).unwrap();
-    let original_to_edges: Vec<String> = read_strings_from_file(&dir.join(FILE_QUERY_ORIGINAL_TO_EDGES)).unwrap();
-
+fn convert_to_sumo_routes(paths: Vec<&String>, trip_ids: &Vec<String>, departures: &Vec<SerializedTimestamp>) -> RoutesDocumentRoot {
     // create RoutesDocumentRoot
     let mut routes = RoutesDocumentRoot { vehicles: Vec::new() };
 
-    for (i, path) in paths.iter().enumerate() {
-        let edges = path
-            .iter()
-            .map(|&edge_index| edge_indices_to_id[edge_index as usize].clone())
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        // prefix path with original_from_edges[i]
-        // and suffix it with original_to_edges[i]
-        let edges = if path.is_empty() {
-            format!("{} {}", original_from_edges[i], original_to_edges[i])
-        } else {
-            format!("{} {} {}", original_from_edges[i], edges, original_to_edges[i])
-        };
-
+    for (i, &path) in paths.iter().enumerate() {
         let vehicle = Vehicle {
             id: trip_ids[i].clone(),
             depart: Timestamp::from_millis(departures[i]).into(),
@@ -69,7 +61,7 @@ fn convert_to_sumo_routes(dir: &Path, paths: &Vec<Vec<u32>>, edge_indices_to_id:
             depart_pos: None,
             depart_speed: None,
             route: Some(Route {
-                edges,
+                edges: path.clone(),
                 cost: None,
                 probability: None,
             }),
@@ -82,16 +74,13 @@ fn convert_to_sumo_routes(dir: &Path, paths: &Vec<Vec<u32>>, edge_indices_to_id:
 }
 
 fn convert_to_sumo_alt_routes(
-    dir: &Path,
-    edge_indices_to_id: &Vec<String>,
-    path_sets: &Vec<Vec<Vec<u32>>>,
+    path_sets: &Vec<Vec<String>>,
+    trip_ids: &Vec<String>,
     costs: &Vec<Vec<f64>>,
     probabilities: &Vec<Vec<f64>>,
     choices: &Vec<usize>,
     departures: &Vec<SerializedTimestamp>,
 ) -> RoutesDocumentRoot {
-    let trip_ids: Vec<String> = read_strings_from_file(&dir.join(FILE_QUERY_IDS)).unwrap();
-
     debug_assert_eq!(trip_ids.len(), path_sets.len());
     debug_assert_eq!(trip_ids.len(), costs.len());
     debug_assert_eq!(trip_ids.len(), probabilities.len());
@@ -105,17 +94,11 @@ fn convert_to_sumo_alt_routes(
         let mut alternative_routes = vec![];
         for (j, path) in path_sets[i].iter().enumerate() {
             // create a route for each alternative path
-            let edges = path
-                .iter()
-                .map(|&edge_index| edge_indices_to_id[edge_index as usize].clone())
-                .collect::<Vec<_>>()
-                .join(" ");
-
             let cost = costs[i][j];
             let probability = probabilities[i][j];
 
             alternative_routes.push(Route {
-                edges,
+                edges: path.clone(),
                 cost: Some(cost.into()),
                 probability: Some(probability),
             });
@@ -138,17 +121,42 @@ fn convert_to_sumo_alt_routes(
     routes
 }
 
-fn get_chosen_paths_from_alternatives(path_sets: &Vec<Vec<Vec<u32>>>, choices: &Vec<usize>) -> Vec<Vec<u32>> {
+fn get_chosen_paths_from_alternatives<'a>(path_sets: &'a Vec<Vec<String>>, choices: &Vec<usize>) -> Vec<&'a String> {
+    debug_assert_eq!(path_sets.len(), choices.len());
+    // return the reference of the path corresponding to the choice for each query
+    path_sets.iter().enumerate().map(|(i, paths)| &paths[choices[i]]).collect()
+}
+
+fn transform_to_sumo_paths(
+    path_sets: &Vec<Vec<Vec<EdgeId>>>,
+    original_from_edges: &Vec<String>,
+    original_to_edges: &Vec<String>,
+    edge_indices_to_id: &Vec<String>,
+) -> Vec<Vec<String>> {
     path_sets
         .iter()
         .enumerate()
-        .map(|(i, alternatives)| {
-            let choice_index = choices[i];
-            if choice_index < alternatives.len() {
-                alternatives[choice_index].clone()
-            } else {
-                vec![] // empty path if choice index is out of bounds
-            }
+        .map(|(i, paths)| {
+            paths
+                .iter()
+                .map(|path| get_edges_from_path(path, &original_from_edges[i], &original_to_edges[i], edge_indices_to_id))
+                .collect::<Vec<String>>()
         })
-        .collect()
+        .collect::<Vec<Vec<String>>>()
+}
+
+fn get_edges_from_path(path: &Vec<EdgeId>, prefix: &String, suffix: &String, edge_indices_to_id: &Vec<String>) -> String {
+    let edges = path
+        .iter()
+        .map(|&edge_index| edge_indices_to_id[edge_index as usize].clone())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    // prefix path with original_from_edges[i]
+    // and suffix it with original_to_edges[i]
+    if path.is_empty() {
+        format!("{} {}", prefix, suffix)
+    } else {
+        format!("{} {} {}", prefix, edges, suffix)
+    }
 }
