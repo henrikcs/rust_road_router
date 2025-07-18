@@ -26,6 +26,9 @@ pub fn write_paths_as_sumo_routes(
     departures: &Vec<SerializedTimestamp>,
     edge_indices_to_id: &Vec<String>,
 ) {
+    // TODO: if memory consumption during this phase is too high, we can rewrite this section to have references to strings instead of the full string for each path
+    // e.g. paths = Vec<Vec<&String>> and it references to each edge sumo-id for each query
+    // edge_indices_to_id should then be the "database" of the edge sumo-ids
     let trip_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
     let original_from_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES)).unwrap();
     let original_to_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES)).unwrap();
