@@ -5,8 +5,8 @@ use rust_road_router::datastr::graph::{floating_time_dependent::IPPIndex, EdgeId
 use crate::{SerializedTimestamp, SerializedTravelTime};
 
 pub mod base_types;
-pub mod connection_writer;
 pub mod connections;
+pub mod connections_writer;
 pub mod edges;
 pub mod edges_reader;
 pub mod meandata;

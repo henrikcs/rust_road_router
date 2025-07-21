@@ -3,14 +3,14 @@ use std::{env, path::Path};
 use clap::Parser;
 use conversion::sumo::{
     CON_XML, EDG_XML, NOD_XML, XmlReader, XmlWriter,
-    connection_writer::SumoConnectionsWriter,
     connections::{Connection, ConnectionsDocumentRoot},
+    connections_writer::SumoConnectionsWriter,
     edges_reader::SumoEdgesReader,
     nodes_reader::SumoNodesReader,
 };
 
 fn main() {
-    let args = PreprocesserArgs::parse();
+    let args = Args::parse();
 
     // Print the input directory
     println!("Input directory: {}", args.input_dir);
@@ -55,10 +55,10 @@ fn main() {
     SumoConnectionsWriter::write(&con_file, &connection_document_root).unwrap();
 }
 
-/// Command-line arguments for fast-dta preprocessing
+/// Command-line arguments for creating a complete connections file
 #[derive(Parser, Debug)]
-#[command(version, about = "fast-dta preprocessing CLI options", long_about = None)]
-pub struct PreprocesserArgs {
+#[command(version, about = "Sumo Connection File Creator options", long_about = None)]
+pub struct Args {
     /// the directory containing the input files
     #[arg(long = "input-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
     pub input_dir: String,
