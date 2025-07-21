@@ -6,6 +6,7 @@ use crate::{SerializedTimestamp, SerializedTravelTime};
 
 pub mod base_types;
 pub mod connections;
+pub mod connections_reader;
 pub mod connections_writer;
 pub mod edges;
 pub mod edges_reader;

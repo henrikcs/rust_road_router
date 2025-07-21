@@ -1,13 +1,13 @@
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ConnectionsDocumentRoot {
     #[serde(rename = "connection", default)]
     pub connections: Vec<Connection>,
 }
 
 /// usally: <connection from="A1A2" to="A2B2" fromLane="0" toLane="0">
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Connection {
     #[serde(rename = "@from")]
     pub from: String,
