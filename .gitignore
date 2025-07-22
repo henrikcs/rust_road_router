@@ -7,3 +7,4 @@ target/
 .history
 lib/libsumo
 data/imported
+import/sumo/karlsruhe*
