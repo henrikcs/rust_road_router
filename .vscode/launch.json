@@ -87,6 +87,20 @@
         "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
       },
       "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Connection Counter (dbg)",
+      "program": "${workspaceFolder}/target/debug/sumo-connections-counter",
+      "args": [
+        "--input-dir",
+        "./import/sumo/karlsruhe-dbg",
+        "--input-prefix",
+        "karlsruhe"
+      ],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "Build (debug)"
     }
   ]
 }
