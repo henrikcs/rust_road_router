@@ -17,8 +17,8 @@ declare pwd=$(pwd)
 # with the first element is argument after -n
 # and the second element is argument after -t
 declare -a args=(
-    "data/imported/example-data-0 import/sumo/example-data example-data 900"
-    "data/imported/example-data-1 import/sumo/example-data example-data 100"
+    "data/imported/sumo/example-data-0 import/sumo/example-data example-data 900"
+    "data/imported/sumo/example-data-1 import/sumo/example-data example-data 100"
 )
 
 # iterate over the array and run the command for each tuple
