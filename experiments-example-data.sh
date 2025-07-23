@@ -11,12 +11,14 @@ export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$E"/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 
 
+declare pwd=$(pwd)
+
 # variable containing a list of tuples 
 # with the first element is argument after -n
 # and the second element is argument after -t
 declare -a args=(
-    "~/rust_road_router/data/imported/example-data-0 ~/rust_road_router/import/sumo/example-data example-data 900"
-    "~/rust_road_router/data/imported/example-data-1 ~/rust_road_router/import/sumo/example-data example-data 100"
+    "data/imported/example-data-0 import/sumo/example-data example-data 900"
+    "data/imported/example-data-1 import/sumo/example-data example-data 100"
 )
 
 # iterate over the array and run the command for each tuple
