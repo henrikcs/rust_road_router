@@ -409,7 +409,7 @@ macro_rules! report_silent {
 pub fn enable_reporting(program: &str) -> ReportingGuard {
     REPORTER.with(|reporter| reporter.replace(Some(Reporter::default())));
 
-    report!("git_revision", built_info::GIT_VERSION.unwrap_or(""));
+    // report!("git_revision", built_info::GIT_VERSION.unwrap_or(""));
     report!("build_target", built_info::TARGET);
     report!("build_profile", built_info::PROFILE);
     report!("feature_flags", built_info::FEATURES_STR);
