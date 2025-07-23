@@ -24,8 +24,8 @@ declare -a args=(
 # iterate over the array and run the command for each tuple
 for arg in "${args[@]}"; do
     IFS=' ' read -r -a pair <<< "$arg"
-    out_dir="${pair[0]}"
-    in_dir="${pair[1]}"
+    out_dir="$pwd/${pair[0]}"
+    in_dir="$pwd/${pair[1]}"
     prefix="${pair[2]}"
     aggregation="${pair[3]}"
     echo "Processing output directory: $out_dir with input directory: $in_dir and prefix: $prefix with aggregation: $aggregation"
