@@ -27,10 +27,15 @@ fn main() {
     let nod_file = dir.join(input_prefix.clone() + NOD_XML);
 
     // read all edges with sumoedgesreader
+    println!("Reading edges from file: {}", edg_file.display());
     let edges_document_root = SumoEdgesReader::read(&edg_file).expect("Failed to read edges from file");
     println!("Edges read from file: {}", edges_document_root.edges.len());
+
+    println!("Reading nodes from file: {}", nod_file.display());
     let nodes_document_root = SumoNodesReader::read(&nod_file).expect("Failed to read nodes from file");
     println!("Nodes read from file: {}", nodes_document_root.nodes.len());
+
+    println!("Reading connections from file: {}", con_file.display());
     let connections_document_root = SumoConnectionsReader::read(&con_file).expect("Failed to read connections from file");
     println!("Connections read from file: {}", connections_document_root.connections.len());
 
@@ -38,6 +43,7 @@ fn main() {
     let mut in_edges_by_node: HashMap<&String, Vec<&String>> = HashMap::new();
     let mut edge_by_edge_id: HashMap<&String, &Edge> = HashMap::new();
 
+    println!("Preprocessing edges and connections");
     // preprocess the vectors of outgoing and incoming edges by node
     for edge in edges_document_root.edges.iter() {
         edge_by_edge_id.insert(&edge.id, &edge);
@@ -48,15 +54,60 @@ fn main() {
     println!("Preprocessed edges");
 
     let mut connections_by_from_edge: HashMap<&String, HashSet<&Connection>> = HashMap::new();
+    let mut has_u_turn_edge: HashSet<&String> = HashSet::new();
+    let mut has_allowed_u_turn: HashSet<&String> = HashSet::new();
     // preprocess the connections by node
     for connection in connections_document_root.connections.iter() {
         connections_by_from_edge.entry(&connection.from).or_default().insert(&connection);
     }
 
-    println!("Preprocessed connections");
+    for edge in edges_document_root.edges.iter() {
+        //dbg!(&edge.id, &edge.from, &edge.to);
+        // for each edge "edge"
+        // check if there is an edge going from edge.to to edge.from
+        // if such an edge does not exist, then the edge is a one-way edge and has no possible u-turn
+        // if such an edge exists, then the edge may have a u-turn
+        // find a connection from connections_by_from_edge with a to edge such that to.to = edge.from
+        // if such a connection exists, then the edge has a u-turn (add key to hashset)
+        let mut u_turn_edge_id = None;
 
-    // number of possible connections and actual connections by node
+        for outgoing_edge_id in out_edges_by_node.get(&edge.to).unwrap_or(&vec![]).iter() {
+            if let Some(outgoing_edge) = edge_by_edge_id.get(outgoing_edge_id) {
+                //dbg!(&outgoing_edge.to);
+                if outgoing_edge.to == edge.from {
+                    u_turn_edge_id = Some(&outgoing_edge.id);
+                    break;
+                }
+            }
+        }
+
+        //dbg!(&u_turn_edge_id);
+        // if such an edge does not exist, then the edge is a one-way edge and has no possible u-turn
+        if !u_turn_edge_id.is_none() {
+            has_u_turn_edge.insert(&edge.id);
+            // loop through connections_by_from_edge and check if connection.to is u_turn_edge_id
+            for connection in connections_by_from_edge.get(&edge.id).unwrap_or(&HashSet::new()) {
+                //dbg!(&connection.from, &connection.to);
+                if Some(&connection.to) == u_turn_edge_id {
+                    has_allowed_u_turn.insert(&edge.id);
+                    break;
+                }
+            }
+        }
+    }
+
+    println!("Preprocessed connections");
+    println!(
+        "Found {} edges with possible u-turns, thereof {} allowed u-turns",
+        has_u_turn_edge.len(),
+        has_allowed_u_turn.len()
+    );
+
+    println!("Counting connections and checking completeness");
+    // number of possible connections, actual connections by node
     let mut connection_numbers_by_node: HashMap<&String, (u32, u32)> = HashMap::new();
+    // number of possible u-turns by node and actual u-turns by node
+    let mut u_turns_by_node: HashMap<&String, (u32, u32)> = HashMap::new();
 
     for edge in edges_document_root.edges.iter() {
         // connections.from and connection.to is an edge id
@@ -65,30 +116,45 @@ fn main() {
         let number_of_outgoing_edges: u32 = out_edges_by_node.get(&edge.to).map_or(0, |edges| edges.len() as u32);
         let number_of_connections: u32 = connections_by_from_edge.get(&edge.id).map_or(0, |connections| connections.len() as u32);
 
-        // let number_of_connections = connections_document_root
-        // .connections
-        // .iter()
-        // .filter(|c| edge_by_edge_id.get(&c.from).unwrap().to == edge.to || edge_by_edge_id.get(&c.to).unwrap().from == edge.from)
-        // .count();
-
         let current_connections: &(u32, u32) = connection_numbers_by_node.get(&edge.to).unwrap_or(&(0, 0));
 
         connection_numbers_by_node.insert(
             &edge.to,
             (current_connections.0 + number_of_outgoing_edges, current_connections.1 + number_of_connections),
         );
+
+        let current_u_turns: &(u32, u32) = u_turns_by_node.get(&edge.to).unwrap_or(&(0, 0));
+
+        if has_u_turn_edge.contains(&edge.id) {
+            u_turns_by_node.insert(
+                &edge.to,
+                (
+                    current_u_turns.0 + 1,
+                    current_u_turns.1 + if has_allowed_u_turn.contains(&edge.id) { 1 } else { 0 },
+                ),
+            );
+        }
     }
 
     let mut missing_connections_by_size: HashMap<i32, u32> = HashMap::new();
+    let mut missing_u_turns_by_size: HashMap<i32, u32> = HashMap::new();
 
     for node in nodes_document_root.nodes.iter() {
         let (expected, actual) = connection_numbers_by_node.get(&node.id).unwrap_or(&(0, 0));
 
-        // println!("Node: {}, Expected: {}, Actual: {}", &node.id, expected, actual);
+        // println!("Node: {}, Expected: {}, Actual: {}, U-Turns: {}", &node.id, expected, actual, u_turns);
 
         missing_connections_by_size.insert(
             *expected as i32 - *actual as i32,
             missing_connections_by_size.get(&(*expected as i32 - *actual as i32)).unwrap_or(&0) + 1,
+        );
+
+        let (expected_u_turns, actual_u_turns) = u_turns_by_node.get(&node.id).unwrap_or(&(0, 0));
+        // println!("Node: {}, Expected U-Turns: {}, Actual U-Turns: {}", &node.id, expected_u_turns, actual_u_turns);
+
+        missing_u_turns_by_size.insert(
+            *expected_u_turns as i32 - *actual_u_turns as i32,
+            missing_u_turns_by_size.get(&(*expected_u_turns as i32 - *actual_u_turns as i32)).unwrap_or(&0) + 1,
         );
     }
 
@@ -99,6 +165,14 @@ fn main() {
     for key in keys {
         let count = missing_connections_by_size.get(key).unwrap();
         println!("{} Nodes having {} missing connections", count, key);
+    }
+
+    let mut u_turn_keys: Vec<&i32> = missing_u_turns_by_size.keys().collect();
+    u_turn_keys.sort();
+
+    for key in u_turn_keys {
+        let count = missing_u_turns_by_size.get(key).unwrap();
+        println!("{} Nodes having {} missing U-Turns", count, key);
     }
 }
 
