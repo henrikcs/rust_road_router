@@ -8,3 +8,7 @@ target/
 lib/libsumo
 data/imported
 import/sumo/karlsruhe*
+
+/venvs
+/shared
+/logs
