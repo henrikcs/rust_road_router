@@ -13,7 +13,6 @@ export LIBRARY_PATH=$LX/lib:$RL/lib:$NC/lib:$LIBRARY_PATH
 export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack_env"/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 
-
 declare -a args=(
     "data/imported/sumo/example-data-0 import/sumo/example-data example-data 900"
     "data/imported/sumo/example-data-1 import/sumo/example-data example-data 100"
