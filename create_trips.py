@@ -42,6 +42,7 @@ def createTrips(input_file, output_dir, output_prefix, trips):
         command.extend(["-b", str(start), "-e", str(end),
                         "-p", str((end - start) // num)])
 
+        print(f"Running command: {' '.join(command)}")
         # Execute the command
         subprocess.run(command, check=True)
 
@@ -64,6 +65,7 @@ def createTrips(input_file, output_dir, output_prefix, trips):
     # <routes>
     # i want to have a single file which contains all the trips enclodes with <routes>
 
+    print("Merging trip files into a single file...")
     merged_output_file = os.path.join(output_dir, f"{output_prefix}.trips.xml")
     with open(merged_output_file, 'w') as merged_file:
         merged_file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -84,6 +86,7 @@ def createTrips(input_file, output_dir, output_prefix, trips):
 
         merged_file.write('</routes>\n')
 
+    print("Remove intermediate trip files...")
     # remove the intermediate files
     for start, end, num in trips:
         output_file = os.path.join(
@@ -91,6 +94,8 @@ def createTrips(input_file, output_dir, output_prefix, trips):
         if os.path.exists(output_file):
             os.remove(output_file)
             print(f"Removed intermediate file: {output_file}")
+
+    print(f"All trips created and merged into: {merged_output_file}")
 
 
 if __name__ == "__main__":
