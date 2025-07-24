@@ -86,6 +86,7 @@ impl<'a> Server<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn distance(&mut self, from_node: NodeId, to_node: NodeId, departure_time: Timestamp) -> Option<FlWeight> {
         report!("algo", "Floating TDCCH Query");
+        dbg!("Starting query", from_node, to_node, departure_time);
 
         #[cfg(feature = "tdcch-query-detailed-timing")]
         let timer = Timer::new();
@@ -119,7 +120,18 @@ impl<'a> Server<'a> {
         let mut num_settled_nodes = 0;
 
         // elimination tree corridor query
+        let mut elimination_tree_iterations = 0;
         while self.forward.peek_next().is_some() || self.backward.peek_next().is_some() {
+            elimination_tree_iterations += 1;
+            if elimination_tree_iterations % 10000 == 0 {
+                dbg!(
+                    "Elimination tree loop iteration",
+                    elimination_tree_iterations,
+                    self.forward.peek_next(),
+                    self.backward.peek_next(),
+                    tentative_distance
+                );
+            }
             // advance the direction which currently is at the lower rank
             if self.forward.peek_next().unwrap_or(n as NodeId) <= self.backward.peek_next().unwrap_or(n as NodeId) {
                 // while we're here, clean up the forward_tree_mask
@@ -148,8 +160,20 @@ impl<'a> Server<'a> {
                 if self.forward.node_data(self.forward.peek_next().unwrap()).lower_bound > tentative_distance.1
                     || (cfg!(feature = "tdcch-stall-on-demand") && stall())
                 {
+                    dbg!(
+                        "Forward skipping node",
+                        self.forward.peek_next().unwrap(),
+                        self.forward.node_data(self.forward.peek_next().unwrap()).lower_bound,
+                        tentative_distance.1
+                    );
                     self.forward.skip_next();
                 } else if let QueryProgress::Progress(node) = self.forward.next_step() {
+                    dbg!(
+                        "Forward processing node",
+                        node,
+                        self.forward.node_data(node).lower_bound,
+                        self.forward.node_data(node).upper_bound
+                    );
                     if cfg!(feature = "detailed-stats") {
                         nodes_in_elimination_tree_search_space += 1;
                     }
@@ -186,8 +210,20 @@ impl<'a> Server<'a> {
 
                 // skip the node if it cannot possibly be in the shortest path corridor
                 if self.backward.node_data(self.backward.peek_next().unwrap()).lower_bound > tentative_distance.1 {
+                    dbg!(
+                        "Backward skipping node",
+                        self.backward.peek_next().unwrap(),
+                        self.backward.node_data(self.backward.peek_next().unwrap()).lower_bound,
+                        tentative_distance.1
+                    );
                     self.backward.skip_next();
                 } else if let QueryProgress::Progress(node) = self.backward.next_step() {
+                    dbg!(
+                        "Backward processing node",
+                        node,
+                        self.backward.node_data(node).lower_bound,
+                        self.backward.node_data(node).upper_bound
+                    );
                     if cfg!(feature = "detailed-stats") {
                         nodes_in_elimination_tree_search_space += 1;
                     }
@@ -326,7 +362,18 @@ impl<'a> Server<'a> {
         });
 
         // while there is a node in the queue
+        let mut dijkstra_iterations = 0;
         while let Some(State { node, .. }) = self.closest_node_priority_queue.pop() {
+            dijkstra_iterations += 1;
+            if dijkstra_iterations % 10000 == 0 {
+                dbg!(
+                    "Dijkstra loop iteration",
+                    dijkstra_iterations,
+                    node,
+                    self.distances[node as usize],
+                    self.closest_node_priority_queue.len()
+                );
+            }
             if cfg!(feature = "detailed-stats") {
                 num_settled_nodes += 1;
             }
@@ -334,6 +381,7 @@ impl<'a> Server<'a> {
             let distance = self.distances[node as usize];
 
             if node == self.to {
+                dbg!("Reached target node", node, distance);
                 break;
             }
 
@@ -515,8 +563,11 @@ impl<'a> Server<'a> {
         }
 
         if self.distances[self.to as usize] < Timestamp::NEVER {
-            Some(self.distances[self.to as usize] - departure_time)
+            let result = Some(self.distances[self.to as usize] - departure_time);
+            dbg!("Query completed successfully", result);
+            result
         } else {
+            dbg!("Query completed - no path found");
             None
         }
     }
