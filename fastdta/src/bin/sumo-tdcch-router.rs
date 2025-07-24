@@ -33,9 +33,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
     let cch = get_cch(input_dir, &graph);
 
+    println!("Customizing CCH for iteration {}", iteration);
     let customized_graph = customize(&cch, &graph);
+    println!("Customization completed\n");
 
+    println!("Running TDCCH router");
     let (shortest_paths, travel_times, departures) = get_paths_from_queries(&cch, &customized_graph, &input_dir);
+    println!("Finished running TDCCH router\n");
+
+    println!("Assembling alternative paths for iteration {}", iteration);
 
     assemble_alternative_paths(
         &input_dir,
@@ -50,6 +56,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.seed.unwrap_or(rand::random::<i32>()),
         &edge_ids,
     );
+
+    println!("Alternative Paths assembled for iteration {}", iteration);
 
     Ok(())
 }
