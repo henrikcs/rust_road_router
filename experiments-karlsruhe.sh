@@ -1,15 +1,17 @@
 #!/usr/bin/env sh
 
 declare spack_env=$1
-#if a flag "--debug" is provided, then set release_type to "debug"
+# if a flag "--debug" is provided, then set release_type to "debug"
+# otherwise if no flag is provided then set to "release"
+
+declare release_type="release"
 if [ "$2" = "--debug" ]; then
     declare release_type="debug"
-# otherwise if no flag is provided then set to "release"
-else
-    declare release_type="release"
-fi
+
 
 declare pwd=$(pwd)
+
+echo "Path: "$pwd"/lib/InertialFlowCutter/build:"$pwd"/target/"$release_type":~/rust-nightly/bin:~/.local/bin:$PATH"
 
 P=$(basename $(find ~/.user_spack/environments/"$spack_env"/.spack-env/._view -mindepth 1 -maxdepth 1 -type d))
 export PATH="$pwd"/lib/InertialFlowCutter/build:"$pwd"/target/"$release_type":~/rust-nightly/bin:~/.local/bin:$PATH
