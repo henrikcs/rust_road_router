@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 declare spack_env=$1
 # if a flag "--debug" is provided, then set release_type to "debug"
