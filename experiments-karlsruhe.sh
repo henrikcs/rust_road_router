@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 
 declare spack_env=$1
-# either "release" or "debug"
-# if $2 is not provided, it defaults to "debug"
-if [ -z "$2" ]; then
+#if a flag "--debug" is provided, then set release_type to "debug"
+if [ "$2" = "--debug" ]; then
+    declare release_type="debug"
+# otherwise if no flag is provided then set to "release"
+else then
     declare release_type="release"
-else
-    declare release_type=$2
 fi
 
 declare pwd=$(pwd)
