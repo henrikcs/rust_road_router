@@ -39,8 +39,11 @@ def createTrips(input_file, output_dir, output_prefix, trips):
                    "--trip-attributes",
                    'departLane="best" departSpeed="max" departPos="base" arrivalPos="0.0"']
 
+        # period should be a float value
+        period = (end - start) / num
+
         command.extend(["-b", str(start), "-e", str(end),
-                        "-p", str((end - start) // num)])
+                        "-p", str(period)])
 
         print(f"Running command: {' '.join(command)}")
         # Execute the command
