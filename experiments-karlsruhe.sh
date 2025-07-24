@@ -5,7 +5,7 @@ declare spack_env=$1
 if [ "$2" = "--debug" ]; then
     declare release_type="debug"
 # otherwise if no flag is provided then set to "release"
-else then
+else
     declare release_type="release"
 fi
 
