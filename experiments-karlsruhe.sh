@@ -7,7 +7,7 @@ declare spack_env=$1
 declare release_type="release"
 if [ "$2" = "--debug" ]; then
     declare release_type="debug"
-
+fi
 
 declare pwd=$(pwd)
 
