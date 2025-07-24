@@ -1,3 +1,4 @@
+#!/usr/bin/env sh
 declare spack_env=$1
 
 declare pwd=$(pwd)
