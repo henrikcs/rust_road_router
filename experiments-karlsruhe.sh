@@ -38,4 +38,13 @@ for arg in "${args[@]}"; do
     --routing-algorithm CCH --mesosim --aggregation "$aggregation" --begin 0 --end 36000 \
     cch-preprocessor--input-prefix "$prefix" \
     cch-preprocessor--input-dir "$in_dir"
+
+    mkdir -p "$out_dir-dijkstra"
+    cd "$out_dir-dijkstra"
+
+    # Run with Dijkstra
+    python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
+    -n "$net_file" \
+    -t "$trips_file" \
+    --mesosim --aggregation "$aggregation" --begin 0 --end 36000
 done
