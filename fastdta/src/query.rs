@@ -19,6 +19,8 @@ pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, inp
     assert!(queries_from.len() == queries_to.len());
     assert!(queries_from.len() == queries_departure.len());
 
+    dbg!("Total queries to process:", queries_from.len());
+
     let mut paths: Vec<Vec<EdgeId>> = Vec::with_capacity(queries_from.len());
     let mut distances = Vec::with_capacity(queries_from.len());
 
@@ -28,14 +30,30 @@ pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, inp
             "Find Earliest Arrival #{i} From: {}, To: {}, Departure: {dep:?}",
             queries_from[i], queries_to[i],
         );
+
+        dbg!("About to call td_query with:", queries_from[i], queries_to[i], dep);
+
         let result = query_server.td_query(TDQuery {
             from: queries_from[i] as u32,
             to: queries_to[i] as u32,
             departure: Timestamp::from_millis(queries_departure[i]),
         });
+
+        dbg!("Query result received");
+
         if let Some(mut result) = result.found() {
+            dbg!("Query found a path!");
             let ea = result.distance();
-            let path = result.data().reconstruct_edge_path().iter().map(|edge| edge.0).collect();
+            dbg!("Distance:", ea);
+
+            let path_data = result.data();
+            dbg!("Got path data, attempting to reconstruct edge path");
+
+            let edge_path = path_data.reconstruct_edge_path();
+            dbg!("Edge path length:", edge_path.len());
+            dbg!("First few edges:", edge_path.iter().take(5).collect::<Vec<_>>());
+
+            let path = edge_path.iter().map(|edge| edge.0).collect();
             paths.push(path);
             distances.push(ea);
 
@@ -44,10 +62,12 @@ pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, inp
                 queries_from[i], queries_to[i], ea
             );
         } else {
+            dbg!("Query found no path!");
             println!("No path found from {} to {} at {dep:?}", queries_from[i], queries_to[i]);
         }
     }
 
+    dbg!("Final results - paths:", paths.len(), "distances:", distances.len());
     // distances is in seconds
     (paths, distances, queries_departure)
 }

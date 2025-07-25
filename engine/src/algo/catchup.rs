@@ -617,20 +617,29 @@ impl<'a> Server<'a> {
     }
 
     fn edge_path(&self) -> Vec<EdgeIdT> {
+        dbg!("Starting edge_path reconstruction");
         let node_path = self.path();
+        dbg!("Node path length:", node_path.len());
+        dbg!("Node path (first 5):", node_path.iter().take(5).collect::<Vec<_>>());
+
         let mut edge_path = Vec::with_capacity(node_path.len() - 1);
         for i in 0..node_path.len() - 1 {
             let from = node_path[i].0;
             let to = node_path[i + 1].0;
+            dbg!("Looking for edge from", from, "to", to);
+
             let edge = self
                 .customized_graph
                 .original_graph
                 .edge_indices(from, to)
                 .next()
                 .unwrap_or_else(|| panic!("No edge from {} to {} in original graph, path: {:?}", from, to, node_path));
+
+            dbg!("Found edge:", edge);
             edge_path.push(edge);
         }
 
+        dbg!("Edge path reconstruction complete, length:", edge_path.len());
         edge_path
     }
 }
