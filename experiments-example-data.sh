@@ -2,10 +2,17 @@
 
 declare spack_env=$1
 
+
+
+declare release_type="release"
+if [ "$2" = "--debug" ]; then
+    declare release_type="debug"
+fi
+
 declare pwd=$(pwd)
 
 P=$(basename $(find ~/.user_spack/environments/"$spack_env"/.spack-env/._view -mindepth 1 -maxdepth 1 -type d))
-export PATH="$pwd"/lib/InertialFlowCutter/build:"$pwd"/target/debug:~/rust-nightly/bin:~/.local/bin:$PATH
+export PATH="$pwd"/lib/InertialFlowCutter/build:"$pwd"/target/"$release_type":~/rust-nightly/bin:~/.local/bin:$PATH
 export RL=$(spack location -i readline%gcc@14)
 export NC=$(spack location -i ncurses%gcc@14)
 export LX=$(spack location -i libx11%gcc@14)
