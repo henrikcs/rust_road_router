@@ -84,21 +84,45 @@ impl ShortcutSource {
 
     /// Recursively unpack this source and append the path to `result`.
     /// The timestamp is just needed for the recursion.
+    /// Recursively unpack this source and append the path to `result`.
+    /// The timestamp is just needed for the recursion.
     pub(super) fn unpack_at(&self, t: Timestamp, shortcut_graph: &impl ShortcutGraphTrt, result: &mut Vec<(EdgeId, Timestamp)>) {
+        dbg!("ShortcutSource::unpack_at called with:", self, "t:", t);
+        dbg!("Result length before unpack_at:", result.len());
+
         match *self {
             ShortcutSource::Shortcut(down, up) => {
+                dbg!("Unpacking shortcut with down:", down, "up:", up);
+                dbg!("About to unpack incoming shortcut with id:", down);
+
                 shortcut_graph.unpack_at(ShortcutId::Incoming(down), t, result);
+
+                dbg!("Finished unpacking incoming shortcut, result length:", result.len());
+
                 let t_mid = result.last().unwrap().1;
+                dbg!("t_mid from last result:", t_mid);
+                dbg!("About to unpack outgoing shortcut with id:", up, "at time:", t_mid);
+
                 shortcut_graph.unpack_at(ShortcutId::Outgoing(up), t_mid, result);
+
+                dbg!("Finished unpacking outgoing shortcut, final result length:", result.len());
             }
             ShortcutSource::OriginalEdge(edge) => {
-                let arr = t + shortcut_graph.original_graph().travel_time_function(edge).evaluate(t);
-                result.push((edge, arr))
+                dbg!("Unpacking original edge:", edge);
+                let travel_time = shortcut_graph.original_graph().travel_time_function(edge).evaluate(t);
+                dbg!("Travel time for edge:", travel_time);
+                let arr = t + travel_time;
+                dbg!("Arrival time:", arr);
+                result.push((edge, arr));
+                dbg!("Added original edge to result, new length:", result.len());
             }
             ShortcutSource::None => {
+                dbg!("ERROR: Trying to unpack None source!");
                 panic!("can't unpack None source");
             }
         }
+
+        dbg!("ShortcutSource::unpack_at completed, final result length:", result.len());
     }
 
     /// (Recursively) calculate the exact PLF for this source in a given time range.
