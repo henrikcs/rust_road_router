@@ -46,11 +46,9 @@ pub fn get_paths_from_queries(cch: &CCH, customized_graph: &CustomizedGraph, inp
             let ea = result.distance();
             dbg!("Distance:", ea);
 
-            let path_data = result.data();
-            dbg!("Got path data, attempting to reconstruct edge path");
-
-            let edge_path = path_data.reconstruct_edge_path();
+            let edge_path = result.edge_path();
             dbg!("Edge path length:", edge_path.len());
+
             dbg!("First few edges:", edge_path.iter().take(5).collect::<Vec<_>>());
 
             let path = edge_path.iter().map(|edge| edge.0).collect();
