@@ -522,103 +522,64 @@ impl<'a> Server<'a> {
     }
 
     fn path(&self) -> Vec<(NodeId, Timestamp)> {
-        dbg!("Starting path reconstruction");
-        dbg!("self.from:", self.from, "self.to:", self.to);
-        dbg!("distances[to]:", self.distances[self.to as usize]);
-
         let mut path = Vec::new();
         path.push((self.to, self.distances[self.to as usize]));
-        dbg!("Initial path:", &path);
 
         while let Some((rank, t_prev)) = path.pop() {
-            dbg!("Processing path node:", rank, t_prev);
             debug_assert_eq!(t_prev, self.distances[rank as usize]);
-
             if rank == self.from {
-                dbg!("Reached source node, breaking");
                 path.push((rank, t_prev));
                 break;
             }
 
-            dbg!("Getting parent info for rank:", rank);
             let (parent, shortcut_id) = self.parents[rank as usize];
-            dbg!("Parent:", parent, "shortcut_id:", shortcut_id);
-
-            if parent == std::u32::MAX || shortcut_id == std::u32::MAX {
-                dbg!("Invalid parent or shortcut_id - path reconstruction failed");
-            }
-
             let t_parent = self.distances[parent as usize];
-            dbg!("Parent time:", t_parent);
 
             let mut shortcut_path = Vec::new();
-            dbg!("About to unpack shortcut, parent > rank:", parent > rank);
-
             if parent > rank {
-                dbg!("Unpacking incoming shortcut");
                 self.customized_graph
                     .incoming
                     .unpack_at(shortcut_id, t_parent, &self.customized_graph, &mut shortcut_path);
             } else {
-                dbg!("Unpacking outgoing shortcut");
                 self.customized_graph
                     .outgoing
                     .unpack_at(shortcut_id, t_parent, &self.customized_graph, &mut shortcut_path);
             };
 
-            dbg!("Shortcut path length:", shortcut_path.len());
-
             for (edge, arrival) in shortcut_path.into_iter().rev() {
-                dbg!("Adding edge to path:", edge, arrival);
                 path.push((
                     self.cch_graph.node_order().rank(self.customized_graph.original_graph.head()[edge as usize]),
                     arrival,
                 ));
             }
 
-            dbg!("Adding parent to path:", parent, t_parent);
             path.push((parent, t_parent));
-            dbg!("Current path length:", path.len());
         }
 
-        dbg!("Path reconstruction loop completed, path length:", path.len());
         path.reverse();
-        dbg!("Path after reverse:", &path);
 
         for (rank, _) in &mut path {
-            let original_rank = *rank;
             *rank = self.cch_graph.node_order().node(*rank);
-            dbg!("Converting rank", original_rank, "to node", *rank);
         }
 
-        dbg!("Final path:", &path);
         path
     }
 
     fn edge_path(&self) -> Vec<EdgeIdT> {
-        dbg!("Starting edge_path reconstruction");
         let node_path = self.path();
-        dbg!("Node path length:", node_path.len());
-        dbg!("Node path (first 5):", node_path.iter().take(5).collect::<Vec<_>>());
-
         let mut edge_path = Vec::with_capacity(node_path.len() - 1);
         for i in 0..node_path.len() - 1 {
             let from = node_path[i].0;
             let to = node_path[i + 1].0;
-            dbg!("Looking for edge from", from, "to", to);
-
             let edge = self
                 .customized_graph
                 .original_graph
                 .edge_indices(from, to)
                 .next()
                 .unwrap_or_else(|| panic!("No edge from {} to {} in original graph, path: {:?}", from, to, node_path));
-
-            dbg!("Found edge:", edge);
             edge_path.push(edge);
         }
 
-        dbg!("Edge path reconstruction complete, length:", edge_path.len());
         edge_path
     }
 }
