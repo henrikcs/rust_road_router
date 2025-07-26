@@ -628,9 +628,7 @@ impl CustomizedSingleDirGraph {
     }
 
     fn edge_source_at(&self, edge_id: EdgeId, t: Timestamp) -> Option<&ShortcutSourceData> {
-        let sources = self.edge_sources(edge_id);
-        let result = sources.edge_source_at(t);
-        result
+        self.edge_sources(edge_id).edge_source_at(t)
     }
 
     /// Borrow slice of all the source of the edge with given id.
@@ -693,10 +691,12 @@ impl<'a> ShortcutGraphTrt for CustomizedGraph<'a> {
             .get_switchpoints(start, end, self)
     }
     fn unpack_at(&self, shortcut_id: ShortcutId, t: Timestamp, result: &mut Vec<(EdgeId, Timestamp)>) {
-        let source = shortcut_id
-            .get_with(&self.incoming, &self.outgoing, |g_dir, id| g_dir.edge_source_at(id, t))
-            .unwrap();
-        ShortcutSource::from(*source).unpack_at(t, self, result);
+        ShortcutSource::from(
+            *shortcut_id
+                .get_with(&self.incoming, &self.outgoing, |g_dir, id| g_dir.edge_source_at(id, t))
+                .unwrap(),
+        )
+        .unpack_at(t, self, result)
     }
     fn evaluate(&self, shortcut_id: ShortcutId, t: Timestamp) -> FlWeight {
         ShortcutSource::from(

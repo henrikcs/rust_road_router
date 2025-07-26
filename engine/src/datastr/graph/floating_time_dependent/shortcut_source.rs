@@ -85,30 +85,15 @@ impl ShortcutSource {
     /// Recursively unpack this source and append the path to `result`.
     /// The timestamp is just needed for the recursion.
     pub(super) fn unpack_at(&self, t: Timestamp, shortcut_graph: &impl ShortcutGraphTrt, result: &mut Vec<(EdgeId, Timestamp)>) {
-        // Add recursion depth check to prevent infinite loops
-        if result.len() > 10000 {
-            dbg!(&result);
-            panic!(
-                "Infinite recursion detected in unpack_at! Result length: {}, current source: {:?}",
-                result.len(),
-                self
-            );
-        }
-
         match *self {
             ShortcutSource::Shortcut(down, up) => {
-                println!("SHORTCUT: down={}, up={}, result_len={}", down, up, result.len());
-
                 shortcut_graph.unpack_at(ShortcutId::Incoming(down), t, result);
-
                 let t_mid = result.last().unwrap().1;
                 shortcut_graph.unpack_at(ShortcutId::Outgoing(up), t_mid, result);
             }
             ShortcutSource::OriginalEdge(edge) => {
-                println!("ORIGINAL_EDGE: edge={}, result_len={}", edge, result.len());
-                let travel_time = shortcut_graph.original_graph().travel_time_function(edge).evaluate(t);
-                let arr = t + travel_time;
-                result.push((edge, arr));
+                let arr = t + shortcut_graph.original_graph().travel_time_function(edge).evaluate(t);
+                result.push((edge, arr))
             }
             ShortcutSource::None => {
                 panic!("can't unpack None source");
