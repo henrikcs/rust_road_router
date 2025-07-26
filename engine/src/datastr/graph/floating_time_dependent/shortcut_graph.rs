@@ -622,25 +622,14 @@ impl CustomizedSingleDirGraph {
 
     /// Recursively unpack the edge with the given id at the given timestamp and add the path to `result`
     pub fn unpack_at(&self, edge_id: EdgeId, t: Timestamp, customized_graph: &CustomizedGraph, result: &mut Vec<(EdgeId, Timestamp)>) {
-        dbg!("CustomizedSingleDirGraph::unpack_at called with edge_id:", edge_id, "t:", t);
-        dbg!("Result length before unpacking:", result.len());
-
         self.edge_source_at(edge_id, t)
-            .map(|&source| {
-                dbg!("Found edge source:", source);
-                ShortcutSource::from(source).unpack_at(t, customized_graph, result)
-            })
+            .map(|&source| ShortcutSource::from(source).unpack_at(t, customized_graph, result))
             .expect("can't unpack empty shortcut");
-
-        dbg!("Result length after unpacking:", result.len());
     }
 
     fn edge_source_at(&self, edge_id: EdgeId, t: Timestamp) -> Option<&ShortcutSourceData> {
-        dbg!("edge_source_at called with edge_id:", edge_id, "t:", t);
         let sources = self.edge_sources(edge_id);
-        dbg!("Edge sources:", sources);
         let result = sources.edge_source_at(t);
-        dbg!("Selected source:", result);
         result
     }
 
@@ -704,16 +693,10 @@ impl<'a> ShortcutGraphTrt for CustomizedGraph<'a> {
             .get_switchpoints(start, end, self)
     }
     fn unpack_at(&self, shortcut_id: ShortcutId, t: Timestamp, result: &mut Vec<(EdgeId, Timestamp)>) {
-        dbg!("CustomizedGraph::unpack_at called with shortcut_id:", shortcut_id, "t:", t);
-        dbg!("Result length before:", result.len());
-
         let source = shortcut_id
             .get_with(&self.incoming, &self.outgoing, |g_dir, id| g_dir.edge_source_at(id, t))
             .unwrap();
-        dbg!("Got source from shortcut:", source);
-
         ShortcutSource::from(*source).unpack_at(t, self, result);
-        dbg!("Result length after:", result.len());
     }
     fn evaluate(&self, shortcut_id: ShortcutId, t: Timestamp) -> FlWeight {
         ShortcutSource::from(
