@@ -35,5 +35,5 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn log(directory: &str, operation: &str, duration_in_nanos: u128) {
-    println!("sumo-tdcch-preprocessor; -1; {}; {}; {}", directory, operation, duration_in_nanos);
+    println!("sumo-tdcch-preprocessor; {}; -1; {}; {}", directory, operation, duration_in_nanos);
 }
