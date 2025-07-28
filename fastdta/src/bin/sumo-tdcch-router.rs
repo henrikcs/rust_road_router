@@ -29,6 +29,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
+    println!("Starting sumo-tdcch-router with input directory: {}", input_dir.display());
+
     let ((edge_ids, graph, cch), duration) = measure(|| {
         let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
         let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
