@@ -102,15 +102,12 @@ impl AlternativePaths {
     pub fn apply_choice_algorithm(&mut self, choice_algorithm: &ChoiceAlgorithm, previous_costs: &Vec<f64>) {
         match choice_algorithm {
             ChoiceAlgorithm::Gawron { a, beta } => {
-                dbg!("Setting probabilities using Gawron with a: {}, beta: {}", a, beta);
-
                 // update self.cost[self.choice] using beta smoothing
                 self.costs[self.choice] = self.costs[self.choice] * beta + previous_costs[self.choice] * (1.0 - beta);
 
                 self.probabilities = gawron(&self, *a, *beta);
             }
             ChoiceAlgorithm::Logit { beta, gamma, theta } => {
-                dbg!("Setting probabilities using logit with theta: {}", theta);
                 self.probabilities = logit(&self, *beta, *gamma, *theta);
             }
         }
