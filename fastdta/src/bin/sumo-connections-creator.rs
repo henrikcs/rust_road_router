@@ -12,12 +12,6 @@ use conversion::sumo::{
 fn main() {
     let args = Args::parse();
 
-    // Print the input directory
-    println!("Input directory: {}", args.input_dir);
-
-    // Here you would typically call your preprocessing function with the input directory
-    // preprocess(&args.input_dir);
-
     let dir = Path::new(&args.input_dir);
     let input_prefix = args.input_prefix;
 
@@ -25,12 +19,16 @@ fn main() {
     let edg_file = dir.join(input_prefix.clone() + EDG_XML);
     let nod_file = dir.join(input_prefix.clone() + NOD_XML);
 
+    println!("Read edges and nodes...");
     // read all edges with sumoedgesreader
     let edges_document_root = SumoEdgesReader::read(&edg_file).expect("Failed to read edges from file");
     let nodes_document_root = SumoNodesReader::read(&nod_file).expect("Failed to read nodes from file");
 
+    println!("Read {} edges and {} nodes", edges_document_root.edges.len(), nodes_document_root.nodes.len());
+
     let mut connection_document_root = ConnectionsDocumentRoot { connections: vec![] };
 
+    println!("Create connections...");
     // for all nodes, create a connection from all incoming edges to all its outgoing edges
     for node in nodes_document_root.nodes {
         for out_edge_of_node in edges_document_root.edges.iter().filter(|e| e.from == node.id) {
@@ -50,6 +48,9 @@ fn main() {
             }
         }
     }
+
+    println!("Created {} connections", connection_document_root.connections.len());
+    println!("Writing connections to {}", con_file.display());
 
     // Write the connections to the con.xml file
     SumoConnectionsWriter::write(&con_file, &connection_document_root).unwrap();
