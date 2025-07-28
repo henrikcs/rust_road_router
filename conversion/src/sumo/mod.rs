@@ -33,6 +33,8 @@ pub const ALT_ROUTES: &str = ".rou.alt.xml";
 /// in seconds
 pub type SumoTravelTime = f64;
 /// in seconds
+pub const MIN_TRAVEL_TIME: SumoTravelTime = 0.001; // 1 millisecond
+/// in seconds
 pub type SumoTimestamp = f64;
 /// in meters
 pub type SumoPosition = f64;

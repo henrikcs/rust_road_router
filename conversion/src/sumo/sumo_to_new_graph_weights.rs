@@ -9,7 +9,7 @@ use rust_road_router::{
 };
 
 use crate::{
-    sumo::{meandata::MeandataDocumentRoot, meandata_reader::SumoMeandataReader, XmlReader},
+    sumo::{meandata::MeandataDocumentRoot, meandata_reader::SumoMeandataReader, SumoTravelTime, XmlReader, MIN_TRAVEL_TIME},
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
 };
 
@@ -75,7 +75,8 @@ pub fn extract_interpolation_points_from_meandata(
             if let Some(edge) = interval.edges.iter().find(|e| e.id == *edge_id) {
                 // found the interval, use its travel time
                 if let Some(tt) = edge.traveltime {
-                    ipp_travel_time.push((tt * 1000.0) as SerializedTravelTime);
+                    // should be at least 1 millisecond
+                    ipp_travel_time.push((SumoTravelTime::max(tt, MIN_TRAVEL_TIME) * 1000.0) as SerializedTravelTime);
                     continue; // continue to the next interval
                 }
             }

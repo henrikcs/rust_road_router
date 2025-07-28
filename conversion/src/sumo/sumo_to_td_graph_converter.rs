@@ -10,7 +10,7 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        RoutingKitTDGraph, SumoTravelTime, XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
+        RoutingKitTDGraph, SumoTravelTime, XmlReader, EDG_XML, MIN_TRAVEL_TIME, NOD_XML, TRIPS_XML,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC,
     FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM,
@@ -27,15 +27,21 @@ pub struct FlattenedSumoEdge<'a> {
     length: SumoTravelTime,
 }
 
+impl<'a> FlattenedSumoEdge<'a> {
+    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: &'a String, weight: SumoTravelTime, length: SumoTravelTime) -> Self {
+        FlattenedSumoEdge {
+            from_node_index,
+            to_node_index,
+            edge_id,
+            weight: SumoTravelTime::max(weight, MIN_TRAVEL_TIME),
+            length,
+        }
+    }
+}
+
 impl Clone for FlattenedSumoEdge<'_> {
     fn clone(&self) -> Self {
-        FlattenedSumoEdge {
-            from_node_index: self.from_node_index,
-            to_node_index: self.to_node_index,
-            edge_id: self.edge_id,
-            weight: self.weight,
-            length: self.length,
-        }
+        FlattenedSumoEdge::new(self.from_node_index, self.to_node_index, self.edge_id, self.weight, self.length)
     }
 }
 
@@ -301,13 +307,7 @@ fn initialize_edges_for_td_graph<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>,
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
 
-        edges_sorted_by_node_index.push(FlattenedSumoEdge {
-            from_node_index,
-            to_node_index,
-            edge_id: &edge.id,
-            weight,
-            length,
-        });
+        edges_sorted_by_node_index.push(FlattenedSumoEdge::new(from_node_index, to_node_index, &edge.id, weight, length));
     }
 
     edges_sorted_by_node_index.sort_by_key(|e| (e.from_node_index, e.to_node_index));
