@@ -10,6 +10,7 @@ use fastdta::customize::customize;
 use fastdta::preprocess::get_cch;
 use fastdta::query::get_paths_from_queries;
 use rust_road_router::io::read_strings_from_file;
+use rust_road_router::report::measure;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let _reporter = enable_reporting("tdcch_customization");
     // report!("num_threads", rayon::current_num_threads());
@@ -33,31 +34,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
     let cch = get_cch(input_dir, &graph);
 
-    println!("Customizing CCH for iteration {}", iteration);
-    let customized_graph = customize(&cch, &graph);
-    println!("Customization completed\n");
+    log(&input_dir.display().to_string(), iteration, "Customizing CCH");
 
-    println!("Running TDCCH router");
-    let (shortest_paths, travel_times, departures) = get_paths_from_queries(&cch, &customized_graph, &input_dir);
-    println!("Finished running TDCCH router\n");
-
-    println!("Assembling alternative paths for iteration {}", iteration);
-
-    assemble_alternative_paths(
-        &input_dir,
-        &input_prefix,
+    let (customized_graph, duration) = measure(|| customize(&cch, &graph));
+    log(
+        &input_dir.display().to_string(),
         iteration,
-        &shortest_paths,
-        &travel_times,
-        &departures,
-        &graph,
-        choice_algorithm,
-        args.max_alternatives,
-        args.seed.unwrap_or(rand::random::<i32>()),
-        &edge_ids,
+        &format!("Customization completed in {} ns", duration.as_nanos()),
     );
 
-    println!("Alternative Paths assembled for iteration {}", iteration);
+    log(&input_dir.display().to_string(), iteration, "Running TDCCH router");
+    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_from_queries(&cch, &customized_graph, &input_dir));
+    log(
+        &input_dir.display().to_string(),
+        iteration,
+        &format!("Finished running TDCCH router in {} ns", duration.as_nanos()),
+    );
+
+    log(&input_dir.display().to_string(), iteration, "Assembling alternative paths");
+
+    let (_, duration) = measure(|| {
+        assemble_alternative_paths(
+            &input_dir,
+            &input_prefix,
+            iteration,
+            &shortest_paths,
+            &travel_times,
+            &departures,
+            &graph,
+            choice_algorithm,
+            args.max_alternatives,
+            args.seed.unwrap_or(rand::random::<i32>()),
+            &edge_ids,
+        )
+    });
+
+    log(
+        &input_dir.display().to_string(),
+        iteration,
+        &format!("Assemble Alternative Paths duration: {}", duration.as_nanos()),
+    );
 
     Ok(())
+}
+
+fn log(directory: &str, iteration: u32, message: &str) {
+    println!("sumo-tdcch-router; {}; iteration {}; {}", directory, iteration, message);
 }

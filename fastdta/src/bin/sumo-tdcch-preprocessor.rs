@@ -5,6 +5,7 @@ use clap::Parser;
 use conversion::sumo::sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries;
 use fastdta::cli;
 use fastdta::preprocess::{preprocess, run_inertial_flow_cutter};
+use rust_road_router::report::measure;
 
 /// has the following parameters:
 /// - input_dir: the directory containing the input files
@@ -19,11 +20,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input_prefix = args.input_prefix;
     let output_dir = Path::new(&args.output_dir);
 
-    convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &output_dir)?;
+    let (_, duration) = measure(|| convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &output_dir));
+    log(&output_dir.display().to_string(), &format!("Preprocess input {}", duration.as_nanos()));
+
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
-    run_inertial_flow_cutter(&output_dir, args.seed, args.routing_threads)?;
-    // run catchup proprocessing
-    preprocess(&output_dir)?;
+    let (_, duration) = measure(|| run_inertial_flow_cutter(&output_dir, args.seed, args.routing_threads));
+    log(&output_dir.display().to_string(), &format!("Run inertial flow cutter {}", duration.as_nanos()));
+
+    // run catchup preprocessing
+    let (_, duration) = measure(|| preprocess(&output_dir));
+    log(&output_dir.display().to_string(), &format!("Run catchup preprocessing {}", duration.as_nanos()));
 
     Ok(())
+}
+
+fn log(directory: &str, message: &str) {
+    println!("sumo-tdcch-preprocessor; {}; {}", directory, message);
 }
