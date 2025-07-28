@@ -43,7 +43,7 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 36000 --routing-algorithm CCH \
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 --routing-algorithm CCH \
     sumo--ignore-route-errors \
     cch-preprocessor--input-prefix "$prefix" \
     cch-preprocessor--input-dir "$in_dir"
@@ -55,6 +55,6 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 36000 --routing-algorithm dijkstra \
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 --routing-algorithm dijkstra \
     sumo--ignore-route-errors 
 done
