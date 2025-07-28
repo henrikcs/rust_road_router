@@ -10,9 +10,6 @@ fn main() {
     // Print the input directory
     println!("Input directory: {}", args.input_dir);
 
-    // Here you would typically call your preprocessing function with the input directory
-    // preprocess(&args.input_dir);
-
     let dir = Path::new(&args.input_dir);
 
     let cost_file = dir.join(FILE_DTA_QUERIES_ALTERNATIVE_COST);
@@ -20,7 +17,7 @@ fn main() {
     // read all edges with sumoedgesreader
     let costs: Vec<f64> = Vec::load_from(&cost_file).unwrap();
 
-    dbg!(costs);
+    println!("{:?}", costs);
 }
 
 /// Command-line arguments for fast-dta preprocessing
