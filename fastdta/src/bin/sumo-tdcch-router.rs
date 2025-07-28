@@ -29,29 +29,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
-    let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
+    let ((edge_ids, graph, cch), duration) = measure(|| {
+        let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
+        let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
+        let cch = get_cch(input_dir, &graph);
 
-    let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
-    let cch = get_cch(input_dir, &graph);
-
-    log(&input_dir.display().to_string(), iteration, "Customizing CCH");
+        (edge_ids, graph, cch)
+    });
+    log(&input_dir.display().to_string(), iteration, "preprocessing", duration.as_nanos());
 
     let (customized_graph, duration) = measure(|| customize(&cch, &graph));
-    log(
-        &input_dir.display().to_string(),
-        iteration,
-        &format!("Customization completed in {} ns", duration.as_nanos()),
-    );
+    log(&input_dir.display().to_string(), iteration, "cch customization", duration.as_nanos());
 
-    log(&input_dir.display().to_string(), iteration, "Running TDCCH router");
     let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_from_queries(&cch, &customized_graph, &input_dir));
-    log(
-        &input_dir.display().to_string(),
-        iteration,
-        &format!("Finished running TDCCH router in {} ns", duration.as_nanos()),
-    );
-
-    log(&input_dir.display().to_string(), iteration, "Assembling alternative paths");
+    log(&input_dir.display().to_string(), iteration, "cch routing", duration.as_nanos());
 
     let (_, duration) = measure(|| {
         assemble_alternative_paths(
@@ -69,15 +60,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     });
 
-    log(
-        &input_dir.display().to_string(),
-        iteration,
-        &format!("Assemble Alternative Paths duration: {}", duration.as_nanos()),
-    );
+    log(&input_dir.display().to_string(), iteration, "assembling alternative paths", duration.as_nanos());
 
     Ok(())
 }
 
-fn log(directory: &str, iteration: u32, message: &str) {
-    println!("sumo-tdcch-router; {}; iteration {}; {}", directory, iteration, message);
+fn log(directory: &str, iteration: u32, operation: &str, duration_in_nanos: u128) {
+    println!("sumo-tdcch-router; {}; {}; {}, {}", directory, iteration, operation, duration_in_nanos);
 }
