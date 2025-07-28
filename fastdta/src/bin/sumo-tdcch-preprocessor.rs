@@ -34,6 +34,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn log(directory: &str, operation: &str, duration_in_nanos: u128) {
-    println!("sumo-tdcch-preprocessor; {}; -1; {}; {}", directory, operation, duration_in_nanos);
+/// Logs the operation with the duration in nanoseconds within a certain iteration of certain run identified by identifier.
+/// The format is: "sumo-tdcch-preprocessor; <identifier>; <iteration>; <operation>; <duration_in_nanos>"
+fn log(identifier: &str, operation: &str, duration_in_nanos: u128) {
+    println!("sumo-tdcch-preprocessor; {}; -1; {}; {}", identifier, operation, duration_in_nanos);
 }

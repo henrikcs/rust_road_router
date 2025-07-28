@@ -65,6 +65,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn log(directory: &str, iteration: u32, operation: &str, duration_in_nanos: u128) {
-    println!("sumo-tdcch-router; {}; {}; {}, {}", directory, iteration, operation, duration_in_nanos);
+/// Logs the operation with the duration in nanoseconds within a certain iteration of certain run identified by identifier.
+/// The format is: "sumo-tdcch-router; <identifier>; <iteration>; <operation>; <duration_in_nanos>"
+fn log(identifier: &str, iteration: u32, operation: &str, duration_in_nanos: u128) {
+    println!("sumo-tdcch-router; {}; {}; {}; {}", identifier, iteration, operation, duration_in_nanos);
 }
