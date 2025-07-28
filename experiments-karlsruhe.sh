@@ -21,9 +21,9 @@ export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack_env"/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 
 declare -a args=(
-    "data/imported/sumo/karlsruhe-0 import/sumo/karlsruhe karlsruhe 900"
-    "data/imported/sumo/karlsruhe-1 import/sumo/karlsruhe karlsruhe 120"
-    "data/imported/sumo/karlsruhe-2 import/sumo/karlsruhe karlsruhe 60"
+    "data/imported/sumo/karlsruhe-900 import/sumo/karlsruhe karlsruhe 900"
+    "data/imported/sumo/karlsruhe-120 import/sumo/karlsruhe karlsruhe 120"
+    "data/imported/sumo/karlsruhe-60 import/sumo/karlsruhe karlsruhe 60"
 )
 
 # iterate over the array and run the command for each tuple
