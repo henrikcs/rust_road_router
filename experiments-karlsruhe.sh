@@ -56,5 +56,5 @@ for arg in "${args[@]}"; do
     -n "$net_file" \
     -t "$trips_file" \
     --mesosim --aggregation "$aggregation" --begin 0 --end 36000 --routing-algorithm dijkstra \
-    sumo--ignore-route-errors \
+    sumo--ignore-route-errors 
 done
