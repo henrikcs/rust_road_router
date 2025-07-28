@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 
-git pull
 declare spack_env="fast-dta"
+spack env activate "$spack_env"
+git pull
 
 declare release_type="release"
 if [ "$1" = "--debug" ]; then
