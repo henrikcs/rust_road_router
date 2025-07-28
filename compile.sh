@@ -1,4 +1,9 @@
 declare spack_env=$1
+if [ -z "$spack_env" ]; then
+    echo "Usage: $0 <spack_env> [--debug]"
+    exit 1
+fi
+
 # if a flag "--debug" is provided, then set release_type to "debug"
 # otherwise if no flag is provided then set to "release"
 
