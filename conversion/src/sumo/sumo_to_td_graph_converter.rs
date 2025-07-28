@@ -142,8 +142,20 @@ pub fn get_queries_from_trips<'a>(
     for veh in &trips_document_root.vehicles {
         trip_ids.push(&veh.id);
         // vehicles go from an edge to an edge, so we need to get the from and to nodes of the edges
-        from_nodes.push(edge_id_to_index_map.get(&veh.from).unwrap().1.to_node_index);
-        to_nodes.push(edge_id_to_index_map.get(&veh.to).unwrap().1.from_node_index);
+        from_nodes.push(
+            edge_id_to_index_map
+                .get(&veh.from)
+                .unwrap_or_else(|| panic!("From edge {} not found in edge_id_to_index_map", veh.from))
+                .1
+                .to_node_index,
+        );
+        to_nodes.push(
+            edge_id_to_index_map
+                .get(&veh.to)
+                .unwrap_or_else(|| panic!("To edge {} not found in edge_id_to_index_map", veh.to))
+                .1
+                .from_node_index,
+        );
         // TODO: maybe add the time it takes from the starting point of the edge to the first node of the query
         departure_times.push((veh.depart * 1000.0) as SerializedTimestamp); // convert seconds to milliseconds);
         original_trip_from_edges.push(&veh.from);
