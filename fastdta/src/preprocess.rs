@@ -47,6 +47,7 @@ pub fn preprocess(working_dir: &Path) -> Result<(), Box<dyn Error>> {
 pub fn get_cch(input_dir: &Path, graph: &TDGraph) -> CCH {
     let cch_folder = input_dir.join(DIR_CCH);
     // TODO: instead of reconstructing the graph from disk, we could create it in memory
+    println!("Reconstructing CCH from: {}", cch_folder.display());
     CCHReconstrctor(graph).reconstruct_from(&cch_folder).unwrap()
 }
 

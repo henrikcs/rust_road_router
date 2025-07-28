@@ -22,11 +22,13 @@ pub fn get_graph_with_travel_times_from_previous_iteration(input_dir: &Path, ite
     }
 
     // TODO: instead of reconstructing the graph from a file, we could create it in memory
+    println!("Reconstructing graph from: {}", input_dir.display());
     TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph")
 }
 
 pub fn extract_travel_times_from_previous_iteration(previous_iteration_dir: &Path, path_to_graph_weights: &Path, edge_indices_to_id: &Vec<String>) {
     // dump file starts with "dump_" and ends with ".xml"
+    println!("Extracting travel times from previous iteration: {}", previous_iteration_dir.display());
     let dump_file = get_meandata_file(&previous_iteration_dir);
 
     set_new_graph_weights_from_meandata_file(
@@ -43,10 +45,15 @@ pub fn set_new_graph_weights_from_meandata_file(
     edge_indices_to_id: &Vec<String>,
     edge_default_travel_times: &Vec<SerializedTravelTime>,
 ) {
+    println!("Reading meandata from: {}", &path_to_sumo_meandata.display());
     let meandata = SumoMeandataReader::read(path_to_sumo_meandata).expect("Failed to read SUMO meandata");
+
+    println!("Extracting interpolation points from meandata...");
 
     let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
         extract_interpolation_points_from_meandata(&meandata, &edge_indices_to_id, &edge_default_travel_times);
+
+    println!("Writing new graph weights to: {}", &path_to_graph_weights.display());
 
     first_ipp_of_arc.write_to(&path_to_graph_weights.join(FILE_FIRST_IPP_OF_ARC)).unwrap();
     ipp_travel_time.write_to(&path_to_graph_weights.join(FILE_IPP_TRAVEL_TIME)).unwrap();

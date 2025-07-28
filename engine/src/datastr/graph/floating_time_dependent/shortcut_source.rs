@@ -97,15 +97,12 @@ impl ShortcutSource {
 
         match *self {
             ShortcutSource::Shortcut(down, up) => {
-                println!("SHORTCUT: down={}, up={}, result_len={}", down, up, result.len());
-
                 shortcut_graph.unpack_at(ShortcutId::Incoming(down), t, result);
 
                 let t_mid = result.last().unwrap().1;
                 shortcut_graph.unpack_at(ShortcutId::Outgoing(up), t_mid, result);
             }
             ShortcutSource::OriginalEdge(edge) => {
-                println!("ORIGINAL_EDGE: edge={}, result_len={}", edge, result.len());
                 let travel_time = shortcut_graph.original_graph().travel_time_function(edge).evaluate(t);
                 let arr = t + travel_time;
                 result.push((edge, arr));
