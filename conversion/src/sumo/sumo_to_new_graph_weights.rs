@@ -103,7 +103,7 @@ pub fn extract_interpolation_points_from_meandata(
             if let Some(edge) = edge_by_interval_and_edge_id.get(&timestamp).unwrap().get(edge_id) {
                 // found the interval, use its travel time
                 if let Some(tt) = edge.traveltime {
-                    // should be at least 1 millisecond
+                    // seconds to ms
                     ipp_travel_time.push((tt * 1000.0) as SerializedTravelTime);
                     continue; // continue to the next interval
                 }
