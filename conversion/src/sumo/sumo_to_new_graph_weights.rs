@@ -76,17 +76,30 @@ pub fn extract_interpolation_points_from_meandata(
     let mut ipp_travel_time = Vec::new();
     let mut ipp_departure_time = Vec::new();
 
+    let mut edge_by_interval_and_edge_id: HashMap<SerializedTimestamp, HashMap<String, &Edge>> = HashMap::new();
+
+    println!("Preprocessing meandata intervals...");
+    for interval in &meandata.intervals {
+        for edge in &interval.edges {
+            edge_by_interval_and_edge_id
+                .entry((interval.begin * 1000.0) as SerializedTimestamp)
+                .or_default()
+                .insert(edge.id.clone(), edge);
+        }
+    }
+
+    println!("Preprocessed intervals.");
+
     let mut added: u32 = 0;
     for (edge_index, edge_id) in edge_indices_to_id.iter().enumerate() {
         first_ipp_of_arc.push(added as u32);
 
         for interval in &meandata.intervals {
             added += 1;
-            ipp_departure_time.push((interval.begin * 1000.0) as SerializedTimestamp); // or some other default value
+            let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
+            ipp_departure_time.push(timestamp); // or some other default value
 
-            let edges_in_interval_by_edge_id: HashMap<String, &Edge> = interval.edges.iter().map(|e| (e.id.clone(), e)).collect();
-
-            if let Some(edge) = edges_in_interval_by_edge_id.get(edge_id) {
+            if let Some(edge) = edge_by_interval_and_edge_id.get(&timestamp).unwrap().get(edge_id) {
                 // found the interval, use its travel time
                 if let Some(tt) = edge.traveltime {
                     // should be at least 1 millisecond
