@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -9,7 +10,11 @@ use rust_road_router::{
 };
 
 use crate::{
-    sumo::{meandata::MeandataDocumentRoot, meandata_reader::SumoMeandataReader, SumoTravelTime, XmlReader, MIN_TRAVEL_TIME},
+    sumo::{
+        meandata::{Edge, MeandataDocumentRoot},
+        meandata_reader::SumoMeandataReader,
+        SumoTravelTime, XmlReader, MIN_TRAVEL_TIME,
+    },
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
 };
 
@@ -79,7 +84,9 @@ pub fn extract_interpolation_points_from_meandata(
             added += 1;
             ipp_departure_time.push((interval.begin * 1000.0) as SerializedTimestamp); // or some other default value
 
-            if let Some(edge) = interval.edges.iter().find(|e| e.id == *edge_id) {
+            let edges_in_interval_by_edge_id: HashMap<String, &Edge> = interval.edges.iter().map(|e| (e.id.clone(), e)).collect();
+
+            if let Some(edge) = edges_in_interval_by_edge_id.get(edge_id) {
                 // found the interval, use its travel time
                 if let Some(tt) = edge.traveltime {
                     // should be at least 1 millisecond
