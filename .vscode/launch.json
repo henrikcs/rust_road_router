@@ -91,6 +91,26 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Debug Router (Iteration 1)",
+      "program": "${workspaceFolder}/target/debug/sumo-tdcch-router",
+      "args": [
+        "--input-dir",
+        "${workspaceFolder}/../ma/data_reduced/karlsruhe-900/karlsruhe-900",
+        "--input-prefix",
+        "karlsruhe",
+        "--iteration",
+        "1"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}",
+        "RUST_BACKTRACE": "1"
+      },
+      "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Debug Connection Counter (dbg)",
       "program": "${workspaceFolder}/target/debug/sumo-connections-counter",
       "args": [
