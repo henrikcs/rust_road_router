@@ -10,7 +10,7 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        RoutingKitTDGraph, SumoTravelTime, XmlReader, EDG_XML, MIN_TRAVEL_TIME, NOD_XML, TRIPS_XML,
+        RoutingKitTDGraph, SumoTravelTime, XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC,
     FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM,
@@ -33,7 +33,7 @@ impl<'a> FlattenedSumoEdge<'a> {
             from_node_index,
             to_node_index,
             edge_id,
-            weight: SumoTravelTime::max(weight, MIN_TRAVEL_TIME),
+            weight,
             length,
         }
     }
