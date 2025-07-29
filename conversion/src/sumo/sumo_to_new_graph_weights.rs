@@ -80,11 +80,12 @@ pub fn extract_interpolation_points_from_meandata(
 
     println!("Preprocessing meandata intervals...");
     for interval in &meandata.intervals {
+        // for each interval, create a map of edge id to edge
+        let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
+        edge_by_interval_and_edge_id.insert(timestamp, HashMap::new());
+
         for edge in &interval.edges {
-            edge_by_interval_and_edge_id
-                .entry((interval.begin * 1000.0) as SerializedTimestamp)
-                .or_default()
-                .insert(edge.id.clone(), edge);
+            edge_by_interval_and_edge_id.get_mut(&timestamp).unwrap().insert(edge.id.clone(), edge);
         }
     }
 
