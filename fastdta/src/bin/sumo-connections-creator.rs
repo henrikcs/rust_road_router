@@ -41,8 +41,8 @@ fn main() {
                 let connection = Connection {
                     from: in_edge_of_node.id.clone(),
                     to: out_edge_of_node.id.clone(),
-                    from_lane: Some(String::from("0")), // assuming lane 0 for simplicity
-                    to_lane: Some(String::from("0")),   // assuming lane 0 for simplicity
+                    from_lane: Some(String::from("0")), // TODO: this is not suitable for use in non-synthetic instances
+                    to_lane: Some(String::from("0")),   // TODO: this is not suitable for use in non-synthetic instances
                 };
                 connection_document_root.connections.push(connection);
             }
