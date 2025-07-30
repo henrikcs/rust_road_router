@@ -56,7 +56,7 @@ for arg in "${args[@]}"; do
     sumo--time-to-teleport.disconnected 1 \
     cch-preprocessor--input-prefix "$prefix" \
     cch-preprocessor--input-dir "$in_dir" \
-    cch-router--no-write-sumo-alternatives
+    cch-router--no-write-sumo-alternatives true
 
     mkdir -p "$out_dir-dijkstra"
     cd "$out_dir-dijkstra"
