@@ -468,6 +468,7 @@ def assign_remaining_args(application, prefix, args):
         prefixed = item[0]
         if prefixed[0:len(prefix)] == prefix:
             option = prefixed[len(prefix):]
+            print(valid_options)
             if option in valid_options:
                 assigned.append(option)
                 assigned += item[1:]
@@ -690,7 +691,7 @@ def main(args=None):
                 ret = 0
                 if 'CCH' in options.routing_algorithm:
                     ret = call_cch_routing(
-                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])], log)
+                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + cch_routing_args, log)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 

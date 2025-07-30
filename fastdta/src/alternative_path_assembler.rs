@@ -23,6 +23,7 @@ pub fn assemble_alternative_paths(
     graph: &TDGraph,
     choice_algorithm: ChoiceAlgorithm,
     max_alternatives: u32,
+    write_sumo_alternatives: bool,
     seed: i32,
     edge_indices_to_id: &Vec<String>,
 ) {
@@ -51,7 +52,7 @@ pub fn assemble_alternative_paths(
     println!("Assembling alternative paths for DTA with {} alternatives", max_alternatives);
     let (path_sets, costs, probabilities, choices) = transform_alternative_paths_for_dta_to_vectors(&alternative_paths);
 
-    println!("Writing alternative paths to SUMO routes");
+    println!("Serializing SUMO paths");
     write_paths_as_sumo_routes(
         &input_dir,
         &input_prefix,
@@ -62,6 +63,7 @@ pub fn assemble_alternative_paths(
         &choices,
         &departures,
         &edge_indices_to_id,
+        write_sumo_alternatives,
     );
 
     println!("Serializing alternative paths to DTA format");

@@ -25,6 +25,9 @@ declare -a args=(
     "data/imported/sumo/example-data-1 import/sumo/example-data example-data 100"
 )
 
+# copy duaIterate.py from fastdta to the venv directory
+cp ~/rust_road_router/fastdta/duaIterate.py ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign
+
 # iterate over the array and run the command for each tuple
 for arg in "${args[@]}"; do
     IFS=' ' read -r -a pair <<< "$arg"
@@ -42,9 +45,10 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --routing-algorithm CCH --mesosim --aggregation "$aggregation" --begin 0 --end 36000 \
+    --mesosim --aggregation "$aggregation" --clean-alt --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm CCH  \
     cch-preprocessor--input-prefix "$prefix" \
-    cch-preprocessor--input-dir "$in_dir"
+    cch-preprocessor--input-dir "$in_dir" \
+    cch-router--no-write-sumo-alternatives
 
     mkdir -p "$out_dir-dijkstra"
     cd "$out_dir-dijkstra"
@@ -53,5 +57,5 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 36000
+    --mesosim --aggregation "$aggregation" --clean-alt --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm CCH  \
 done

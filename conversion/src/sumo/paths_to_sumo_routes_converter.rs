@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use flate2::write;
 use rust_road_router::{
     datastr::graph::{floating_time_dependent::Timestamp, EdgeId},
     io::read_strings_from_file,
@@ -25,6 +26,7 @@ pub fn write_paths_as_sumo_routes(
     choices: &Vec<usize>,
     departures: &Vec<SerializedTimestamp>,
     edge_indices_to_id: &Vec<String>,
+    write_alternative_paths: bool,
 ) {
     // TODO: if memory consumption during this phase is too high, we can rewrite this section to have references to strings instead of the full string for each path
     // e.g. paths = Vec<Vec<&String>> and it references to each edge sumo-id for each query
@@ -47,8 +49,10 @@ pub fn write_paths_as_sumo_routes(
     // write to file
     SumoRoutesWriter::write(&current_iteration_dir.join(format!("{route_file_prefix}{ROUTES}")), &sumo_routes).expect("Failed to write SUMO routes to file");
 
-    SumoRoutesWriter::write(&current_iteration_dir.join(format!("{route_file_prefix}{ALT_ROUTES}")), &sumo_alt_routes)
-        .expect("Failed to write SUMO alternative routes to file");
+    if write_alternative_paths {
+        SumoRoutesWriter::write(&current_iteration_dir.join(format!("{route_file_prefix}{ALT_ROUTES}")), &sumo_alt_routes)
+            .expect("Failed to write SUMO alternative routes to file");
+    }
 }
 
 /// prepares a datastructure which can be serialized into a *.rou.xml for SUMO

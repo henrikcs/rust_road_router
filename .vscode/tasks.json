@@ -135,10 +135,16 @@
         "0",
         "--end",
         "36000",
+        "-f",
+        "0",
+        "-l",
+        "30",
         "cch-preprocessor--input-prefix",
         "example-data",
         "cch-preprocessor--input-dir",
-        "${workspaceFolder}/import/sumo/example-data"
+        "${workspaceFolder}/import/sumo/example-data",
+        "cch-router--no-write-sumo-alternatives",
+        "True"
       ]
     },
     {

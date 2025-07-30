@@ -46,6 +46,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_from_queries(&cch, &customized_graph, &input_dir));
     log(&input_dir.display().to_string(), iteration, "cch routing", duration.as_nanos());
 
+    let write_sumo_alternatives =
+        args.no_write_sumo_alternatives == "false" || args.no_write_sumo_alternatives == "0" || args.no_write_sumo_alternatives == "False";
+
     let (_, duration) = measure(|| {
         assemble_alternative_paths(
             &input_dir,
@@ -57,6 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &graph,
             choice_algorithm,
             args.max_alternatives,
+            write_sumo_alternatives,
             args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
         )

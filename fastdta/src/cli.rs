@@ -377,6 +377,11 @@ pub struct RouterArgs {
     #[arg(long = "input-prefix", default_value = "")]
     pub input_prefix: String,
 
+    /// the iteration number to use for the input files
     #[arg(long = "iteration")]
     pub iteration: u32,
+
+    /// if set skips writing the alternative routes file in the sumo format
+    #[arg(long = "no-write-sumo-alternatives", default_value_t = String::from("False"))]
+    pub no_write_sumo_alternatives: String,
 }

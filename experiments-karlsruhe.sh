@@ -27,9 +27,12 @@ export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack
 
 declare -a args=(
     "data/imported/sumo/karlsruhe-900 import/sumo/karlsruhe karlsruhe 900"
-    "data/imported/sumo/karlsruhe-120 import/sumo/karlsruhe karlsruhe 120"
+    "data/imported/sumo/karlsruhe-300 import/sumo/karlsruhe karlsruhe 300"
     "data/imported/sumo/karlsruhe-60 import/sumo/karlsruhe karlsruhe 60"
 )
+
+# copy duaIterate.py from fastdta to the venv directory
+cp ~/rust_road_router/fastdta/duaIterate.py ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign
 
 # iterate over the array and run the command for each tuple
 for arg in "${args[@]}"; do
@@ -48,11 +51,12 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 --routing-algorithm CCH \
+    --mesosim --aggregation "$aggregation" --clean-alt --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm CCH  \
     sumo--ignore-route-errors \
     sumo--time-to-teleport.disconnected 1 \
     cch-preprocessor--input-prefix "$prefix" \
-    cch-preprocessor--input-dir "$in_dir"
+    cch-preprocessor--input-dir "$in_dir" \
+    cch-router--no-write-sumo-alternatives
 
     mkdir -p "$out_dir-dijkstra"
     cd "$out_dir-dijkstra"
@@ -61,7 +65,7 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 --routing-algorithm dijkstra \
+    --mesosim --aggregation "$aggregation" --clean-alt --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm dijkstra \
     sumo--ignore-route-errors \
     sumo--time-to-teleport.disconnected 1
 done
