@@ -26,9 +26,9 @@ export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack_env"/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 
 declare -a args=(
-    "/nfs/work/hcsoere/fast-dta/karlsruhe-900 import/sumo/karlsruhe karlsruhe 900"
-    "/nfs/work/hcsoere/fast-dta/karlsruhe-300 import/sumo/karlsruhe karlsruhe 300"
-    "/nfs/work/hcsoere/fast-dta/karlsruhe-60 import/sumo/karlsruhe karlsruhe 60"
+    "/nfs/work/hcsoere/fast-dta/karlsruhe-900 /nfs/work/hcsoere/fast-dta/import/sumo/karlsruhe karlsruhe 900"
+    "/nfs/work/hcsoere/fast-dta/karlsruhe-300 /nfs/work/hcsoere/fast-dta/import/sumo/karlsruhe karlsruhe 300"
+    "/nfs/work/hcsoere/fast-dta/karlsruhe-60  /nfs/work/hcsoere/fast-dta/import/sumo/karlsruhe karlsruhe 60"
 )
 
 # copy duaIterate.py from fastdta to the venv directory
@@ -37,8 +37,8 @@ cp ~/rust_road_router/fastdta/duaIterate.py ~/rust_road_router/venvs/libsumo/lib
 # iterate over the array and run the command for each tuple
 for arg in "${args[@]}"; do
     IFS=' ' read -r -a pair <<< "$arg"
-    out_dir="$pwd/${pair[0]}"
-    in_dir="$pwd/${pair[1]}"
+    out_dir="${pair[0]}"
+    in_dir="${pair[1]}"
     prefix="${pair[2]}"
     aggregation="${pair[3]}"
     echo "Processing output directory: $out_dir with input directory: $in_dir and prefix: $prefix with aggregation: $aggregation"
