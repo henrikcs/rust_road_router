@@ -51,12 +51,11 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --clean-alt --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm CCH  \
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm CCH  \
     sumo--ignore-route-errors \
     sumo--time-to-teleport.disconnected 1 \
     cch-preprocessor--input-prefix "$prefix" \
     cch-preprocessor--input-dir "$in_dir" \
-    cch-router--no-write-sumo-alternatives true
 
     mkdir -p "$out_dir-dijkstra"
     cd "$out_dir-dijkstra"
@@ -65,7 +64,7 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --clean-alt --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm dijkstra \
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm dijkstra \
     sumo--ignore-route-errors \
     sumo--time-to-teleport.disconnected 1
 done
