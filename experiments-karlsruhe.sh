@@ -26,9 +26,9 @@ export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack_env"/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 
 declare -a args=(
-    "data/imported/sumo/karlsruhe-900 import/sumo/karlsruhe karlsruhe 900"
-    "data/imported/sumo/karlsruhe-300 import/sumo/karlsruhe karlsruhe 300"
-    "data/imported/sumo/karlsruhe-60 import/sumo/karlsruhe karlsruhe 60"
+    "/nfs/work/hcsoere/fast-dta/karlsruhe-900 import/sumo/karlsruhe karlsruhe 900"
+    "/nfs/work/hcsoere/fast-dta/karlsruhe-300 import/sumo/karlsruhe karlsruhe 300"
+    "/nfs/work/hcsoere/fast-dta/karlsruhe-60 import/sumo/karlsruhe karlsruhe 60"
 )
 
 # copy duaIterate.py from fastdta to the venv directory
