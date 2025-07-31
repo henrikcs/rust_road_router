@@ -468,7 +468,6 @@ def assign_remaining_args(application, prefix, args):
         prefixed = item[0]
         if prefixed[0:len(prefix)] == prefix:
             option = prefixed[len(prefix):]
-            print(valid_options)
             if option in valid_options:
                 assigned.append(option)
                 assigned += item[1:]
