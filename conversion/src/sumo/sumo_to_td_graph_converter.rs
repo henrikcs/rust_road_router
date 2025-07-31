@@ -103,11 +103,11 @@ pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &
 
 pub fn read_nodes_and_edges_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot) {
     let Ok(edges) = SumoEdgesReader::read(input_dir.join(files_prefix.clone() + EDG_XML).as_path()) else {
-        panic!("Edges could not be read.");
+        panic!("Edges could not be read form {}.", &input_dir.display());
     };
 
     let Ok(nodes) = SumoNodesReader::read(input_dir.join(files_prefix.clone() + NOD_XML).as_path()) else {
-        panic!("Edges could not be read.");
+        panic!("Edges could not be read from {}.", input_dir.display());
     };
 
     (nodes, edges)
@@ -116,7 +116,7 @@ pub fn read_nodes_and_edges_from_plain_xml(input_dir: &Path, files_prefix: &Stri
 pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot, TripsDocumentRoot) {
     let (nodes, edges) = read_nodes_and_edges_from_plain_xml(input_dir, files_prefix);
     let Ok(trips) = SumoTripsReader::read(input_dir.join(files_prefix.clone() + TRIPS_XML).as_path()) else {
-        panic!("Trips could not be read.");
+        panic!("Trips could not be read from {}.", input_dir.display());
     };
 
     (nodes, edges, trips)
