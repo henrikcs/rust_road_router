@@ -66,19 +66,36 @@ impl Server {
         path.reverse();
         path
     }
+
+    fn edge_path(&self, query: TDQuery<Timestamp>) -> Vec<EdgeIdT> {
+        let node_path = self.path(query).iter().map(|(node, _)| *node).collect::<Vec<_>>();
+        let mut edge_path = Vec::with_capacity(node_path.len() - 1);
+        for i in 0..node_path.len() - 1 {
+            let from = node_path[i];
+            let to = node_path[i + 1];
+            let edge = self
+                .graph
+                .edge_indices(from, to)
+                .next()
+                .unwrap_or_else(|| panic!("No edge from {} to {} in original graph, path: {:?}", from, to, node_path));
+            edge_path.push(edge);
+        }
+
+        edge_path
+    }
 }
 
 pub struct PathServerWrapper<'s>(&'s Server, TDQuery<Timestamp>);
 
 impl<'s> PathServer for PathServerWrapper<'s> {
     type NodeInfo = (NodeId, Timestamp);
-    type EdgeInfo = ();
+    type EdgeInfo = EdgeIdT;
 
     fn reconstruct_node_path(&mut self) -> Vec<Self::NodeInfo> {
         Server::path(self.0, self.1)
     }
     fn reconstruct_edge_path(&mut self) -> Vec<Self::EdgeInfo> {
-        self.0.data.edge_path(self.1.from, self.1.to)
+        Server::edge_path(self.0, self.1)
     }
 }
 

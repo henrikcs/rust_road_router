@@ -43,6 +43,8 @@ from sumolib.options import get_long_option_names, ArgumentParser  # noqa
 DEBUGLOG = None
 EDGEDATA_ADD = "edgedata.add.xml"
 
+ROUTING_ALGORITHM_CCH = "CCH"
+ROUTING_ALGORITHM_DIJKSTRA_RUST = "dijkstra-rust"
 
 CCH_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
 """Binary used for conversion from Sumo input to CCH Preprocessing
@@ -54,6 +56,17 @@ CCH_ROUTER_BINARY = "sumo-tdcch-router"
 """ Binary used for CCH customization and querying.
 
 make sure the the binary is in PATH 
+"""
+
+DIJKSTRA_ROUTER_BINARY = "sumo-tddijkstra-router"
+""" Binary used for querying using a time-dependent version of dijkstra.
+
+make sure the the binary is in PATH 
+"""
+DIJKSTRA_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
+"""Binary used for conversion from Sumo input to CCH Preprocessing
+
+make sure the the binary is in PATH
 """
 
 
@@ -223,15 +236,8 @@ def call(command, log):
     return retCode
 
 
-def call_cch_preprocess(cch_args, log):
-    return subprocess.call([CCH_PREPROCESS_BINARY] + cch_args, stdout=log, stderr=log)
-
-
-def call_cch_routing(cch_args, log):
-    return subprocess.call([CCH_ROUTER_BINARY] + cch_args, stdout=log, stderr=log)
-
-
-# method is called exactly once for one call to duaIterate.py
+def call_binary(binary, args, log):
+    return subprocess.call([binary] + args, stdout=log, stderr=log)
 
 
 def writeRouteConf(duarouterBinary, step, options, dua_args, file,
@@ -299,7 +305,7 @@ def writeRouteConf(duarouterBinary, step, options, dua_args, file,
 
     args += ["--save-configuration", cfgname]
 
-    if 'CCH' in options.routing_algorithm:
+    if ROUTING_ALGORITHM_CCH in options.routing_algorithm or ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
         # we do not want to call the duaRouter binary here, because it would not recognize the CCH value for
         # the routing algorithm
         return cfgname
@@ -605,6 +611,10 @@ def main(args=None):
         CCH_PREPROCESS_BINARY, 'cch-preprocessor', options.remaining_args)
     cch_routing_args = assign_remaining_args(
         CCH_ROUTER_BINARY, 'cch-router', options.remaining_args)
+    dijkstra_routing_args = assign_remaining_args(
+        DIJKSTRA_ROUTER_BINARY, 'dijkstra-router', options.remaining_args)
+    dijkstra_preprocessing_args = assign_remaining_args(
+        DIJKSTRA_PREPROCESS_BINARY, 'dijkstra-preprocessor', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
     log = open(options.dualog, "w+")
     if options.zip:
@@ -643,14 +653,26 @@ def main(args=None):
     generateEdgedataAddFile(EDGEDATA_ADD, options)
 
     # do a preprocessing step if CCH is used
-    if 'CCH' in options.routing_algorithm:
+    if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
         tik = datetime.now()
         print("> Preprocessing network for CCH")
         print(">> Begin time: %s" % tik)
-        ret = call_cch_preprocess(cch_preprocessing_args, log)
+        ret = call_binary(CCH_PREPROCESS_BINARY, cch_preprocessing_args, log)
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: CCH preprocessing failed.")
+        print(">> End time: %s" % tok)
+        print(">> Duration: %s" % (tok - tik))
+
+    if ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
+        tik = datetime.now()
+        print("> Preprocessing network for Dijkstra Rust")
+        print(">> Begin time: %s" % tik)
+        ret = call_binary(DIJKSTRA_PREPROCESS_BINARY,
+                          dijkstra_preprocessing_args, log)
+        tok = datetime.now()
+        if ret != 0:
+            sys.exit("Error: Dijkstra preprocessing failed.")
         print(">> End time: %s" % tok)
         print(">> Duration: %s" % (tok - tik))
 
@@ -688,9 +710,13 @@ def main(args=None):
                     calcMarginalCost(step, options)
 
                 ret = 0
-                if 'CCH' in options.routing_algorithm:
-                    ret = call_cch_routing(
+                if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
+                    ret = call_binary(
+                        CCH_ROUTER_BINARY,
                         ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + cch_routing_args, log)
+                elif ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
+                    ret = call_binary(DIJKSTRA_ROUTER_BINARY,
+                                      ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + dijkstra_routing_args, log)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 
