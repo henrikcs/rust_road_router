@@ -68,5 +68,5 @@ for arg in "${args[@]}"; do
     sumo--ignore-route-errors \
     sumo--time-to-teleport.disconnected 1 \
     dijkstra-preprocessor--input-prefix "$prefix" \
-    dijkstra-preprocessor--input-dir "$in_dir" \
+    dijkstra-preprocessor--input-dir "$in_dir" 
 done
