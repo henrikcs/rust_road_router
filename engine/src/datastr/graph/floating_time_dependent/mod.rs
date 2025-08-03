@@ -425,7 +425,10 @@ impl<'a> PLFTarget for MutTopPLF<'a> {
             } else if last.at.fuzzy_eq(p.at) && last.val.fuzzy_eq(p.val) {
                 return;
             } else {
-                panic!("Trying to create non (time) monotone function");
+                panic!(
+                    "Trying to create non (time) monotone function: {:?} > {:?}; {:?} != {:?}",
+                    last.at, p.at, last.val, p.val
+                );
             }
         } else {
             self.storage.data.push(p);
