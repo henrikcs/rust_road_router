@@ -351,6 +351,7 @@ mod tests {
                     y: 1.0,
                 },
             ],
+            location: None,
         };
 
         let edges = EdgesDocumentRoot {
