@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<edges version="1.20"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
+    <edge id="v0v1" from="v0" to="v1" priority="-1" numLanes="1" speed="5" />
+    <edge id="v1v0" from="v1" to="v0" priority="-1" numLanes="1" speed="5" />
+    <edge id="v0v2" from="v0" to="v2" priority="-1" numLanes="1" speed="5" />
+    <edge id="v2v0" from="v2" to="v0" priority="-1" numLanes="1" speed="5" />
+    <edge id="v1v3" from="v1" to="v3" priority="-1" numLanes="1" speed="5" />
+    <edge id="v3v1" from="v3" to="v1" priority="-1" numLanes="1" speed="5" />
+    <edge id="v0v3" from="v0" to="v3" priority="-1" numLanes="1" speed="5" />
+    <edge id="v3v0" from="v3" to="v0" priority="-1" numLanes="1" speed="5" />
+</edges>

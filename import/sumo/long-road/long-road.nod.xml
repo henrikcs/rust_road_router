@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<nodes version="1.20"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/nodes_file.xsd">
+    <location netOffset="0.00,0.00" convBoundary="0.00,0.00,3600.00,3600.00" origBoundary="0.00,0.00,3600.00,3600.00" projParameter="!" />
+
+    <node id="v0" x="0" y="0" type="priority" />
+    <node id="v1" x="0" y="5000" type="priority" />
+    <node id="v2" x="5000" y="0" type="priority" />
+    <node id="v3" x="5000" y="5000" type="priority" />
+
+</nodes>
