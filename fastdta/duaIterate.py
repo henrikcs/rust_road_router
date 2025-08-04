@@ -237,7 +237,7 @@ def call(command, log):
 
 
 def call_binary(binary, args, log):
-    return subprocess.call([binary] + args, stdout=log, stderr=log)
+    return subprocess.call([binary] + args)
 
 
 def writeRouteConf(duarouterBinary, step, options, dua_args, file,
