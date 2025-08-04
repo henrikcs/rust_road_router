@@ -27,8 +27,8 @@ export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack
 
 declare -a args=(
     "/nfs/work/hcsoere/fast-dta/output/karlsruhe-900 /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 900"
-    "/nfs/work/hcsoere/fast-dta/output/karlsruhe-300 /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 300"
-    "/nfs/work/hcsoere/fast-dta/output/karlsruhe-60  /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 60"
+#    "/nfs/work/hcsoere/fast-dta/output/karlsruhe-300 /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 300"
+#    "/nfs/work/hcsoere/fast-dta/output/karlsruhe-60  /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 60"
 )
 
 # copy duaIterate.py from fastdta to the venv directory
@@ -69,4 +69,15 @@ for arg in "${args[@]}"; do
     sumo--time-to-teleport.disconnected 1 \
     dijkstra-preprocessor--input-prefix "$prefix" \
     dijkstra-preprocessor--input-dir "$in_dir" 
+
+    mkdir -p "$out_dir-dijkstra"
+    cd "$out_dir-dijkstra"
+
+    # Run with Dijkstra (sumo implementation)
+    python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
+    -n "$net_file" \
+    -t "$trips_file" \
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 10 --routing-algorithm dijkstra \
+    sumo--ignore-route-errors \
+    sumo--time-to-teleport.disconnected 0 
 done
