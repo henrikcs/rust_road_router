@@ -117,6 +117,39 @@
       ]
     },
     {
+      "label": "Run DTA (kelheim; dijkstra)",
+      "type": "shell",
+      "command": "python",
+      "dependsOn": [
+        "Copy duaIterate.py to SUMO",
+        "Clean kelheim",
+        "Build (debug)"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo/kelheim",
+        "env": {
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
+          "RUST_BACKTRACE": "1"
+        }
+      },
+      "args": [
+        "${workspaceFolder}/lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py",
+        "-n",
+        "${workspaceFolder}/import/sumo/kelheim/kelheim.net.xml",
+        "-t",
+        "${workspaceFolder}/import/sumo/kelheim/kelheim.trips.xml",
+        "--routing-algorithm",
+        "dijkstra",
+        "--mesosim",
+        "--aggregation",
+        "900",
+        "--begin",
+        "0",
+        "--end",
+        "36000"
+      ]
+    },
+    {
       "label": "Run DTA (example data)",
       "type": "shell",
       "dependsOn": [
@@ -236,13 +269,23 @@
       "hide": true
     },
     {
-      "label": "Clean example data",
+      "label": "Clean karlsruhe",
       "type": "shell",
       "command": "rm",
       "options": {
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
       "args": ["-rf", "karlsruhe/*"],
+      "hide": true
+    },
+    {
+      "label": "Clean kelheim",
+      "type": "shell",
+      "command": "rm",
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo"
+      },
+      "args": ["-rf", "kelheim/*"],
       "hide": true
     },
     {
