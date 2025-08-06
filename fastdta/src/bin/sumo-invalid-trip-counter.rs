@@ -20,27 +20,24 @@ fn main() {
     let edge_set: HashSet<String> = edges.edges.iter().map(|e| e.id.clone()).collect();
     println!("Found {} edges", edge_set.len());
 
-    let mut missing_edges = 0;
+    let mut invalid_trips = 0;
 
     println!("Process trips...");
     for trip in &trips.vehicles {
-        if !edge_set.contains(&trip.from) {
-            if missing_edges < 10 {
-                println!("Trip {} has a \"from\" edge that does not exist: from {}", trip.id, trip.from);
+        if !edge_set.contains(&trip.from) || edge_set.contains(&trip.to) {
+            if invalid_trips < 10 {
+                if !edge_set.contains(&trip.to) {
+                    println!("Trip {} has a \"to\" edge that does not exist: to {}", trip.id, trip.to);
+                } else {
+                    println!("Trip {} has a \"from\" edge that does not exist: from {}", trip.id, trip.from);
+                }
             }
-            missing_edges += 1;
-        }
-
-        if !edge_set.contains(&trip.to) {
-            if missing_edges < 10 {
-                println!("Trip {} has a \"to\" edge that does not exist: to {}", trip.id, trip.to);
-            }
-            missing_edges += 1;
+            invalid_trips += 1;
         }
     }
 
-    if missing_edges > 0 {
-        println!("Found {} missing edges in trips", missing_edges);
+    if invalid_trips > 0 {
+        println!("Found {} trips with at least one missing edge", invalid_trips);
     } else {
         println!("All trip edges are present");
     }
