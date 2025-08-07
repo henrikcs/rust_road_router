@@ -570,6 +570,28 @@ def generateEdgedataAddFile(EDGEDATA_ADD, options):
     fd.close()
 
 
+def generateEdgedataAddFileForRustRoadRouter(EDGEDATA_ADD, options):
+    """write detectorfile for Rust Road Router"""
+    with open(EDGEDATA_ADD, 'w') as fd:
+        vTypes = ' vTypes="%s"' % ' '.join(
+            options.measureVTypes.split(',')) if options.measureVTypes else ""
+        print("<a>", file=fd)
+        print('    <edgeData id="dump_%s" freq="%s" file="%s" excludeEmpty="true" minSamples="1"%s/>' % (
+            options.aggregation,
+            options.aggregation,
+            get_dumpfilename(options, -1, "dump", False),
+            vTypes), file=fd)
+        if options.eco_measure:
+            print(('    <edgeData id="eco_%s" type="emissions" freq="%s" file="%s" ' +
+                   'excludeEmpty="defaults" minSamples="1"%s/>') % (
+                       options.aggregation,
+                       options.aggregation,
+                       get_dumpfilename(options, -1, "dump", False),
+                       vTypes), file=fd)
+        print("</a>", file=fd)
+    fd.close()
+
+
 def main(args=None):
     argParser = initOptions()
 
@@ -650,7 +672,10 @@ def main(args=None):
             costmemory.load_costs(dumpfile, step, get_scale(options, step))
 
     # generate edgedata.add.xml
-    generateEdgedataAddFile(EDGEDATA_ADD, options)
+    if ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm or ROUTING_ALGORITHM_CCH in options.routing_algorithm:
+        generateEdgedataAddFileForRustRoadRouter(EDGEDATA_ADD, options)
+    else:
+        generateEdgedataAddFile(EDGEDATA_ADD, options)
 
     # do a preprocessing step if CCH is used
     if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
