@@ -8,6 +8,7 @@ use rust_road_router::{
     datastr::graph::{floating_time_dependent::TDGraph, EdgeId},
     io::{Load, Reconstruct, Store},
 };
+use serde::de;
 
 use crate::{
     sumo::{
@@ -95,22 +96,46 @@ pub fn extract_interpolation_points_from_meandata(
     for (edge_index, edge_id) in edge_indices_to_id.iter().enumerate() {
         first_ipp_of_arc.push(added as u32);
 
-        for interval in &meandata.intervals {
+        for (interval_index, interval) in meandata.intervals.iter().enumerate() {
             added += 1;
             let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
-            ipp_departure_time.push(timestamp); // or some other default value
+            ipp_departure_time.push(timestamp);
 
-            if let Some(edge) = edge_by_interval_and_edge_id.get(&timestamp).unwrap().get(edge_id) {
-                // found the interval, use its travel time
-                if let Some(tt) = edge.traveltime {
-                    // seconds to ms
-                    ipp_travel_time.push((tt * 1000.0) as SerializedTravelTime);
-                    continue; // continue to the next interval
+            let default_travel_time = edge_default_travel_times[edge_index];
+            let current_interval_edges = edge_by_interval_and_edge_id.get(&timestamp).unwrap();
+
+            let mut tt = current_interval_edges
+                .get(edge_id)
+                .and_then(|edge| edge.traveltime)
+                .map(|val| (val * 1000.0) as SerializedTravelTime)
+                .unwrap_or(default_travel_time);
+
+            // Enforce FIFO condition if there is a next interval
+            if let Some(next_interval) = meandata.intervals.get(interval_index + 1) {
+                let next_timestamp = (next_interval.begin * 1000.0) as SerializedTimestamp;
+                let interval_duration = next_timestamp - timestamp;
+                let next_interval_edges = edge_by_interval_and_edge_id.get(&next_timestamp).unwrap();
+
+                let next_tt = next_interval_edges
+                    .get(edge_id)
+                    .and_then(|edge| edge.traveltime)
+                    .map(|val| (val * 1000.0) as SerializedTravelTime)
+                    .unwrap_or(default_travel_time);
+
+                if interval_duration + next_tt < tt {
+                    // If the next travel time is less than the current, we adjust the current travel time
+                    println!(
+                        "Adjusting travel time for edge {} in interval {}: {}ms -> {}ms",
+                        edge_id,
+                        interval.id,
+                        tt,
+                        interval_duration + next_tt
+                    );
+                    tt = interval_duration + next_tt;
                 }
             }
 
-            // use default travel time
-            ipp_travel_time.push(edge_default_travel_times[edge_index]);
+            ipp_travel_time.push(tt);
         }
     }
     // add a dummy edge for the last interval
@@ -194,6 +219,77 @@ pub mod tests {
                 6_000, // edge1, interval2
                 3_000, // edge2, interval1 (default travel time)
                 3_000, // edge2, interval2 (default travel time)
+            ],
+            vec![
+                0_000,  // edge1, interval1
+                10_000, // edge1, interval2
+                0_000,  // edge2, interval1 (default travel time)
+                10_000, // edge2, interval2 (default travel time)
+            ],
+        );
+
+        let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
+            super::extract_interpolation_points_from_meandata(&meandata, &edges, &edge_default_travel_times);
+
+        assert_eq!(expected.0, first_ipp_of_arc);
+        assert_eq!(expected.1, ipp_travel_time);
+        assert_eq!(expected.2, ipp_departure_time);
+
+        // can create new TDGraph
+        // add first_out (vector where using node indices finds the first outgoing edge)
+        // two edges, three nodes, having two outgoing edges each
+        let first_out = vec![0, 1, 2];
+        let head = vec![1, 2];
+
+        TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
+    }
+
+    #[test]
+    fn test_handle_non_fifo_inputs() {
+        let edges: Vec<String> = vec!["edge1".to_string(), "edge2".to_string()];
+        let edge_default_travel_times: Vec<u32> = vec![5_000, 3_000];
+
+        let meandata = meandata::MeandataDocumentRoot {
+            intervals: vec![
+                meandata::Interval {
+                    id: "interval1".to_string(),
+                    begin: 0.0,
+                    end: 10.0,
+                    edges: vec![
+                        meandata::Edge {
+                            id: "edge1".to_string(),
+                            traveltime: Some(20.0),
+                        },
+                        meandata::Edge {
+                            id: "edge2".to_string(),
+                            traveltime: None, // will use default travel time
+                        },
+                    ],
+                },
+                meandata::Interval {
+                    id: "interval2".to_string(),
+                    begin: 10.0,
+                    end: 20.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(6.0),
+                    }],
+                },
+            ],
+        };
+
+        // should have 2 edges, each having 2 intervals. So we expect 4 interpolation points:
+        // 1. edge1, interval1: 16.0
+        // 2. edge2, interval1: 3.0 (default travel time)
+        // 3. edge1, interval2: 6.0
+        // 4. edge2, interval2: 3.0 (default travel time)
+        let expected = (
+            vec![0, 2, 4], // first_ipp_of_arc
+            vec![
+                16_000, // edge1, interval1
+                6_000,  // edge1, interval2
+                3_000,  // edge2, interval1 (default travel time)
+                3_000,  // edge2, interval2 (default travel time)
             ],
             vec![
                 0_000,  // edge1, interval1
