@@ -54,6 +54,7 @@ for arg in "${args[@]}"; do
     --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 10 --routing-algorithm CCH  \
     sumo--ignore-route-errors \
     sumo--time-to-teleport.disconnected 1 \
+    sumo----aggregate-warnings 5 \
     cch-preprocessor--input-prefix "$prefix" \
     cch-preprocessor--input-dir "$in_dir" \
 
