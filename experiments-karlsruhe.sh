@@ -26,7 +26,7 @@ export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack_env"/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 
 declare -a args=(
-#    "/nfs/work/hcsoere/fast-dta/output/karlsruhe-900 /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 900"
+    "/nfs/work/hcsoere/fast-dta/output/karlsruhe-900 /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 900"
     "/nfs/work/hcsoere/fast-dta/output/karlsruhe-300 /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 300"
     "/nfs/work/hcsoere/fast-dta/output/karlsruhe-60  /nfs/work/hcsoere/fast-dta/input/karlsruhe karlsruhe 60"
 )
@@ -51,34 +51,24 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 10 --routing-algorithm CCH  \
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm CCH  \
     sumo--ignore-route-errors \
     sumo--time-to-teleport.disconnected 1 \
-    sumo----aggregate-warnings 5 \
+    sumo--aggregate-warnings 5 \
     cch-preprocessor--input-prefix "$prefix" \
     cch-preprocessor--input-dir "$in_dir" \
 
     mkdir -p "$out_dir-dijkstra-rust"
     cd "$out_dir-dijkstra-rust"
 
-    # Run with Dijkstra (rust implementation)
+    mkdir -p "$out_dir-ch"
+    cd "$out_dir-ch"
+
+    # Run with CH (sumo implementation)
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 10 --routing-algorithm dijkstra-rust \
-    sumo--ignore-route-errors \
-    sumo--time-to-teleport.disconnected 1 \
-    dijkstra-preprocessor--input-prefix "$prefix" \
-    dijkstra-preprocessor--input-dir "$in_dir" 
-
-    mkdir -p "$out_dir-dijkstra"
-    cd "$out_dir-dijkstra"
-
-    # Run with Dijkstra (sumo implementation)
-    python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
-    -n "$net_file" \
-    -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 10 --routing-algorithm dijkstra \
-    sumo--ignore-route-errors \
-    sumo--time-to-teleport.disconnected 0 
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm ch
 done
+
+
