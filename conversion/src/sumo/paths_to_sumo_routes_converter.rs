@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use flate2::write;
 use rust_road_router::{
     datastr::graph::{floating_time_dependent::Timestamp, EdgeId},
     io::read_strings_from_file,
