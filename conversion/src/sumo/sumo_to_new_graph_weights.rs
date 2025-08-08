@@ -8,7 +8,6 @@ use rust_road_router::{
     datastr::graph::{floating_time_dependent::TDGraph, EdgeId},
     io::{Load, Reconstruct, Store},
 };
-use serde::de;
 
 use crate::{
     sumo::{
@@ -125,10 +124,13 @@ pub fn extract_interpolation_points_from_meandata(
                 if interval_duration + next_tt < tt {
                     // If the next travel time is less than the current, we adjust the current travel time
                     println!(
-                        "Adjusting travel time for edge {} in interval {}: {}ms -> {}ms",
+                        "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
                         edge_id,
-                        interval.id,
+                        timestamp,
+                        next_timestamp,
                         tt,
+                        interval_duration,
+                        next_tt,
                         interval_duration + next_tt
                     );
                     tt = interval_duration + next_tt;
@@ -311,6 +313,65 @@ pub mod tests {
         // two edges, three nodes, having two outgoing edges each
         let first_out = vec![0, 1, 2];
         let head = vec![1, 2];
+
+        TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
+    }
+
+    #[test]
+    fn test_specific_weights_for_fifo() {
+        let edges: Vec<String> = vec!["edge1".to_string()];
+        let edge_default_travel_times: Vec<u32> = vec![5_000];
+
+        let meandata = meandata::MeandataDocumentRoot {
+            intervals: vec![
+                meandata::Interval {
+                    id: "interval1".to_string(),
+                    begin: 86_340.0,
+                    end: 86_400.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(70_874.95),
+                    }],
+                },
+                meandata::Interval {
+                    id: "interval2".to_string(),
+                    begin: 86_400.0,
+                    end: 86_460.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(70_643.718),
+                    }],
+                },
+            ],
+        };
+
+        // should have 1 edge, each having 2 intervals. So we expect 4 interpolation points:
+        // 1. edge1, interval1: 16.0
+        // 2. edge1, interval2: 6.0
+        let expected = (
+            vec![0, 2], // first_ipp_of_arc
+            vec![
+                70_643_718 + 60_000, // edge1, interval1
+                70_643_718,          // edge1, interval2
+            ],
+            vec![
+                86_340_000, // edge1, interval1
+                86_400_000, // edge1, interval2
+            ],
+        );
+
+        let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
+            super::extract_interpolation_points_from_meandata(&meandata, &edges, &edge_default_travel_times);
+
+        assert_eq!(expected.0, first_ipp_of_arc);
+        assert_eq!(expected.1, ipp_travel_time);
+        assert_eq!(expected.2, ipp_departure_time);
+
+        // can create new TDGraph
+        // add first_out (vector where using node indices finds the first outgoing edge)
+        // one edge, two nodes, having one outgoing edge
+        let first_out = vec![0, 1];
+        let head = vec![1];
 
         TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
     }
