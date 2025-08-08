@@ -58,9 +58,6 @@ for arg in "${args[@]}"; do
     cch-preprocessor--input-prefix "$prefix" \
     cch-preprocessor--input-dir "$in_dir" \
 
-    mkdir -p "$out_dir-dijkstra-rust"
-    cd "$out_dir-dijkstra-rust"
-
     mkdir -p "$out_dir-ch"
     cd "$out_dir-ch"
 
@@ -68,7 +65,7 @@ for arg in "${args[@]}"; do
     python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py \
     -n "$net_file" \
     -t "$trips_file" \
-    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm ch
+    --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -f 0 -l 30 --routing-algorithm CH
 done
 
 
