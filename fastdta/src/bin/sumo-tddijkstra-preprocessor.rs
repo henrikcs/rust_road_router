@@ -19,10 +19,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input_prefix = args.input_prefix;
     let output_dir = Path::new(&args.output_dir);
 
-    println!("Input directory: {}", input_dir.display());
-    println!("Input prefix: {}", input_prefix);
-    println!("Output directory: {}", output_dir.display());
-
     let (_, duration) = measure(|| convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &output_dir));
     log(&output_dir.display().to_string(), "preprocessing", duration.as_nanos());
 
