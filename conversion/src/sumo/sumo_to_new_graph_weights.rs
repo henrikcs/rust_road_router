@@ -76,32 +76,30 @@ pub fn extract_interpolation_points_from_meandata(
     let mut ipp_travel_time = Vec::new();
     let mut ipp_departure_time = Vec::new();
 
-    let mut edge_by_interval_and_edge_id: HashMap<SerializedTimestamp, HashMap<String, &Edge>> = HashMap::new();
+    let mut original_edge_tt_by_interval_and_edge_id: HashMap<SerializedTimestamp, HashMap<String, &Edge>> = HashMap::new();
+    let mut adapted_edge_tt_by_interval_and_edge_id: HashMap<SerializedTimestamp, HashMap<String, SerializedTravelTime>> = HashMap::new();
 
     println!("Preprocessing meandata intervals...");
     for interval in &meandata.intervals {
         // for each interval, create a map of edge id to edge
         let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
-        edge_by_interval_and_edge_id.insert(timestamp, HashMap::new());
+        original_edge_tt_by_interval_and_edge_id.insert(timestamp, HashMap::new());
+        adapted_edge_tt_by_interval_and_edge_id.insert(timestamp, HashMap::new());
 
         for edge in &interval.edges {
-            edge_by_interval_and_edge_id.get_mut(&timestamp).unwrap().insert(edge.id.clone(), edge);
+            original_edge_tt_by_interval_and_edge_id
+                .get_mut(&timestamp)
+                .unwrap()
+                .insert(edge.id.clone(), edge);
         }
     }
 
-    println!("Preprocessed intervals.");
-
-    let mut added: u32 = 0;
     for (edge_index, edge_id) in edge_indices_to_id.iter().enumerate() {
-        first_ipp_of_arc.push(added as u32);
-
-        for (interval_index, interval) in meandata.intervals.iter().enumerate() {
-            added += 1;
+        for (interval_index, interval) in meandata.intervals.iter().rev().enumerate() {
             let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
-            ipp_departure_time.push(timestamp);
 
             let default_travel_time = edge_default_travel_times[edge_index];
-            let current_interval_edges = edge_by_interval_and_edge_id.get(&timestamp).unwrap();
+            let current_interval_edges = original_edge_tt_by_interval_and_edge_id.get(&timestamp).unwrap();
 
             let mut tt = current_interval_edges
                 .get(edge_id)
@@ -109,33 +107,51 @@ pub fn extract_interpolation_points_from_meandata(
                 .map(|val| (val * 1000.0) as SerializedTravelTime)
                 .unwrap_or(default_travel_time);
 
-            // Enforce FIFO condition if there is a next interval
-            if let Some(next_interval) = meandata.intervals.get(interval_index + 1) {
-                let next_timestamp = (next_interval.begin * 1000.0) as SerializedTimestamp;
-                let interval_duration = next_timestamp - timestamp;
-                let next_interval_edges = edge_by_interval_and_edge_id.get(&next_timestamp).unwrap();
+            if interval_index > 0 {
+                // Enforce FIFO condition if there is a next interval
+                if let Some(next_interval) = meandata.intervals.get(meandata.intervals.len() - interval_index) {
+                    let next_timestamp = (next_interval.begin * 1000.0) as SerializedTimestamp;
+                    let interval_duration = next_timestamp - timestamp;
+                    let next_interval_edge_tts = adapted_edge_tt_by_interval_and_edge_id.get(&next_timestamp).unwrap();
 
-                let next_tt = next_interval_edges
-                    .get(edge_id)
-                    .and_then(|edge| edge.traveltime)
-                    .map(|val| (val * 1000.0) as SerializedTravelTime)
-                    .unwrap_or(default_travel_time);
+                    let next_tt = next_interval_edge_tts.get(edge_id).unwrap_or(&default_travel_time);
 
-                if interval_duration + next_tt < tt {
-                    // If the next travel time is less than the current, we adjust the current travel time
-                    println!(
-                        "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
-                        edge_id,
-                        timestamp,
-                        next_timestamp,
-                        tt,
-                        interval_duration,
-                        next_tt,
-                        interval_duration + next_tt
-                    );
-                    tt = interval_duration + next_tt;
+                    if interval_duration + next_tt < tt {
+                        // If the next travel time is less than the current, we adjust the current travel time
+                        println!(
+                            "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                            edge_id,
+                            timestamp,
+                            next_timestamp,
+                            tt,
+                            interval_duration,
+                            next_tt,
+                            interval_duration + next_tt
+                        );
+                        tt = interval_duration + next_tt;
+                    }
                 }
             }
+
+            adapted_edge_tt_by_interval_and_edge_id
+                .get_mut(&timestamp)
+                .unwrap()
+                .insert(edge_id.clone(), tt as SerializedTravelTime);
+        }
+    }
+
+    println!("Preprocessed intervals.");
+
+    let mut added: u32 = 0;
+    for edge_id in edge_indices_to_id.iter() {
+        first_ipp_of_arc.push(added as u32);
+
+        for interval in meandata.intervals.iter() {
+            added += 1;
+            let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
+            ipp_departure_time.push(timestamp);
+
+            let tt = *adapted_edge_tt_by_interval_and_edge_id.get(&timestamp).unwrap().get(edge_id).unwrap();
 
             ipp_travel_time.push(tt);
         }
@@ -313,6 +329,73 @@ pub mod tests {
         // two edges, three nodes, having two outgoing edges each
         let first_out = vec![0, 1, 2];
         let head = vec![1, 2];
+
+        TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
+    }
+
+    #[test]
+    fn test_fifo_ensured_backwards() {
+        let edges: Vec<String> = vec!["edge1".to_string()];
+        let edge_default_travel_times: Vec<u32> = vec![5_000];
+
+        let meandata = meandata::MeandataDocumentRoot {
+            intervals: vec![
+                meandata::Interval {
+                    id: "interval1".to_string(),
+                    begin: 0.0,
+                    end: 100.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(1100.0),
+                    }],
+                },
+                meandata::Interval {
+                    id: "interval2".to_string(),
+                    begin: 100.0,
+                    end: 200.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(1000.0),
+                    }],
+                },
+                meandata::Interval {
+                    id: "interval2".to_string(),
+                    begin: 200.0,
+                    end: 250.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(150.0),
+                    }],
+                },
+            ],
+        };
+
+        let expected = (
+            vec![0, 3], // first_ipp_of_arc
+            vec![
+                350_000, // edge1, travel_time1
+                250_000, // edge1, travel_time2
+                150_000, // edge1, travel_time3
+            ],
+            vec![
+                0,       // edge1, interval1
+                100_000, // edge1, interval2
+                200_000, // edge1, interval2
+            ],
+        );
+
+        let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
+            super::extract_interpolation_points_from_meandata(&meandata, &edges, &edge_default_travel_times);
+
+        assert_eq!(expected.0, first_ipp_of_arc);
+        assert_eq!(expected.1, ipp_travel_time);
+        assert_eq!(expected.2, ipp_departure_time);
+
+        // can create new TDGraph
+        // add first_out (vector where using node indices finds the first outgoing edge)
+        // one edge, two nodes, having one outgoing edge
+        let first_out = vec![0, 1];
+        let head = vec![1];
 
         TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
     }
