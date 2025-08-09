@@ -32,15 +32,12 @@ pub fn assemble_alternative_paths(
     // init all_routes with the previous alternatives
     let alternative_paths = if iteration > 0 {
         // load previous alternatives from input_dir
-        println!("Loading previous alternatives from iteration {}", iteration - 1);
         let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
         let old_alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
 
-        println!("Merging previous alternatives with current shortest paths");
         // merge previous alternatives with current shortest paths
         let mut new_alternative_paths = old_alternative_paths.update_alternatives_with_new_paths(&shortest_paths, &travel_times, &departures, &graph);
 
-        println!("Performing choice model on the new alternatives");
         new_alternative_paths.perform_choice_model(&old_alternative_paths, &choice_algorithm, max_alternatives, seed);
 
         new_alternative_paths
@@ -49,10 +46,8 @@ pub fn assemble_alternative_paths(
         AlternativePathsForDTA::init(shortest_paths, travel_times)
     };
 
-    println!("Assembling alternative paths for DTA with {} alternatives", max_alternatives);
     let (path_sets, costs, probabilities, choices) = transform_alternative_paths_for_dta_to_vectors(&alternative_paths);
 
-    println!("Serializing SUMO paths");
     write_paths_as_sumo_routes(
         &input_dir,
         &input_prefix,
@@ -66,7 +61,6 @@ pub fn assemble_alternative_paths(
         write_sumo_alternatives,
     );
 
-    println!("Serializing alternative paths to DTA format");
     alternative_paths.deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
 }
 
