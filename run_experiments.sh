@@ -27,6 +27,7 @@ usage() {
     echo "  --a-star               Run all experiments with A* routing."
     echo ""
     echo "Other options:"
+    echo "  --output <path>        Specify the base output directory (default: current directory)."
     echo "  --debug                Build and use the debug target instead of release."
     exit 1
 }
