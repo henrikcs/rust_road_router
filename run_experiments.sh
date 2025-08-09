@@ -92,7 +92,7 @@ fi
 
 # --- Set up environment ---
 spack env activate "$spack_env"
-declare base_output_dir="$output_dir/$timestamp"
+declare base_output_dir="${output_dir%/}/$timestamp"
 echo "Base output directory: $base_output_dir"
 mkdir -p "$base_output_dir"
 
