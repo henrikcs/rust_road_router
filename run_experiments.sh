@@ -135,7 +135,7 @@ while IFS=';' read -r in_dir prefix aggregation begin end first_iter last_iter |
         echo "Output directory: $out_dir"
 
         mkdir -p "$out_dir"
-        # It's safer to run commands in a subshell to not change the script's working directory
+        # run commands in a subshell to not change the script's working directory
         (
             cd "$out_dir" || exit
 
@@ -155,6 +155,13 @@ while IFS=';' read -r in_dir prefix aggregation begin end first_iter last_iter |
                 dua_args+=(
                     cch-preprocessor--input-prefix "$prefix"
                     cch-preprocessor--input-dir "$in_dir"
+                )
+            fi
+            # Add preprocessor args only for td-dijkstra-rust
+            if [ "$algorithm" = "dijkstra-rust" ]; then
+                dua_args+=(
+                    dijkstra-preprocessor--input-prefix "$prefix"
+                    dijkstra-preprocessor--input-dir "$in_dir"
                 )
             fi
 
