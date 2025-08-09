@@ -44,6 +44,10 @@ while [[ $# -gt 0 ]]; do
         experiment="$2"
         shift 2
         ;;
+        --output)
+        output_dir="$2"
+        shift 2
+        ;;
         --debug)
         release_type="debug"
         shift
