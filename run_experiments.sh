@@ -121,7 +121,6 @@ line_index=0
 while IFS=';' read -r in_dir prefix aggregation begin end first_iter last_iter || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
-    ((line_index++))
 
     net_file="$in_dir/$prefix.net.xml"
     trips_file="$in_dir/$prefix.trips.xml"
@@ -162,6 +161,7 @@ while IFS=';' read -r in_dir prefix aggregation begin end first_iter last_iter |
             python ~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo/tools/assign/duaIterate.py "${dua_args[@]}"
         )
     done
+    ((line_index++))
 done < "$experiment"
 
 echo "All experiments finished."
