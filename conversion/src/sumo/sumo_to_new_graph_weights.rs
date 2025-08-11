@@ -96,7 +96,10 @@ fn preprocess_tt<'a>(
         .enumerate()
         .map(|(edge_index, edge_id)| {
             let mut adapted_tt: HashMap<SerializedTimestamp, SerializedTravelTime> = HashMap::new();
-            let edge_tts = original_edge_by_edge_id_and_interval.get(edge_id).unwrap();
+            let edge_tts = match original_edge_by_edge_id_and_interval.get(edge_id) {
+                Some(e) => e,
+                None => &HashMap::new(),
+            };
             let default_travel_time = edge_default_travel_times[edge_index];
 
             for (interval_index, interval) in meandata.intervals.iter().rev().enumerate() {
