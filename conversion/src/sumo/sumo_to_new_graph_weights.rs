@@ -4,6 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use rayon::prelude::*;
+
 use rust_road_router::{
     datastr::graph::{floating_time_dependent::TDGraph, EdgeId},
     io::{Load, Reconstruct, Store},
@@ -63,75 +65,58 @@ pub fn extract_interpolation_points_from_meandata(
     edge_indices_to_id: &Vec<String>,
     edge_default_travel_times: &Vec<SerializedTravelTime>,
 ) -> (Vec<EdgeId>, Vec<SerializedTravelTime>, Vec<SerializedTimestamp>) {
-    // for edge and for every interval, write the travel time to the ipp files "first_ipp_of_arc", "ipp_travel_time", and "ipp_departure_time"
-    // if in an interval the edge is not present, use the default travel time from edge_default_travel_times
-    let mut first_ipp_of_arc: Vec<u32> = Vec::with_capacity(edge_indices_to_id.len() + 1);
-    let mut ipp_travel_time = Vec::new();
-    let mut ipp_departure_time = Vec::new();
+    get_ipp_vectors(
+        &meandata,
+        edge_indices_to_id,
+        &preprocess_tt(&meandata, edge_indices_to_id, edge_default_travel_times),
+    )
+}
 
-    let mut original_edge_tt_by_interval_and_edge_id: HashMap<SerializedTimestamp, HashMap<String, &Edge>> = HashMap::new();
-    let mut adapted_edge_tt_by_interval_and_edge_id: HashMap<SerializedTimestamp, HashMap<String, SerializedTravelTime>> = HashMap::new();
+fn preprocess_tt<'a>(
+    meandata: &MeandataDocumentRoot,
+    edge_indices_to_id: &'a Vec<String>,
+    edge_default_travel_times: &Vec<SerializedTravelTime>,
+) -> HashMap<&'a String, HashMap<SerializedTimestamp, SerializedTravelTime>> {
+    let mut original_edge_by_edge_id_and_interval: HashMap<&String, HashMap<SerializedTimestamp, &Edge>> = HashMap::with_capacity(edge_indices_to_id.len());
 
     for interval in &meandata.intervals {
         // for each interval, create a map of edge id to edge
         let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
-        original_edge_tt_by_interval_and_edge_id.insert(timestamp, HashMap::new());
-        adapted_edge_tt_by_interval_and_edge_id.insert(timestamp, HashMap::new());
 
         for edge in &interval.edges {
-            original_edge_tt_by_interval_and_edge_id
-                .get_mut(&timestamp)
-                .unwrap()
-                .insert(edge.id.clone(), edge);
+            original_edge_by_edge_id_and_interval
+                .entry(&edge.id)
+                .or_insert_with(HashMap::new)
+                .insert(timestamp, edge);
         }
     }
 
-    for (edge_index, edge_id) in edge_indices_to_id.iter().enumerate() {
-        for (interval_index, interval) in meandata.intervals.iter().rev().enumerate() {
-            let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
-
+    edge_indices_to_id
+        .par_iter()
+        .enumerate()
+        .map(|(edge_index, edge_id)| {
+            let mut adapted_tt: HashMap<SerializedTimestamp, SerializedTravelTime> = HashMap::new();
+            let edge_tts = original_edge_by_edge_id_and_interval.get(edge_id).unwrap();
             let default_travel_time = edge_default_travel_times[edge_index];
-            let current_interval_edges = original_edge_tt_by_interval_and_edge_id.get(&timestamp).unwrap();
 
-            let mut tt = current_interval_edges
-                .get(edge_id)
-                .and_then(|edge| edge.traveltime)
-                .map(|val| (val * 1000.0) as SerializedTravelTime)
-                .unwrap_or(default_travel_time);
+            for (interval_index, interval) in meandata.intervals.iter().rev().enumerate() {
+                let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
 
-            if interval_index == 0 {
-                // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
-                // this ensures the fifo property for the travel time in the last interval
-                // since the time functions are periodic and wrap around
-                let first_interval = meandata.intervals.first().unwrap();
-                let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
-                let next_timestamp = (first_interval.begin * 1000.0) as SerializedTravelTime;
+                let mut tt = edge_tts
+                    .get(&timestamp)
+                    .and_then(|edge| edge.traveltime)
+                    .map(|val| (val * 1000.0) as SerializedTravelTime)
+                    .unwrap_or(default_travel_time);
 
-                if interval_duration + default_travel_time < tt {
-                    // If the next travel time is less than the current, we adjust the current travel time
-                    println!(
-                        "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
-                        edge_id,
-                        timestamp,
-                        next_timestamp,
-                        tt,
-                        interval_duration,
-                        default_travel_time,
-                        interval_duration + default_travel_time
-                    );
-                    tt = interval_duration + default_travel_time;
-                }
-            }
-            if interval_index > 0 {
-                // Enforce FIFO condition if there is a next interval
-                if let Some(next_interval) = meandata.intervals.get(meandata.intervals.len() - interval_index) {
-                    let next_timestamp = (next_interval.begin * 1000.0) as SerializedTimestamp;
-                    let interval_duration = next_timestamp - timestamp;
-                    let next_interval_edge_tts = adapted_edge_tt_by_interval_and_edge_id.get(&next_timestamp).unwrap();
+                if interval_index == 0 {
+                    // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
+                    // this ensures the fifo property for the travel time in the last interval
+                    // since the time functions are periodic and wrap around
+                    let first_interval = meandata.intervals.first().unwrap();
+                    let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
+                    let next_timestamp = (first_interval.begin * 1000.0) as SerializedTravelTime;
 
-                    let next_tt = next_interval_edge_tts.get(edge_id).unwrap_or(&default_travel_time);
-
-                    if interval_duration + next_tt < tt {
+                    if interval_duration + default_travel_time < tt {
                         // If the next travel time is less than the current, we adjust the current travel time
                         println!(
                             "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
@@ -140,20 +125,54 @@ pub fn extract_interpolation_points_from_meandata(
                             next_timestamp,
                             tt,
                             interval_duration,
-                            next_tt,
-                            interval_duration + next_tt
+                            default_travel_time,
+                            interval_duration + default_travel_time
                         );
-                        tt = interval_duration + next_tt;
+                        tt = interval_duration + default_travel_time;
                     }
                 }
+                if interval_index > 0 {
+                    // Enforce FIFO condition if there is a next interval
+                    if let Some(next_interval) = meandata.intervals.get(meandata.intervals.len() - interval_index) {
+                        let next_timestamp = (next_interval.begin * 1000.0) as SerializedTimestamp;
+                        let interval_duration = next_timestamp - timestamp;
+                        let next_tt = adapted_tt.get(&next_timestamp).unwrap();
+
+                        if interval_duration + next_tt < tt {
+                            // If the next travel time is less than the current, we adjust the current travel time
+                            println!(
+                                "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                                edge_id,
+                                timestamp,
+                                next_timestamp,
+                                tt,
+                                interval_duration,
+                                next_tt,
+                                interval_duration + next_tt
+                            );
+                            tt = interval_duration + next_tt;
+                        }
+                    }
+                }
+
+                adapted_tt.insert(timestamp, tt as SerializedTravelTime);
             }
 
-            adapted_edge_tt_by_interval_and_edge_id
-                .get_mut(&timestamp)
-                .unwrap()
-                .insert(edge_id.clone(), tt as SerializedTravelTime);
-        }
-    }
+            (edge_id, adapted_tt)
+        })
+        .collect()
+}
+
+fn get_ipp_vectors(
+    meandata: &MeandataDocumentRoot,
+    edge_indices_to_id: &Vec<String>,
+    preprocessed_tt: &HashMap<&String, HashMap<SerializedTimestamp, SerializedTravelTime>>,
+) -> (Vec<EdgeId>, Vec<SerializedTravelTime>, Vec<SerializedTimestamp>) {
+    // for edge and for every interval, write the travel time to the ipp files "first_ipp_of_arc", "ipp_travel_time", and "ipp_departure_time"
+    // if in an interval the edge is not present, use the default travel time from edge_default_travel_times
+    let mut first_ipp_of_arc: Vec<u32> = Vec::with_capacity(edge_indices_to_id.len() + 1);
+    let mut ipp_travel_time = Vec::new();
+    let mut ipp_departure_time = Vec::new();
 
     let mut added: u32 = 0;
     for edge_id in edge_indices_to_id.iter() {
@@ -163,8 +182,7 @@ pub fn extract_interpolation_points_from_meandata(
             added += 1;
             let timestamp = (interval.begin * 1000.0) as SerializedTimestamp;
             ipp_departure_time.push(timestamp);
-
-            let tt = *adapted_edge_tt_by_interval_and_edge_id.get(&timestamp).unwrap().get(edge_id).unwrap();
+            let tt = *preprocessed_tt.get(edge_id).unwrap().get(&timestamp).unwrap();
 
             ipp_travel_time.push(tt);
         }
