@@ -29,7 +29,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
     let ((edge_ids, graph, cch), duration) = measure(|| {
-        let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
+        let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap_or_else(|_| {
+            panic!(
+                "Failed to read edge indices from file {} in directory {}",
+                FILE_EDGE_INDICES_TO_ID,
+                input_dir.display()
+            )
+        });
         let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
         let cch = get_cch(input_dir, &graph);
 
