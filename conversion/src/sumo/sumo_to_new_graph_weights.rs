@@ -349,7 +349,7 @@ pub mod tests {
     #[test]
     fn test_fifo_ensured_backwards() {
         let edges: Vec<String> = vec!["edge1".to_string()];
-        let edge_default_travel_times: Vec<u32> = vec![5_000];
+        let edge_default_travel_times: Vec<u32> = vec![150_000];
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
@@ -416,7 +416,7 @@ pub mod tests {
     #[test]
     fn test_specific_weights_for_fifo() {
         let edges: Vec<String> = vec!["edge1".to_string()];
-        let edge_default_travel_times: Vec<u32> = vec![5_000];
+        let edge_default_travel_times: Vec<u32> = vec![86_400_000];
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
