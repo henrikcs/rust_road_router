@@ -99,6 +99,29 @@ pub fn extract_interpolation_points_from_meandata(
                 .map(|val| (val * 1000.0) as SerializedTravelTime)
                 .unwrap_or(default_travel_time);
 
+            if interval_index == 0 {
+                // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
+                // this ensures the fifo property for the travel time in the last interval
+                // since the time functions are periodic and wrap around
+                let first_interval = meandata.intervals.first().unwrap();
+                let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
+                let next_timestamp = (first_interval.begin * 1000.0) as SerializedTravelTime;
+
+                if interval_duration + default_travel_time < tt {
+                    // If the next travel time is less than the current, we adjust the current travel time
+                    println!(
+                        "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                        edge_id,
+                        timestamp,
+                        next_timestamp,
+                        tt,
+                        interval_duration,
+                        default_travel_time,
+                        interval_duration + default_travel_time
+                    );
+                    tt = interval_duration + default_travel_time;
+                }
+            }
             if interval_index > 0 {
                 // Enforce FIFO condition if there is a next interval
                 if let Some(next_interval) = meandata.intervals.get(meandata.intervals.len() - interval_index) {
@@ -430,6 +453,73 @@ pub mod tests {
             vec![
                 86_340_000, // edge1, interval1
                 86_400_000, // edge1, interval2
+            ],
+        );
+
+        let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
+            super::extract_interpolation_points_from_meandata(&meandata, &edges, &edge_default_travel_times);
+
+        assert_eq!(expected.0, first_ipp_of_arc);
+        assert_eq!(expected.1, ipp_travel_time);
+        assert_eq!(expected.2, ipp_departure_time);
+
+        // can create new TDGraph
+        // add first_out (vector where using node indices finds the first outgoing edge)
+        // one edge, two nodes, having one outgoing edge
+        let first_out = vec![0, 1];
+        let head = vec![1];
+
+        TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
+    }
+
+    #[test]
+    fn test_fifo_ensured_periodically() {
+        let edges: Vec<String> = vec!["edge1".to_string()];
+        let edge_default_travel_times: Vec<u32> = vec![25_000];
+
+        let meandata = meandata::MeandataDocumentRoot {
+            intervals: vec![
+                meandata::Interval {
+                    id: "interval1".to_string(),
+                    begin: 0.0,
+                    end: 100.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(50.0),
+                    }],
+                },
+                meandata::Interval {
+                    id: "interval2".to_string(),
+                    begin: 100.0,
+                    end: 200.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(1000.0),
+                    }],
+                },
+                meandata::Interval {
+                    id: "interval2".to_string(),
+                    begin: 200.0,
+                    end: 250.0,
+                    edges: vec![meandata::Edge {
+                        id: "edge1".to_string(),
+                        traveltime: Some(200.0),
+                    }],
+                },
+            ],
+        };
+
+        let expected = (
+            vec![0, 3], // first_ipp_of_arc
+            vec![
+                50_000,  // edge1, travel_time1
+                175_000, // edge1, travel_time2
+                75_000,  // edge1, travel_time3 since the default travel time is 25_000 and the interval is 50_000
+            ],
+            vec![
+                0,       // edge1, interval1
+                100_000, // edge1, interval2
+                200_000, // edge1, interval2
             ],
         );
 
