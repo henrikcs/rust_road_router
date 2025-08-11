@@ -300,6 +300,32 @@
         "lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py"
       ],
       "hide": true
+    },
+    {
+      "label": "Preprocess (example data)",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "run",
+        "--package",
+        "fastdta",
+        "--bin",
+        "sumo-tdcch-preprocessor",
+        "--",
+        "--input-dir",
+        "${workspaceFolder}/import/sumo/example-data",
+        "--input-prefix",
+        "example-data",
+        "--output-dir",
+        "${workspaceFolder}/data/imported/sumo/example-data"
+      ],
+      "options": {
+        "env": {
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}"
+        }
+      },
+      "hide": true,
+      "dependsOn": ["Build (debug)", "Copy duaIterate.py to SUMO"]
     }
   ]
 }

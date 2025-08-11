@@ -57,17 +57,17 @@
       "program": "${workspaceFolder}/target/debug/sumo-tdcch-router",
       "args": [
         "--input-dir",
-        "./data/imported/sumo/example-data",
+        "${workspaceFolder}/data/imported/sumo/example-data",
         "--input-prefix",
         "example-data",
         "--iteration",
         "1"
       ],
-      "cwd": "${workspaceFolder}/data/imported/sumo/example-data",
+      "cwd": "${workspaceFolder}",
       "env": {
         "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
       },
-      "preLaunchTask": "Build (debug)"
+      "preLaunchTask": "Preprocess (example data)"
     },
     {
       "type": "lldb",
