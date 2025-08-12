@@ -4,7 +4,6 @@ use rust_road_router::datastr::graph::{floating_time_dependent::IPPIndex, EdgeId
 
 use crate::{SerializedTimestamp, SerializedTravelTime};
 
-pub mod base_types;
 pub mod connections;
 pub mod connections_reader;
 pub mod connections_writer;
@@ -22,6 +21,7 @@ pub mod sumo_to_new_graph_weights;
 pub mod sumo_to_td_graph_converter;
 pub mod trips;
 pub mod trips_reader;
+pub mod trips_writer;
 
 pub const EDG_XML: &str = ".edg.xml";
 pub const NOD_XML: &str = ".nod.xml";

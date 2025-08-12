@@ -1,6 +1,6 @@
 use serde_derive::Deserialize;
 
-use crate::sumo::{base_types::Param, SumoPosition, SumoTravelTime};
+use crate::sumo::{SumoPosition, SumoTravelTime};
 
 #[derive(Debug, Deserialize)]
 pub struct EdgesDocumentRoot {
@@ -60,4 +60,12 @@ pub struct Lane {
 
     #[serde(rename = "param", default)]
     pub params: Vec<Param>,
+}
+
+#[derive(Default, Debug, Deserialize)]
+pub struct Param {
+    #[serde(rename = "@key")]
+    pub key: String,
+    #[serde(rename = "@value")]
+    pub value: Option<String>,
 }

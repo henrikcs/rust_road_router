@@ -1,15 +1,15 @@
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::sumo::SumoTimestamp;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename = "routes")]
 pub struct TripsDocumentRoot {
     #[serde(rename = "trip", default)]
     pub vehicles: Vec<Trip>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Trip {
     #[serde(rename = "@id")]
     pub id: String,
