@@ -1,10 +1,10 @@
 use std::{error::Error, fs::File, io::Write, path::Path};
 
-use crate::sumo::{connections::ConnectionsDocumentRoot, XmlWriter};
+use crate::sumo::{connections::ConnectionsDocumentRoot, FileWriter};
 
 pub struct SumoConnectionsWriter {}
 
-impl XmlWriter for SumoConnectionsWriter {
+impl FileWriter for SumoConnectionsWriter {
     type R = ConnectionsDocumentRoot;
 
     fn write(output_file: &Path, connections: &ConnectionsDocumentRoot) -> Result<(), Box<dyn Error>> {

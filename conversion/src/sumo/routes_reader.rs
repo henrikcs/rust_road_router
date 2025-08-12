@@ -1,10 +1,10 @@
 use std::{error::Error, fs, path::Path};
 
-use crate::sumo::{routes::RoutesDocumentRoot, XmlReader};
+use crate::sumo::{routes::RoutesDocumentRoot, FileReader};
 
 pub struct SumoRoutesReader {}
 
-impl XmlReader for SumoRoutesReader {
+impl FileReader for SumoRoutesReader {
     type R = RoutesDocumentRoot;
 
     fn read(file: &Path) -> Result<RoutesDocumentRoot, Box<dyn Error>> {

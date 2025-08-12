@@ -6,7 +6,7 @@ use std::{
 
 use clap::Parser;
 use conversion::sumo::{
-    CON_XML, EDG_XML, NOD_XML, XmlReader, connections::Connection, connections_reader::SumoConnectionsReader, edges::Edge, edges_reader::SumoEdgesReader,
+    CON_XML, EDG_XML, NOD_XML, FileReader, connections::Connection, connections_reader::SumoConnectionsReader, edges::Edge, edges_reader::SumoEdgesReader,
     nodes_reader::SumoNodesReader,
 };
 

@@ -1,10 +1,10 @@
 use std::{error::Error, fs, path::Path};
 
-use crate::sumo::{meandata::MeandataDocumentRoot, XmlReader};
+use crate::sumo::{meandata::MeandataDocumentRoot, FileReader};
 
 pub struct SumoMeandataReader {}
 
-impl XmlReader for SumoMeandataReader {
+impl FileReader for SumoMeandataReader {
     type R = MeandataDocumentRoot;
 
     fn read(output_file: &Path) -> Result<MeandataDocumentRoot, Box<dyn Error>> {

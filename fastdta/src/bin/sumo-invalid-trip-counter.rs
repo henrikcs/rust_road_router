@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use clap::Parser;
-use conversion::sumo::{XmlReader, edges_reader::SumoEdgesReader, trips_reader::SumoTripsReader};
+use conversion::sumo::{FileReader, edges_reader::SumoEdgesReader, trips_reader::SumoTripsReader};
 
 fn main() {
     let args = Args::parse();
@@ -11,7 +11,7 @@ fn main() {
 
     println!("Reading trips from: {}", trips_path.display());
     let trips = SumoTripsReader::read(trips_path).unwrap();
-    println!("Found {} trips", trips.vehicles.len());
+    println!("Found {} trips", trips.trips.len());
 
     println!("Reading edges from: {}", edges_path.display());
     let edges = SumoEdgesReader::read(edges_path).unwrap();
@@ -23,7 +23,7 @@ fn main() {
     let mut invalid_trips = 0;
 
     println!("Process trips...");
-    for trip in &trips.vehicles {
+    for trip in &trips.trips {
         if !edge_set.contains(&trip.from) || edge_set.contains(&trip.to) {
             if invalid_trips < 10 {
                 if !edge_set.contains(&trip.to) {

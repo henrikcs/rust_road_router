@@ -9,7 +9,7 @@ use crate::{
     sumo::{
         routes::{Route, RouteDistribution, RoutesDocumentRoot, Vehicle},
         routes_writer::SumoRoutesWriter,
-        XmlWriter, ALT_ROUTES, ROUTES,
+        FileWriter, ALT_ROUTES, ROUTES,
     },
     SerializedTimestamp, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };

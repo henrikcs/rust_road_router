@@ -1,10 +1,10 @@
 use std::{error::Error, fs::File, io::Write, path::Path};
 
-use crate::sumo::{routes::RoutesDocumentRoot, XmlWriter};
+use crate::sumo::{routes::RoutesDocumentRoot, FileWriter};
 
 pub struct SumoRoutesWriter {}
 
-impl XmlWriter for SumoRoutesWriter {
+impl FileWriter for SumoRoutesWriter {
     type R = RoutesDocumentRoot;
 
     fn write(output_file: &Path, routes: &RoutesDocumentRoot) -> Result<(), Box<dyn Error>> {

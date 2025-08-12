@@ -46,13 +46,13 @@ pub type SumoPosition = f64;
 /// - `ipp_travel_time`: travel time for each interpolation point in milliseconds (length m)
 pub type RoutingKitTDGraph = (Vec<EdgeId>, Vec<NodeId>, Vec<IPPIndex>, Vec<SerializedTimestamp>, Vec<SerializedTravelTime>);
 
-pub trait XmlReader {
+pub trait FileReader {
     type R;
 
     fn read(file: &Path) -> Result<Self::R, Box<dyn Error>>;
 }
 
-pub trait XmlWriter {
+pub trait FileWriter {
     type R;
 
     fn write(output_file: &Path, doc: &Self::R) -> Result<(), Box<dyn Error>>;

@@ -10,7 +10,7 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        RoutingKitTDGraph, SumoTravelTime, XmlReader, EDG_XML, NOD_XML, TRIPS_XML,
+        FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML, TRIPS_XML,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC,
     FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM,
@@ -132,14 +132,14 @@ pub fn get_queries_from_trips<'a>(
     edge_id_to_index_map: &HashMap<&String, (usize, FlattenedSumoEdge)>,
 ) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<SerializedTimestamp>, Vec<&'a String>, Vec<&'a String>) {
     // create a vector of from nodes, to nodes and departure times
-    let mut trip_ids = Vec::with_capacity(trips_document_root.vehicles.len());
-    let mut from_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
-    let mut to_nodes = Vec::with_capacity(trips_document_root.vehicles.len());
-    let mut departure_times = Vec::with_capacity(trips_document_root.vehicles.len());
-    let mut original_trip_from_edges = Vec::with_capacity(trips_document_root.vehicles.len());
-    let mut original_trip_to_edges = Vec::with_capacity(trips_document_root.vehicles.len());
+    let mut trip_ids = Vec::with_capacity(trips_document_root.trips.len());
+    let mut from_nodes = Vec::with_capacity(trips_document_root.trips.len());
+    let mut to_nodes = Vec::with_capacity(trips_document_root.trips.len());
+    let mut departure_times = Vec::with_capacity(trips_document_root.trips.len());
+    let mut original_trip_from_edges = Vec::with_capacity(trips_document_root.trips.len());
+    let mut original_trip_to_edges = Vec::with_capacity(trips_document_root.trips.len());
 
-    for veh in &trips_document_root.vehicles {
+    for veh in &trips_document_root.trips {
         trip_ids.push(&veh.id);
         // vehicles go from an edge to an edge, so we need to get the from and to nodes of the edges
         from_nodes.push(

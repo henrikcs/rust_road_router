@@ -2,7 +2,7 @@ use std::{env, path::Path};
 
 use clap::Parser;
 use conversion::sumo::{
-    CON_XML, EDG_XML, NOD_XML, XmlReader, XmlWriter,
+    CON_XML, EDG_XML, FileReader, FileWriter, NOD_XML,
     connections::{Connection, ConnectionsDocumentRoot},
     connections_writer::SumoConnectionsWriter,
     edges_reader::SumoEdgesReader,

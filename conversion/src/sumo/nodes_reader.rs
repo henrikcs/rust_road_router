@@ -1,10 +1,10 @@
 use std::{error::Error, fs, path::Path};
 
-use crate::sumo::{nodes::NodesDocumentRoot, XmlReader};
+use crate::sumo::{nodes::NodesDocumentRoot, FileReader};
 
 pub struct SumoNodesReader {}
 
-impl XmlReader for SumoNodesReader {
+impl FileReader for SumoNodesReader {
     type R = NodesDocumentRoot;
 
     fn read(file: &Path) -> Result<NodesDocumentRoot, Box<dyn Error>> {

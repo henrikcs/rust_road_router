@@ -15,7 +15,7 @@ use crate::{
     sumo::{
         meandata::{Edge, MeandataDocumentRoot},
         meandata_reader::SumoMeandataReader,
-        XmlReader,
+        FileReader,
     },
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
 };
