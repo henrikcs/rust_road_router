@@ -23,7 +23,9 @@
         "--input-prefix",
         "grid",
         "--output-dir",
-        "./data/imported/sumo/grid"
+        "./data/imported/sumo/grid",
+        "--trips-file",
+        "${workspaceFolder}/import/sumo/grid/grid.trips.xml"
       ],
       "cwd": "${workspaceFolder}",
       "env": {
@@ -42,7 +44,9 @@
         "--input-prefix",
         "example-data",
         "--output-dir",
-        "./data/imported/sumo/example-data"
+        "./data/imported/sumo/example-data",
+        "--trips-file",
+        "${workspaceFolder}/import/sumo/example-data/example-data.trips.xml"
       ],
       "cwd": "${workspaceFolder}",
       "env": {

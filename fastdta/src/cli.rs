@@ -10,9 +10,13 @@ pub struct PreprocesserArgs {
     #[arg(long = "input-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
     pub input_dir: String,
 
-    /// the files `<input-prefix>.con.xml`, `<input-prefix>.nod.xml`, `<input-prefix>.edg.xml` will be read as input
+    /// the files `<input-prefix>.nod.xml`, `<input-prefix>.edg.xml` will be read as input
     #[arg(long = "input-prefix", default_value = "")]
     pub input_prefix: String,
+
+    /// the trips file to read inside the input directory
+    #[arg(long = "trips-file")]
+    pub trips_file: String,
 
     /// the directory to write the output files to (optional, defaults to current directory)
     #[arg(long = "output-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]

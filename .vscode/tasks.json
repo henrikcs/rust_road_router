@@ -39,6 +39,8 @@
         "--routing-algorithm",
         "CCH",
         "--mesosim",
+        "--max-convergence-deviation",
+        "0.1",
         "--aggregation",
         "900",
         "--begin",
@@ -316,6 +318,8 @@
         "${workspaceFolder}/import/sumo/example-data",
         "--input-prefix",
         "example-data",
+        "--trips-file",
+        "${workspaceFolder}/import/sumo/example-data/example-data.trips.xml",
         "--output-dir",
         "${workspaceFolder}/data/imported/sumo/example-data"
       ],

@@ -3,6 +3,7 @@
 # --- Default values ---
 declare spack_env=""
 declare experiment=""
+declare trip_file_name=""
 declare release_type="release"
 declare -a routing_algorithms=()
 declare output_dir
@@ -17,7 +18,7 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<input_dir>;<prefix>;<aggregation>;<begin>;<end>;<first_iter>;<last_iter>;\n]"
+    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<aggregation>;<begin>;<end>;<convergence_deviation>;<first_iter>;<last_iter>;\n]"
     echo ""
     echo "Routing algorithm options (at least one is required):"
     echo "  --cch                  Run all experiments with CCH routing."
@@ -80,7 +81,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Validate arguments ---
-if [ -z "$spack_env" ] || [ -z "$experiment" ] || [ ${#routing_algorithms[@]} -eq 0 ]; then
+if [ -z "$spack_env" ] || [ -z "$experiment" ] || [ -z "$experiment" ] || [ ${#routing_algorithms[@]} -eq 0 ]; then
     echo "Error: Missing required arguments."
     usage
 fi
@@ -118,12 +119,12 @@ cp ~/rust_road_router/fastdta/duaIterate.py ~/rust_road_router/venvs/libsumo/lib
 
 # --- Run experiments ---
 line_index=0
-while IFS=';' read -r in_dir prefix aggregation begin end first_iter last_iter || [[ -n "$in_dir" ]]; do
+while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end convergence_deviation first_iter last_iter || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
 
     net_file="$in_dir/$prefix.net.xml"
-    trips_file="$in_dir/$prefix.trips.xml"
+    trips_file="$in_dir/$trip_file_name"
     experiment_out_dir="$base_output_dir/$line_index"
 
     for algorithm in "${routing_algorithms[@]}"; do
@@ -145,6 +146,7 @@ while IFS=';' read -r in_dir prefix aggregation begin end first_iter last_iter |
                 -t "$trips_file"
                 --mesosim --aggregation "$aggregation" --begin "$begin" --end "$end" -f $first_iter -l $last_iter
                 --routing-algorithm "$algorithm"
+                --max-convergence-deviation "$convergence_deviation"
                 sumo--ignore-route-errors
                 sumo--time-to-teleport.disconnected 1
                 sumo--aggregate-warnings 5

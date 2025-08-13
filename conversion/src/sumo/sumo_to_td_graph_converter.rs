@@ -10,7 +10,7 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML, TRIPS_XML,
+        FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC,
     FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM,
@@ -60,8 +60,13 @@ impl Clone for FlattenedSumoEdge<'_> {
 /// - queries-departure: a file containing the departure times of the queries
 ///
 /// With this data, InertialFlowCutterConsole can create a node ranking for the TD-CCH
-pub fn convert_sumo_to_routing_kit_and_queries(input_dir: &Path, input_prefix: &String, output_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix);
+pub fn convert_sumo_to_routing_kit_and_queries(
+    input_dir: &Path,
+    input_prefix: &String,
+    trips_file: &Path,
+    output_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
 
     let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
     let (trip_ids, from, to, departure, original_trip_from_edges, original_trip_to_edges) = get_queries_from_trips(&trips, &edge_ids_to_index);
@@ -113,10 +118,14 @@ pub fn read_nodes_and_edges_from_plain_xml(input_dir: &Path, files_prefix: &Stri
     (nodes, edges)
 }
 
-pub fn read_nodes_edges_and_trips_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot, TripsDocumentRoot) {
+pub fn read_nodes_edges_and_trips_from_plain_xml(
+    input_dir: &Path,
+    files_prefix: &String,
+    trips_file: &Path,
+) -> (NodesDocumentRoot, EdgesDocumentRoot, TripsDocumentRoot) {
     let (nodes, edges) = read_nodes_and_edges_from_plain_xml(input_dir, files_prefix);
-    let Ok(trips) = SumoTripsReader::read(input_dir.join(files_prefix.clone() + TRIPS_XML).as_path()) else {
-        panic!("Trips could not be read from {}.", input_dir.display());
+    let Ok(trips) = SumoTripsReader::read(trips_file) else {
+        panic!("Trips could not be read from {}.", trips_file.display());
     };
 
     (nodes, edges, trips)

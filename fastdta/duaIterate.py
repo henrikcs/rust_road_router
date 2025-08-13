@@ -633,10 +633,10 @@ def main(args=None):
         CCH_PREPROCESS_BINARY, 'cch-preprocessor', options.remaining_args)
     cch_routing_args = assign_remaining_args(
         CCH_ROUTER_BINARY, 'cch-router', options.remaining_args)
-    dijkstra_routing_args = assign_remaining_args(
-        DIJKSTRA_ROUTER_BINARY, 'dijkstra-router', options.remaining_args)
     dijkstra_preprocessing_args = assign_remaining_args(
         DIJKSTRA_PREPROCESS_BINARY, 'dijkstra-preprocessor', options.remaining_args)
+    dijkstra_routing_args = assign_remaining_args(
+        DIJKSTRA_ROUTER_BINARY, 'dijkstra-router', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
     log = open(options.dualog, "w+")
     if options.zip:
@@ -678,11 +678,13 @@ def main(args=None):
         generateEdgedataAddFile(EDGEDATA_ADD, options)
 
     # do a preprocessing step if CCH is used
+    # note that the rust libraries only support a single demand file as an input.
     if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
         tik = datetime.now()
         print("> Preprocessing network for CCH")
         print(">> Begin time: %s" % tik)
-        ret = call_binary(CCH_PREPROCESS_BINARY, cch_preprocessing_args, log)
+        ret = call_binary(CCH_PREPROCESS_BINARY,
+                          cch_preprocessing_args + ["--trips-file", input_demands[0]], log)
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: CCH preprocessing failed.")
@@ -694,7 +696,7 @@ def main(args=None):
         print("> Preprocessing network for Dijkstra Rust")
         print(">> Begin time: %s" % tik)
         ret = call_binary(DIJKSTRA_PREPROCESS_BINARY,
-                          dijkstra_preprocessing_args, log)
+                          dijkstra_preprocessing_args + ["--trips-file", input_demands[0]], log)
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: Dijkstra preprocessing failed.")
