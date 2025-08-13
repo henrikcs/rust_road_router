@@ -62,15 +62,15 @@ while [[ $# -gt 0 ]]; do
         shift
         ;;
         --dijkstra)
-        routing_algorithms+=("Dijkstra")
+        routing_algorithms+=("dijkstra")
         shift
         ;;
         --dijkstra-rust)
-        routing_algorithms+=("DijkstraRust")
+        routing_algorithms+=("dijkstra-rust")
         shift
         ;;
         --a-star)
-        routing_algorithms+=("AStar")
+        routing_algorithms+=("astar")
         shift
         ;;
         *)
