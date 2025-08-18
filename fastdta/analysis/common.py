@@ -215,7 +215,7 @@ def _split_potentially_double_line(raw_line: str) -> List[str]:
     return [raw_line.strip()]
 
 
-def _parse_csv_record(row_text: str, expected_cols: int = 9) -> Optional[List[str]]:
+def _parse_csv_record(row_text: str, expected_cols: int = 10) -> Optional[List[str]]:
     # Use csv module to handle quoting; but we need semicolon delimiter.
     # We feed a single line to csv.reader.
     reader = csv.reader([row_text], delimiter=";")
