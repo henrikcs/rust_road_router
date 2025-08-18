@@ -148,6 +148,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
                 duarouter--seed $seed
+                duarouter--route-choice-method logit
                 sumo--ignore-route-errors
                 sumo--time-to-teleport.disconnected 1
                 sumo--aggregate-warnings 5
@@ -160,6 +161,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                     cch-preprocessor--input-prefix "$prefix"
                     cch-preprocessor--input-dir "$in_dir"
                     cch-router--seed $seed
+                    cch-router--route-choice-method logit
                 )
             fi
             # Add preprocessor args only for td-dijkstra-rust
@@ -168,6 +170,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                     dijkstra-preprocessor--input-prefix "$prefix"
                     dijkstra-preprocessor--input-dir "$in_dir"
                     dijkstra-router--seed $seed
+                    dijkstra-router--route-choice-method logit
                 )
             fi
 
