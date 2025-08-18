@@ -60,7 +60,7 @@ class Experiment:
 class LogSummary:
     experiments: List[Experiment] = field(default_factory=list)
 
-# CSV schema: in_dir;prefix;trip_file_name;aggregation;begin;end;convergence_deviation;first_iter;last_iter
+# CSV schema: in_dir;prefix;trip_file_name;aggregation;begin;end;convergence_deviation;first_iter;last_iter;seed
 
 
 @dataclass
@@ -74,6 +74,7 @@ class InputRow:
     convergence_deviation: str
     first_iter: int
     last_iter: int
+    seed: int
     # implicit key = line index in the CSV (0-based)
     line_index: int = -1
 
@@ -241,7 +242,7 @@ def load_csv_parameters(path: str) -> Dict[int, InputRow]:
                 rec = _parse_csv_record(ll)
                 if not rec:
                     continue
-                in_dir, prefix, trip, aggregation, begin, end, conv_dev, first_iter, last_iter = rec
+                in_dir, prefix, trip, aggregation, begin, end, conv_dev, first_iter, last_iter, seed = rec
                 row = InputRow(
                     in_dir=in_dir,
                     prefix=prefix,
@@ -252,6 +253,7 @@ def load_csv_parameters(path: str) -> Dict[int, InputRow]:
                     convergence_deviation=str(conv_dev),
                     first_iter=int(first_iter),
                     last_iter=int(last_iter),
+                    seed=int(seed),
                     line_index=current_index,
                 )
                 inputs[current_index] = row
