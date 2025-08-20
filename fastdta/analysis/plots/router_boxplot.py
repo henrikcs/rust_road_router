@@ -72,7 +72,7 @@ class RouterBoxplotByAlgoAgg(Plot):
             plt.xticks(range(1, len(labels) + 1),
                        labels, rotation=30, ha="right")
 
-            fname = f"{self.filename_base(input_row)}-{self.filename_suffix()}.png"
+            fname = f"{self.filename_base(input_row)}-{self.filename_suffix()}.pdf"
             plt.tight_layout()
-            plt.savefig(os.path.join(out_dir, fname), dpi=200)
+            plt.savefig(os.path.join(out_dir, fname))
             plt.close()

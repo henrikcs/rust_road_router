@@ -1,13 +1,14 @@
 # plots/rel_dev_lines.py
 from __future__ import annotations
 import os
-from typing import Dict, List, Tuple
+from typing import Dict
 import matplotlib.pyplot as plt
 
 from common import (
     DataModel, experiments_by_line, to_float_or_none, normalize_algo,
 )
 from .base import Plot, register_plot
+from .styles import style_for_algo, MS, LW  # NEW: shared styles
 
 
 def _ensure_outdir(out_dir: str):
@@ -37,7 +38,7 @@ class RelDevLines(Plot):
             if not input_row:
                 continue
 
-            algo_to_points: Dict[str, Dict[int, float]] = {}
+            algo_to_pts_map: Dict[str, Dict[int, float]] = {}
             last_iter = input_row.last_iter
 
             for exp in exps:
@@ -48,31 +49,37 @@ class RelDevLines(Plot):
                     y = to_float_or_none(s.relative_travel_time_deviation)
                     if y is None:
                         continue
-                    # Keep last value per iteration if duplicates
-                    algo_to_points.setdefault(algo, {})[s.iteration] = y
+                    algo_to_pts_map.setdefault(algo, {})[s.iteration] = y
 
-            if not algo_to_points:
+            if not algo_to_pts_map:
                 continue
 
             plt.figure(figsize=(7, 4))
-            for algo, pts_map in sorted(algo_to_points.items()):
+            for algo, pts_map in sorted(algo_to_pts_map.items()):
                 xs = sorted(pts_map.keys())
                 ys = [pts_map[x] for x in xs]
-                plt.plot(xs, ys, marker="o", label=algo)
+                st = style_for_algo(algo)
+                plt.plot(
+                    xs, ys,
+                    label=algo,
+                    color=st["color"],
+                    marker=st["marker"],
+                    markersize=MS,
+                    linewidth=LW,
+                )
+
+            # make y-axis logarithmically scaled
+            plt.yscale("log")
 
             plt.title(
                 f"Relative travel time deviation by iteration (line #{line_idx})")
             plt.xlabel("Iteration")
             plt.ylabel("Relative travel time deviation")
-
-            # make y-axis logarithmically scaled
-            plt.yscale("log")
-
             plt.xlim(1, max(1, last_iter))
             plt.grid(True, linestyle="--", alpha=0.4)
             plt.legend(title="Algorithm", fontsize=8)
 
-            fname = f"{self.filename_base(input_row)}-{self.filename_suffix()}.png"
+            fname = f"{self.filename_base(input_row)}-{self.filename_suffix()}.pdf"
             plt.tight_layout()
-            plt.savefig(os.path.join(out_dir, fname), dpi=200)
+            plt.savefig(os.path.join(out_dir, fname))
             plt.close()

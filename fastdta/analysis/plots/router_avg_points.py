@@ -7,6 +7,7 @@ from common import (
     DataModel, experiments_by_line, parse_duration_to_seconds, normalize_algo,
 )
 from .base import Plot, register_plot
+from .styles import style_for_algo, S_SCATTER  # NEW: shared styles
 
 
 def _ensure_outdir(out_dir: str):
@@ -36,9 +37,8 @@ class RouterAvgPoints(Plot):
             if not input_row:
                 continue
 
-            xs = []
-            ys = []
-            labels = []
+            # Collect one or more points per algorithm: (k, avg_sec)
+            points_by_algo = {}
 
             for exp in exps:
                 algo = normalize_algo(exp.algorithm)
@@ -57,27 +57,34 @@ class RouterAvgPoints(Plot):
                 if not durations:
                     continue
                 avg_sec = sum(durations) / len(durations)
-                xs.append(k)
-                ys.append(avg_sec)
-                labels.append(algo)
+                points_by_algo.setdefault(algo, []).append((k, avg_sec))
 
-            if not xs:
+            if not points_by_algo:
                 continue
 
             plt.figure(figsize=(7, 4))
-            plt.scatter(xs, ys, c="tab:blue")
-            for xi, yi, lbl in zip(xs, ys, labels):
-                plt.annotate(lbl, (xi, yi), textcoords="offset points",
-                             xytext=(5, 5), fontsize=8)
+            for algo, pts in sorted(points_by_algo.items()):
+                st = style_for_algo(algo)
+                xs = [p[0] for p in pts]
+                ys = [p[1] for p in pts]
+                plt.scatter(
+                    xs, ys,
+                    label=algo,
+                    color=st["color"],
+                    marker=st["marker"],
+                    s=S_SCATTER,
+                )
 
             plt.title(
                 f"Avg router duration vs. max iteration reached (line #{line_idx})")
             plt.xlabel("Iteration (positioned at k = max reached)")
             plt.ylabel("Average router duration (s)")
-            plt.xlim(1, max(input_row.last_iter, max(xs)))
+            all_x = [x for pts in points_by_algo.values() for (x, _) in pts]
+            plt.xlim(1, max(input_row.last_iter, max(all_x)))
             plt.grid(True, linestyle="--", alpha=0.4)
+            plt.legend(title="Algorithm", fontsize=8)
 
-            fname = f"{self.filename_base(input_row)}-{self.filename_suffix()}.png"
+            fname = f"{self.filename_base(input_row)}-{self.filename_suffix()}.pdf"
             plt.tight_layout()
-            plt.savefig(os.path.join(out_dir, fname), dpi=200)
+            plt.savefig(os.path.join(out_dir, fname))
             plt.close()
