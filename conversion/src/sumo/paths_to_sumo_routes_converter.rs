@@ -37,7 +37,6 @@ pub fn write_paths_as_sumo_routes(
     let paths: Vec<&String> = get_chosen_paths_from_alternatives(&path_sets, &choices);
 
     let sumo_routes = convert_to_sumo_routes(paths, &trip_ids, departures);
-    let sumo_alt_routes = convert_to_sumo_alt_routes(&path_sets, &trip_ids, costs, probabilities, choices, departures);
 
     let current_iteration_dir = input_dir.join(format!("{iteration:0>3}"));
     let route_file_prefix = format!("{input_prefix}_{iteration:0>3}");
@@ -45,6 +44,7 @@ pub fn write_paths_as_sumo_routes(
     SumoRoutesWriter::write(&current_iteration_dir.join(format!("{route_file_prefix}{ROUTES}")), &sumo_routes).expect("Failed to write SUMO routes to file");
 
     if write_alternative_paths {
+        let sumo_alt_routes = convert_to_sumo_alt_routes(&path_sets, &trip_ids, costs, probabilities, choices, departures);
         SumoRoutesWriter::write(&current_iteration_dir.join(format!("{route_file_prefix}{ALT_ROUTES}")), &sumo_alt_routes)
             .expect("Failed to write SUMO alternative routes to file");
     }
@@ -71,6 +71,8 @@ fn convert_to_sumo_routes(paths: Vec<&String>, trip_ids: &Vec<String>, departure
         };
         routes.vehicles.push(vehicle);
     }
+
+    routes.vehicles.sort_by(|a, b| ((a.depart * 1000.0) as u32).cmp(&((b.depart * 1000.0) as u32)));
 
     routes
 }
@@ -119,6 +121,8 @@ fn convert_to_sumo_alt_routes(
         };
         routes.vehicles.push(vehicle);
     }
+
+    routes.vehicles.sort_by(|a, b| ((a.depart * 1000.0) as u32).cmp(&((b.depart * 1000.0) as u32)));
 
     routes
 }
