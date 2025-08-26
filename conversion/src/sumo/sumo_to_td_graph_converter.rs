@@ -67,11 +67,13 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     output_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
-
     let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
     let (trip_ids, from, to, departure, original_trip_from_edges, original_trip_to_edges) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
     let (lat, lon) = get_lan_lon_from_nodes(&nodes);
+
+    // create output_dir, if not exists:
+    std::fs::create_dir_all(output_dir)?;
 
     // necessary for creating the TD-CCH. it is also necessary for lat/lon to be f32, otherwise InternalFlowCutterConsole will fail
     lat.write_to(&output_dir.join(FILE_LATITUDE))?;
@@ -82,7 +84,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     g.2.write_to(&output_dir.join(FILE_FIRST_IPP_OF_ARC))?;
     g.3.write_to(&output_dir.join(FILE_IPP_DEPARTURE_TIME))?;
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
-
+    println!("writing edge default travel times");
     // extract default weights of all edges and write them to a file
     let edge_default_travel_times: Vec<SerializedTravelTime> = edge_indices_to_id
         .iter()
@@ -96,8 +98,9 @@ pub fn convert_sumo_to_routing_kit_and_queries(
 
     write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id)?;
     write_strings_to_file(&output_dir.join(FILE_QUERY_IDS), &trip_ids)?;
-    write_strings_to_file(&output_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES), &original_trip_from_edges)?;
-    write_strings_to_file(&output_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES), &original_trip_to_edges)?;
+
+    original_trip_from_edges.write_to(&output_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES))?;
+    original_trip_to_edges.write_to(&output_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES))?;
 
     from.write_to(&output_dir.join(FILE_QUERIES_FROM))?;
     to.write_to(&output_dir.join(FILE_QUERIES_TO))?;
@@ -138,8 +141,8 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(
 /// We add to the departure time of the query the time it takes to travel from a random point from the edge to the first node of the query.
 pub fn get_queries_from_trips<'a>(
     trips_document_root: &'a TripsDocumentRoot,
-    edge_id_to_index_map: &HashMap<&String, (usize, FlattenedSumoEdge)>,
-) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<SerializedTimestamp>, Vec<&'a String>, Vec<&'a String>) {
+    edge_id_to_edge: &HashMap<&String, (usize, FlattenedSumoEdge)>,
+) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<SerializedTimestamp>, Vec<u32>, Vec<u32>) {
     // create a vector of from nodes, to nodes and departure times
     let mut trip_ids = Vec::with_capacity(trips_document_root.trips.len());
     let mut from_nodes = Vec::with_capacity(trips_document_root.trips.len());
@@ -151,24 +154,19 @@ pub fn get_queries_from_trips<'a>(
     for veh in &trips_document_root.trips {
         trip_ids.push(&veh.id);
         // vehicles go from an edge to an edge, so we need to get the from and to nodes of the edges
-        from_nodes.push(
-            edge_id_to_index_map
-                .get(&veh.from)
-                .unwrap_or_else(|| panic!("From edge {} not found in edge_id_to_index_map", veh.from))
-                .1
-                .to_node_index,
-        );
-        to_nodes.push(
-            edge_id_to_index_map
-                .get(&veh.to)
-                .unwrap_or_else(|| panic!("To edge {} not found in edge_id_to_index_map", veh.to))
-                .1
-                .from_node_index,
-        );
-        // TODO: maybe add the time it takes from the starting point of the edge to the first node of the query
+        let (from_index, from_edge) = edge_id_to_edge
+            .get(&veh.from)
+            .unwrap_or_else(|| panic!("From edge {} not found in edge_id_to_index_map", veh.from));
+        from_nodes.push(from_edge.to_node_index);
+
+        let (to_index, to_edge) = edge_id_to_edge
+            .get(&veh.to)
+            .unwrap_or_else(|| panic!("To edge {} not found in edge_id_to_index_map", veh.to));
+        to_nodes.push(to_edge.from_node_index);
+
         departure_times.push((veh.depart * 1000.0) as SerializedTimestamp); // convert seconds to milliseconds);
-        original_trip_from_edges.push(&veh.from);
-        original_trip_to_edges.push(&veh.to);
+        original_trip_from_edges.push(*from_index as u32);
+        original_trip_to_edges.push(*to_index as u32);
     }
 
     (

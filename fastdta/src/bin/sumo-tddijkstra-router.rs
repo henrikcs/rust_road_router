@@ -35,7 +35,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     log(&input_dir.display().to_string(), iteration, "preprocessing", duration.as_nanos());
 
-    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_dijkstra_queries(&mut Server::new(graph.clone()), input_dir));
+    let ((shortest_paths, travel_times, departures), duration) =
+        measure(|| get_paths_with_dijkstra_queries(&mut Server::new(graph.clone()), input_dir, &graph));
     log(&input_dir.display().to_string(), iteration, "dijkstra routing", duration.as_nanos());
 
     let write_sumo_alternatives =

@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::path::Path;
 
 use rust_road_router::{
@@ -11,7 +12,7 @@ use crate::{
         routes_writer::SumoRoutesWriter,
         FileWriter, ALT_ROUTES, ROUTES,
     },
-    SerializedTimestamp, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
+    SerializedTimestamp, FILE_QUERY_IDS,
 };
 
 /// only writes the .rou.xml file
@@ -27,15 +28,10 @@ pub fn write_paths_as_sumo_routes(
     edge_indices_to_id: &Vec<String>,
     write_alternative_paths: bool,
 ) {
-    // TODO: if memory consumption during this phase is too high, we can rewrite this section to have references to strings instead of the full string for each path
-    // e.g. paths = Vec<Vec<&String>> and it references to each edge sumo-id for each query
-    // edge_indices_to_id should then be the "database" of the edge sumo-ids
     let trip_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
-    let original_from_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES)).unwrap();
-    let original_to_edges: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES)).unwrap();
 
     // transform path_sets from EdgeId to Sumo Ids (which are strings) using the edge_indices_to_id mapping
-    let path_sets: Vec<Vec<String>> = transform_to_sumo_paths(&path_sets, &original_from_edges, &original_to_edges, edge_indices_to_id);
+    let path_sets: Vec<Vec<String>> = transform_to_sumo_paths(&path_sets, edge_indices_to_id);
 
     // extract paths from alternative_lists from choices:
     let paths: Vec<&String> = get_chosen_paths_from_alternatives(&path_sets, &choices);
@@ -130,39 +126,19 @@ fn convert_to_sumo_alt_routes(
 fn get_chosen_paths_from_alternatives<'a>(path_sets: &'a Vec<Vec<String>>, choices: &Vec<usize>) -> Vec<&'a String> {
     debug_assert_eq!(path_sets.len(), choices.len());
     // return the reference of the path corresponding to the choice for each query
-    path_sets.iter().enumerate().map(|(i, paths)| &paths[choices[i]]).collect()
+    path_sets.par_iter().enumerate().map(|(i, paths)| &paths[choices[i]]).collect()
 }
 
-fn transform_to_sumo_paths(
-    path_sets: &Vec<Vec<Vec<EdgeId>>>,
-    original_from_edges: &Vec<String>,
-    original_to_edges: &Vec<String>,
-    edge_indices_to_id: &Vec<String>,
-) -> Vec<Vec<String>> {
+fn transform_to_sumo_paths(path_sets: &Vec<Vec<Vec<EdgeId>>>, edge_indices_to_id: &Vec<String>) -> Vec<Vec<String>> {
     path_sets
-        .iter()
-        .enumerate()
-        .map(|(i, paths)| {
-            paths
-                .iter()
-                .map(|path| get_edges_from_path(path, &original_from_edges[i], &original_to_edges[i], edge_indices_to_id))
-                .collect::<Vec<String>>()
-        })
+        .par_iter()
+        .map(|paths| paths.iter().map(|path| get_edges_from_path(path, edge_indices_to_id)).collect::<Vec<String>>())
         .collect::<Vec<Vec<String>>>()
 }
 
-fn get_edges_from_path(path: &Vec<EdgeId>, prefix: &String, suffix: &String, edge_indices_to_id: &Vec<String>) -> String {
-    let edges = path
-        .iter()
+fn get_edges_from_path(path: &Vec<EdgeId>, edge_indices_to_id: &Vec<String>) -> String {
+    path.iter()
         .map(|&edge_index| edge_indices_to_id[edge_index as usize].clone())
         .collect::<Vec<_>>()
-        .join(" ");
-
-    // prefix path with original_from_edges[i]
-    // and suffix it with original_to_edges[i]
-    if path.is_empty() {
-        format!("{} {}", prefix, suffix)
-    } else {
-        format!("{} {} {}", prefix, edges, suffix)
-    }
+        .join(" ")
 }

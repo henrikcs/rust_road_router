@@ -46,7 +46,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (customized_graph, duration) = measure(|| customize(&cch, &graph));
     log(&input_dir.display().to_string(), iteration, "cch customization", duration.as_nanos());
 
-    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &input_dir));
+    let ((shortest_paths, travel_times, departures), duration) =
+        measure(|| get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &input_dir, &graph));
     log(&input_dir.display().to_string(), iteration, "cch routing", duration.as_nanos());
 
     let write_sumo_alternatives =
