@@ -4,11 +4,8 @@ use clap::Parser;
 use conversion::{
     FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
     sumo::{
-        FileReader, SumoTravelTime,
-        sumo_to_new_graph_weights::{extract_travel_times_from_previous_iteration, get_graph_with_travel_times_from_previous_iteration},
-        sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries,
-        tripinfo::Tripinfo,
-        tripinfo_reader::SumoTripinfoReader,
+        FileReader, SumoTravelTime, sumo_to_new_graph_weights::extract_travel_times_from_previous_iteration,
+        sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries, tripinfo::Tripinfo, tripinfo_reader::SumoTripinfoReader,
     },
 };
 
