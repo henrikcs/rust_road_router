@@ -44,7 +44,9 @@ pub const FILE_DTA_QUERIES_ALTERNATIVE_CHOICE: &str = "alternative_choice";
 /// alternative_probabilities[first_alternative_of_query[j] + i]
 pub const FILE_DTA_QUERIES_ALTNERNATIVE_PROBABILITIES: &str = "alternative_probabilities";
 
+/// each line i contains the original id of the edge i
 pub const FILE_EDGE_INDICES_TO_ID: &str = "edge_indices_to_id";
+
 // contains the default travel times calculated during the preprocessing step
 // the travel times are encoded as SerializedTravelTime in milliseconds
 pub const FILE_EDGE_DEFAULT_TRAVEL_TIMES: &str = "edge_default_travel_times";

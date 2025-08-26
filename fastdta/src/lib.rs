@@ -7,3 +7,4 @@ pub mod gawron;
 pub mod logit;
 pub mod preprocess;
 pub mod query;
+pub mod relative_gap;

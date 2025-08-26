@@ -19,6 +19,8 @@ pub mod routes_reader;
 pub mod routes_writer;
 pub mod sumo_to_new_graph_weights;
 pub mod sumo_to_td_graph_converter;
+pub mod tripinfo;
+pub mod tripinfo_reader;
 pub mod trips;
 pub mod trips_reader;
 pub mod trips_writer;
