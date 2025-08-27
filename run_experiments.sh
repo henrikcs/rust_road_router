@@ -18,7 +18,7 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<aggregation>;<begin>;<end>;<convergence_deviation>;<first_iter>;<last_iter>;\n]"
+    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<first_iter>;<last_iter>;<seed>\n]"
     echo ""
     echo "Routing algorithm options (at least one is required):"
     echo "  --cch                  Run all experiments with CCH routing."
@@ -119,7 +119,7 @@ cp ~/rust_road_router/fastdta/duaIterate.py ~/rust_road_router/venvs/libsumo/lib
 
 # --- Run experiments ---
 line_index=0
-while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end convergence_deviation first_iter last_iter seed || [[ -n "$in_dir" ]]; do
+while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end convergence_deviation convergence_relgap first_iter last_iter seed || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
 
@@ -147,11 +147,14 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                 --mesosim --aggregation "$aggregation" --begin "$begin" --end "$end" -f $first_iter -l $last_iter
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
+                --relative-gap "$convergence_relgap"
                 duarouter--seed $seed
                 sumo--ignore-route-errors
                 sumo--time-to-teleport.disconnected 1
                 sumo--aggregate-warnings 5
                 sumo--seed $seed
+                relative-gap--net-prefix "$prefix"
+                relative-gap--net-dir "$in_dir"
             )
 
             # Add preprocessor args only for CCH

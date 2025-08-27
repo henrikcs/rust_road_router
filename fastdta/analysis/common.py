@@ -73,6 +73,7 @@ class InputRow:
     begin: str
     end: str
     convergence_deviation: str
+    relative_gap: str
     first_iter: int
     last_iter: int
     seed: int
@@ -244,7 +245,7 @@ def load_csv_parameters(path: str) -> Dict[int, InputRow]:
                 rec = _parse_csv_record(ll)
                 if not rec:
                     continue
-                in_dir, prefix, trip, aggregation, begin, end, conv_dev, first_iter, last_iter, seed = rec
+                in_dir, prefix, trip, aggregation, begin, end, conv_dev, rel_gap, first_iter, last_iter, seed = rec
                 row = InputRow(
                     in_dir=in_dir,
                     prefix=prefix,
@@ -253,6 +254,7 @@ def load_csv_parameters(path: str) -> Dict[int, InputRow]:
                     begin=str(begin),
                     end=str(end),
                     convergence_deviation=str(conv_dev),
+                    relative_gap=str(rel_gap),
                     first_iter=int(first_iter),
                     last_iter=int(last_iter),
                     seed=int(seed),

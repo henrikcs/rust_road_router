@@ -39,10 +39,10 @@ class Plot(ABC):
 
     @staticmethod
     def filename_base(input_row) -> str:
-        # <prefix>-<trip>-<aggregation>-<convergence-deviations>
+        # <prefix>-<trip>-<aggregation>-<relative-gap>
         return "{}-{}-{}-{}".format(
             sanitize_for_filename(input_row.prefix),
             sanitize_for_filename(input_row.trip_file_name),
             sanitize_for_filename(str(input_row.aggregation)),
-            sanitize_for_filename(str(input_row.convergence_deviation)),
+            sanitize_for_filename(str(input_row.relative_gap)),
         )
