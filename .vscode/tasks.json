@@ -46,9 +46,15 @@
         "0",
         "--end",
         "36000",
+        "--rel-gap",
+        "0.001",
         "cch-preprocessor--input-prefix",
         "grid",
         "cch-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/grid",
+        "relative-gap--net-prefix",
+        "grid",
+        "relative-gap--net-dir",
         "${workspaceFolder}/import/sumo/grid"
       ]
     },
@@ -98,8 +104,14 @@
         "0",
         "--end",
         "36000",
+        "--rel-gap",
+        "0.001",
         "duarouter--write-costs",
-        "true"
+        "true",
+        "relative-gap--net-prefix",
+        "grid",
+        "relative-gap--net-dir",
+        "${workspaceFolder}/import/sumo/grid"
       ]
     },
     {

@@ -69,6 +69,12 @@ DIJKSTRA_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
 make sure the the binary is in PATH
 """
 
+RELATIVE_GAP_BINARY = "sumo-relative-gap-calculator"
+""" Binary used for calculating the relative gap.
+
+make sure the the binary is in PATH
+"""
+
 
 def addGenericOptions(argParser):
 
@@ -220,6 +226,8 @@ def initOptions():
                            help="use marginal cost to perform system optimal traffic assignment")
     argParser.add_argument("--marginal-cost.exp", type=float, default=0, dest="mcExp",
                            help="apply the given exponent on the current traffic count when computing marginal cost")
+    argParser.add_argument("--rel-gap", type=float, default=-1, dest="relGap",
+                           help="if positive, iterates until relative gap is at most this number")
     argParser.add_argument("remaining_args", nargs='*')
     return argParser
 
@@ -236,7 +244,7 @@ def call(command, log):
     return retCode
 
 
-def call_binary(binary, args, log):
+def call_binary(binary, args):
     return subprocess.call([binary] + args)
 
 
@@ -637,6 +645,8 @@ def main(args=None):
         DIJKSTRA_PREPROCESS_BINARY, 'dijkstra-preprocessor', options.remaining_args)
     dijkstra_routing_args = assign_remaining_args(
         DIJKSTRA_ROUTER_BINARY, 'dijkstra-router', options.remaining_args)
+    relative_gap_args = assign_remaining_args(
+        RELATIVE_GAP_BINARY, 'relative-gap', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
     log = open(options.dualog, "w+")
     if options.zip:
@@ -684,7 +694,7 @@ def main(args=None):
         print("> Preprocessing network for CCH")
         print(">> Begin time: %s" % tik)
         ret = call_binary(CCH_PREPROCESS_BINARY,
-                          cch_preprocessing_args + ["--trips-file", input_demands[0]], log)
+                          cch_preprocessing_args + ["--trips-file", input_demands[0]])
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: CCH preprocessing failed.")
@@ -696,7 +706,7 @@ def main(args=None):
         print("> Preprocessing network for Dijkstra Rust")
         print(">> Begin time: %s" % tik)
         ret = call_binary(DIJKSTRA_PREPROCESS_BINARY,
-                          dijkstra_preprocessing_args + ["--trips-file", input_demands[0]], log)
+                          dijkstra_preprocessing_args + ["--trips-file", input_demands[0]])
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: Dijkstra preprocessing failed.")
@@ -740,10 +750,10 @@ def main(args=None):
                 if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
                     ret = call_binary(
                         CCH_ROUTER_BINARY,
-                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + cch_routing_args, log)
+                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + cch_routing_args)
                 elif ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
                     ret = call_binary(DIJKSTRA_ROUTER_BINARY,
-                                      ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + dijkstra_routing_args, log)
+                                      ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + dijkstra_routing_args)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 
@@ -823,6 +833,17 @@ def main(args=None):
                 min(avgTT.count(), options.convIt), relStdDev))
             if avgTT.count() >= options.convIt and relStdDev < options.convDev:
                 converged = True
+        if options.relGap > 0:
+            # run the relative-gap-calculator
+            call_binary(RELATIVE_GAP_BINARY, [
+                        "--iteration", str(step), "--trips-file", input_demands[0]] + relative_gap_args)
+            # check whether we have converged
+            with open("rel_gaps.txt", "r") as f:
+                last_gap = float(f.readlines()[-1])
+                print("< relative gap in iteration %s: %.05f" %
+                      (step, last_gap))
+                if last_gap <= options.relGap:
+                    converged = True
 
         print("< Step %s ended (duration: %s)" %
               (step, datetime.now() - btimeA))

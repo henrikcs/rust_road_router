@@ -1,5 +1,3 @@
-use std::{collections::HashMap, env, path::Path};
-
 use clap::Parser;
 use conversion::{
     FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
@@ -8,6 +6,13 @@ use conversion::{
         sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries, tripinfo::Tripinfo, tripinfo_reader::SumoTripinfoReader,
     },
 };
+use std::{
+    collections::HashMap,
+    env,
+    fs::{File, OpenOptions},
+    path::Path,
+};
+use std::{fs::remove_dir_all, io::Write};
 
 use fastdta::{
     customize::customize,
@@ -16,7 +21,7 @@ use fastdta::{
     relative_gap::get_relative_gap,
 };
 use rayon::prelude::*;
-use rust_road_router::{algo::catchup::Server, datastr::graph::floating_time_dependent::FlWeight, io::Reconstruct};
+use rust_road_router::{algo::catchup::Server, io::Reconstruct};
 use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::read_strings_from_file};
 
 fn main() {
@@ -32,11 +37,6 @@ fn main() {
     let dta_dir = Path::new(&args.dta_dir);
     let temp_dir_name = "tmp";
     let temp_cch_dir = dta_dir.join(temp_dir_name);
-
-    println!("Using network directory: {}", network_dir.display());
-    println!("Using trips file: {}", trips_file.display());
-    println!("Using temporary CCH directory: {}", temp_cch_dir.display());
-    println!("Using DTA directory: {}", dta_dir.display());
 
     convert_sumo_to_routing_kit_and_queries(&network_dir, &network_prefix, &trips_file, &temp_cch_dir).unwrap();
 
@@ -57,7 +57,9 @@ fn main() {
         )
     });
 
-    let mut iteration: u32 = 0;
+    let mut rel_gaps: Vec<f64> = Vec::new();
+
+    let mut iteration: u32 = if let Some(it) = args.iteration { it } else { 0 };
     let mut dta_iteration_dir = dta_dir.join(format!("{:0>3}", iteration));
 
     while dta_iteration_dir.exists() {
@@ -79,21 +81,11 @@ fn main() {
 
         let (_, travel_times, _) = get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
 
-        for tt in &travel_times {
-            if *tt == FlWeight::ZERO {
-                println!("Warning: Found travel time of 0 in iteration {}.", iteration);
-                break;
-            }
-        }
-
         // the relative gap is calculated during DTA in each iteration
         // in order to calculate the relative gap, we need the shortest paths during each iteration and the corresponding experienced traveltimes from the simulation.
         // the experienced traveltimes are obtained from the SUMO simulation output ("tripinfo.xml")
         // the shortest paths are obtained from calculating the traveltimes of the shortest paths from the previous iteration.
         let tripinfos_document_root = SumoTripinfoReader::read(&tripinfos_path).unwrap();
-
-        println!("Processing iteration {} in directory {}", iteration, dta_iteration_dir.display());
-        println!("Read {} tripinfos from {}", tripinfos_document_root.tripinfos.len(), tripinfos_path.display());
 
         // map tripinfos to a map from string to tripinfo, where string ist tripinfo.id
         let tripinfo_map: HashMap<&String, &Tripinfo> = tripinfos_document_root.tripinfos.iter().map(|tripinfo| (&tripinfo.id, tripinfo)).collect();
@@ -112,11 +104,21 @@ fn main() {
 
         let rel_gap = get_relative_gap(&best_tt, &experienced_tt);
 
-        println!("Relative Gap in iteration {}: {:.6}", iteration, rel_gap);
+        rel_gaps.push(rel_gap);
 
         iteration += 1;
         dta_iteration_dir = dta_dir.join(format!("{:0>3}", iteration));
     }
+
+    // append each gap to a file "rel_gaps.txt" in the dta_dir
+    let mut file = OpenOptions::new().create(true).append(true).open(dta_dir.join("rel_gaps.txt")).unwrap();
+    for gap in rel_gaps {
+        // write at the end of the file:
+        writeln!(file, "{:.6}", gap).unwrap();
+    }
+
+    // remove the temporary CCH directory
+    remove_dir_all(&temp_cch_dir).unwrap();
 }
 
 /// Command-line arguments for counting connections and whether they are complete or not
@@ -138,4 +140,10 @@ pub struct Args {
     /// the root directory in which dta was conducted (optional: defaults to current directory)
     #[arg(long = "dta-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
     pub dta_dir: String,
+
+    /// the iteration to read from the dta directory (optional: defaults to read all iterations)
+    /// If not specified, the whole directory will be read
+    /// If specified, only the files for that iteration will be read
+    #[arg(long = "iteration")]
+    pub iteration: Option<u32>,
 }
