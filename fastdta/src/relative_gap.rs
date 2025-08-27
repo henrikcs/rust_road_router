@@ -22,7 +22,8 @@ pub fn get_relative_gap(best_tt: &Vec<f64>, simulated_tt: &Vec<f64>) -> f64 {
             //     tt
             // );
 
-            (simulated_tt[i] - tt) / tt
+            simulated_tt[i] - tt
         })
-        .sum()
+        .sum::<f64>()
+        / best_tt.par_iter().sum::<f64>()
 }
