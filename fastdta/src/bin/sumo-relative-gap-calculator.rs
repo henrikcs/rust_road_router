@@ -93,10 +93,12 @@ fn main() {
         let experienced_tt: Vec<SumoTravelTime> = query_ids
             .par_iter()
             .map(|id| {
-                let tripinfo = tripinfo_map
-                    .get(id)
-                    .expect(&format!("Tripinfo with id {} not found in iteration {}", id, iteration));
-                tripinfo.duration.into()
+                if let Some(tripinfo) = tripinfo_map.get(id) {
+                    tripinfo.duration.into()
+                } else {
+                    // negative number will be ignored in the relative gap calculation.
+                    -1.0
+                }
             })
             .collect();
 
