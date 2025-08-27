@@ -26,6 +26,7 @@ class Step:
     simulation: Optional[PhaseTiming] = None
     duration: Optional[str] = None
     relative_travel_time_deviation: Optional[str] = None
+    relative_gap: Optional[float] = None
 
 
 @dataclass
@@ -156,6 +157,7 @@ def _obj_to_step(obj: dict) -> Step:
         duration=obj.get("duration"),
         relative_travel_time_deviation=obj.get(
             "relative_travel_time_deviation"),
+        relative_gap=to_float_or_none(obj.get("relative_gap")),
     )
 
 

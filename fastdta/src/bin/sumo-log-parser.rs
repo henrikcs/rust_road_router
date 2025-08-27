@@ -20,6 +20,7 @@ struct Step {
     simulation: Option<PhaseTiming>,
     duration: Option<String>, // iteration duration
     relative_travel_time_deviation: Option<String>,
+    relative_gap: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Default, Clone)]
@@ -129,6 +130,10 @@ fn main() -> Result<()> {
     // relative travel time deviation line (appears after simulation block)
     // Example: "< relative travel time deviation in the last ... steps: <deviation>"
     let re_rel_dev = Regex::new(r#"^\s*<\s*relative travel time deviation in the last .*? steps:\s*(?P<dev>.+?)\s*$"#)?;
+
+    // relative gap line (appears after simulation block)
+    // Example: "< relative gap in iteration ...: <relative_gap>"
+    let re_rel_gap = Regex::new(r#"^\s*<\s* relative gap in iteration .*?:\s*(?P<relgap>.+?)\s*$"#)?;
 
     // Step end
     let re_step_end = Regex::new(r#"^\s*<\s*Step\s+(?P<iter>\d+)\s*ended\s*\(duration:\s*(?P<dur>.+?)\)\s*$"#)?;
@@ -256,10 +261,22 @@ fn main() -> Result<()> {
             continue;
         }
 
-        // New: relative travel time deviation line
+        // relative travel time deviation line
         if let Some(caps) = re_rel_dev.captures(&line) {
             if let Some(ref mut st) = current_step {
                 st.relative_travel_time_deviation = Some(caps["dev"].trim().to_string());
+            }
+            continue;
+        }
+
+        // relative gap line
+        if let Some(caps) = re_rel_gap.captures(&line) {
+            if let Some(ref mut st) = current_step {
+                st.relative_gap = if let Some(relgap) = caps["relgap"].trim().parse().ok() {
+                    Some(relgap)
+                } else {
+                    None
+                };
             }
             continue;
         }
