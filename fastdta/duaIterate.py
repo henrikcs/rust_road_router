@@ -226,7 +226,7 @@ def initOptions():
                            help="use marginal cost to perform system optimal traffic assignment")
     argParser.add_argument("--marginal-cost.exp", type=float, default=0, dest="mcExp",
                            help="apply the given exponent on the current traffic count when computing marginal cost")
-    argParser.add_argument("--rel-gap", type=float, default=-1, dest="relGap",
+    argParser.add_argument("--relative-gap", type=float, default=-1, dest="relGap",
                            help="if positive, iterates until relative gap is at most this number")
     argParser.add_argument("remaining_args", nargs='*')
     return argParser
