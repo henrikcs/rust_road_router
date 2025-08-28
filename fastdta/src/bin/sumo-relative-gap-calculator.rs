@@ -135,7 +135,7 @@ pub struct Args {
     #[arg(long = "net-prefix", default_value = "")]
     pub net_prefix: String,
 
-    /// the trips file to read inside the input directory
+    /// the trips file to read
     #[arg(long = "trips-file")]
     pub trips_file: String,
 
