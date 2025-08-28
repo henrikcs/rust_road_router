@@ -149,6 +149,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                 --max-convergence-deviation "$convergence_deviation"
                 --relative-gap "$convergence_relgap"
                 duarouter--seed $seed
+                duarouter--unsorted-input
                 sumo--ignore-route-errors
                 sumo--time-to-teleport.disconnected 1
                 sumo--aggregate-warnings 5
