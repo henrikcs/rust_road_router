@@ -15,7 +15,7 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<net_dir>;<net_prefix>;<trip_file_name>;<dta_dir>;\n]"
+    echo "                Format: [<net_dir>;<net_prefix>;<trip_file_name>;<dta_dir>\n]"
     echo "  --debug                Build and use the debug target instead of release."
     exit 1
 }
@@ -67,7 +67,6 @@ export LIBRARY_PATH=$LX/lib:$RL/lib:$NC/lib:$LIBRARY_PATH
 export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/"$spack_env"/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 
-# --- Compile the project ---
 # --- Compile the project ---
 if [ "$release_type" = "debug" ]; then
     cargo build
