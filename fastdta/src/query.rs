@@ -82,7 +82,7 @@ pub fn get_paths_with_dijkstra_queries(
     )
 }
 
-fn get_paths_from_queries<F: FnMut(u32, u32, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
+fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
     mut path_collector: F,
     input_dir: &Path,
     graph: &TDGraph,
