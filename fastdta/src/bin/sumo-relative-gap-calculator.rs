@@ -2,16 +2,11 @@ use clap::Parser;
 use conversion::{
     FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
     sumo::{
-        FileReader, SumoTravelTime, sumo_to_new_graph_weights::extract_travel_times_from_previous_iteration,
-        sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries, tripinfo::Tripinfo, tripinfo_reader::SumoTripinfoReader,
+        FileReader, SumoTravelTime, routes::Vehicle, routes_reader::SumoRoutesReader, sumo_to_new_graph_weights::extract_travel_times_from_previous_iteration,
+        sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries,
     },
 };
-use std::{
-    collections::HashMap,
-    env,
-    fs::{File, OpenOptions},
-    path::Path,
-};
+use std::{collections::HashMap, env, fs::OpenOptions, path::Path};
 use std::{fs::remove_dir_all, io::Write};
 
 use fastdta::{
@@ -21,7 +16,11 @@ use fastdta::{
     relative_gap::get_relative_gap,
 };
 use rayon::prelude::*;
-use rust_road_router::{algo::catchup::Server, io::Reconstruct};
+use rust_road_router::{
+    algo::catchup::Server,
+    datastr::graph::floating_time_dependent::{FlWeight, Timestamp},
+    io::Reconstruct,
+};
 use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::read_strings_from_file};
 
 fn main() {
@@ -57,6 +56,8 @@ fn main() {
         )
     });
 
+    let edge_id_to_index: HashMap<&String, usize> = edge_ids.iter().enumerate().map(|(i, id)| (id, i)).collect();
+
     let mut rel_gaps: Vec<f64> = Vec::new();
 
     let mut iteration: u32 = if let Some(it) = args.iteration { it } else { 0 };
@@ -72,29 +73,55 @@ fn main() {
             );
         }
         extract_travel_times_from_previous_iteration(&dta_iteration_dir, &temp_cch_dir, &edge_ids);
-
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
-
         let cch = get_cch(&temp_cch_dir, &graph);
-
         let customized_graph = customize(&cch, &graph);
+        let (paths, travel_times, arrivals) = get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
 
-        let (_, travel_times, _) = get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
-
-        // the relative gap is calculated during DTA in each iteration
-        // in order to calculate the relative gap, we need the shortest paths during each iteration and the corresponding experienced traveltimes from the simulation.
-        // the experienced traveltimes are obtained from the SUMO simulation output ("tripinfo.xml")
-        // the shortest paths are obtained from calculating the traveltimes of the shortest paths from the previous iteration.
-        let tripinfos_document_root = SumoTripinfoReader::read(&tripinfos_path).unwrap();
-
-        // map tripinfos to a map from string to tripinfo, where string ist tripinfo.id
-        let tripinfo_map: HashMap<&String, &Tripinfo> = tripinfos_document_root.tripinfos.iter().map(|tripinfo| (&tripinfo.id, tripinfo)).collect();
+        let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
+        println!("Reading routes from file {}", routes_path.display());
+        let routes_document_root = SumoRoutesReader::read(&routes_path).unwrap();
+        let route_id_to_route: HashMap<&String, &Vehicle> = routes_document_root.vehicles.iter().map(|v| (&v.id, v)).collect();
 
         let experienced_tt: Vec<SumoTravelTime> = query_ids
             .par_iter()
-            .map(|id| {
-                if let Some(tripinfo) = tripinfo_map.get(id) {
-                    tripinfo.duration.into()
+            .enumerate()
+            .map(|(i, id)| {
+                if let Some(v) = route_id_to_route.get(id) {
+                    let path: Vec<u32> = if let Some(route) = &v.route {
+                        route
+                            .edges
+                            .split_ascii_whitespace()
+                            .map(|edge_id| {
+                                if let Some(&index) = edge_id_to_index.get(&edge_id.to_string()) {
+                                    index as u32
+                                } else {
+                                    panic!("Edge id {} not found in edge_id_to_index map", edge_id);
+                                }
+                            })
+                            .collect()
+                    } else {
+                        panic!("No route found for vehicle id {}", id);
+                    };
+
+                    let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &path);
+                    let best_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &paths[i]);
+
+                    if experienced_time.fuzzy_lt(travel_times[i]) {
+                        // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
+                        eprintln!(
+                            "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nBest time from tt along path: {}.\nExperienced path: {:?}, \nbest path: {:?}, departure time: {}",
+                            id,
+                            <FlWeight as Into<f64>>::into(experienced_time),
+                            <FlWeight as Into<f64>>::into(travel_times[i]),
+                            <FlWeight as Into<f64>>::into(best_time),
+                            get_path_ids_from_indices(&edge_ids, &path),
+                            get_path_ids_from_indices(&edge_ids, &paths[i]),
+                            v.depart
+                        );
+                    }
+
+                    experienced_time.into()
                 } else {
                     // negative number will be ignored in the relative gap calculation.
                     -1.0
@@ -113,7 +140,7 @@ fn main() {
     }
 
     // append each gap to a file "rel_gaps.txt" in the dta_dir
-    let mut file = OpenOptions::new().create(true).append(true).open(dta_dir.join("rel_gaps.txt")).unwrap();
+    let mut file = OpenOptions::new().create(true).append(true).open(Path::new(&args.output_file)).unwrap();
     for gap in rel_gaps {
         // write at the end of the file:
         writeln!(file, "{:.6}", gap).unwrap();
@@ -121,6 +148,24 @@ fn main() {
 
     // remove the temporary CCH directory
     remove_dir_all(&temp_cch_dir).unwrap();
+}
+
+/// trips_file has the following format: "<name>[.trips].xml"
+/// the routes file in iteration <iteration> should have the following name:
+/// "<name>_<iteration>.rou.xml"
+pub fn get_routes_file_name_in_iteration(trips_file: &Path, iteration: u32) -> String {
+    let mut file_stem = trips_file.file_stem().unwrap().to_str().unwrap();
+    file_stem = if file_stem.ends_with(".trips") {
+        &file_stem[..file_stem.len() - 6]
+    } else {
+        file_stem
+    };
+    let routes_file_name = format!("{}_{}.rou.xml", file_stem, format!("{:0>3}", iteration));
+    routes_file_name
+}
+
+pub fn get_path_ids_from_indices(edge_ids: &Vec<String>, indices: &Vec<u32>) -> Vec<String> {
+    indices.iter().map(|&i| edge_ids[i as usize].clone()).collect()
 }
 
 /// Command-line arguments for counting connections and whether they are complete or not
@@ -142,6 +187,10 @@ pub struct Args {
     /// the root directory in which dta was conducted (optional: defaults to current directory)
     #[arg(long = "dta-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
     pub dta_dir: String,
+
+    /// the output file to write the relative gaps to
+    #[arg(long = "output-file", default_value = "relative_gaps.txt")]
+    pub output_file: String,
 
     /// the iteration to read from the dta directory (optional: defaults to read all iterations)
     /// If not specified, the whole directory will be read
