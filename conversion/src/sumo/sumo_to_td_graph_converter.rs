@@ -164,7 +164,7 @@ pub fn get_queries_from_trips<'a>(
             .unwrap_or_else(|| panic!("To edge {} not found in edge_id_to_index_map", veh.to));
         to_nodes.push(to_edge.from_node_index);
 
-        departure_times.push((veh.depart * 1000.0) as SerializedTimestamp); // convert seconds to milliseconds);
+        departure_times.push((veh.depart * 1000.0) as SerializedTimestamp); // convert seconds to milliseconds
         original_trip_from_edges.push(*from_index as u32);
         original_trip_to_edges.push(*to_index as u32);
     }
