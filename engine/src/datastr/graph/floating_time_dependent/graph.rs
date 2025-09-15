@@ -134,14 +134,11 @@ impl Graph {
     }
 
     pub fn get_travel_time_along_path(&self, dt: Timestamp, path: &[EdgeId]) -> FlWeight {
-        let mut travel_time: FlWeight = FlWeight::ZERO;
-        let mut current_time = dt;
+        let mut tt: FlWeight = FlWeight::ZERO;
         for &edge in path {
-            let tt = self.travel_time_function(edge).evaluate(current_time + travel_time);
-            travel_time += tt;
-            current_time = current_time + tt;
+            tt += self.travel_time_function(edge).evaluate(dt + tt);
         }
-        travel_time
+        tt
     }
 
     /// Total number of interpolation points
