@@ -1,5 +1,9 @@
 use rayon::prelude::*;
 
+/// two travel times are considered equal if they differ at most by 1ms
+/// Time is given in seconds
+pub const EPSILON_TRAVEL_TIME: f64 = 0.000_1;
+
 pub fn get_relative_gap(best_tt: &Vec<f64>, simulated_tt: &Vec<f64>) -> f64 {
     assert_eq!(best_tt.len(), simulated_tt.len());
 
@@ -15,7 +19,7 @@ pub fn get_relative_gap(best_tt: &Vec<f64>, simulated_tt: &Vec<f64>) -> f64 {
             //     return 0.0;
             // }
             debug_assert!(
-                simulated_tt[i] > tt,
+                simulated_tt[i] - tt >= -EPSILON_TRAVEL_TIME,
                 "Simulated travel time for trip {} is less than best travel time: {} < {}",
                 i,
                 simulated_tt[i],

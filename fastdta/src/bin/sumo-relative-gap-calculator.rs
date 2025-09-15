@@ -2,7 +2,7 @@ use clap::Parser;
 use conversion::{
     FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
     sumo::{
-        FileReader, SumoTravelTime, routes::Vehicle, routes_reader::SumoRoutesReader, sumo_to_new_graph_weights::extract_travel_times_from_previous_iteration,
+        FileReader, SumoTravelTime, routes::Vehicle, routes_reader::SumoRoutesReader, sumo_to_new_graph_weights::extract_travel_times_from_iteration_directory,
         sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries,
     },
 };
@@ -13,7 +13,7 @@ use fastdta::{
     customize::customize,
     preprocess::{get_cch, preprocess, run_inertial_flow_cutter},
     query::get_paths_with_cch_queries,
-    relative_gap::get_relative_gap,
+    relative_gap::{EPSILON_TRAVEL_TIME, get_relative_gap},
 };
 use rayon::prelude::*;
 use rust_road_router::{
@@ -64,15 +64,7 @@ fn main() {
     let mut dta_iteration_dir = dta_dir.join(format!("{:0>3}", iteration));
 
     while dta_iteration_dir.exists() {
-        let tripinfos_path = dta_iteration_dir.join(format!("tripinfo_{}.xml", format!("{:0>3}", iteration)));
-        if !tripinfos_path.exists() {
-            panic!(
-                "Tripinfo file {} does not exist in directory {}",
-                tripinfos_path.display(),
-                dta_iteration_dir.display()
-            );
-        }
-        extract_travel_times_from_previous_iteration(&dta_iteration_dir, &temp_cch_dir, &edge_ids);
+        extract_travel_times_from_iteration_directory(&dta_iteration_dir, &temp_cch_dir, &edge_ids);
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
         let cch = get_cch(&temp_cch_dir, &graph);
         let customized_graph = customize(&cch, &graph);
@@ -107,10 +99,10 @@ fn main() {
                     let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &path);
                     let best_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &paths[i]);
 
-                    if experienced_time.fuzzy_lt(travel_times[i]) {
+                    if <FlWeight as Into<f64>>::into(experienced_time) - <FlWeight as Into<f64>>::into(travel_times[i]) < -EPSILON_TRAVEL_TIME {
                         // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
                         eprintln!(
-                            "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nBest time from tt along path: {}.\nExperienced path: {:?}, \nbest path: {:?}, departure time: {}",
+                            "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nBest time from tt along path: {}.\nExperienced path: {:?}, \nbest path:        {:?},\ndeparture time: {}",
                             id,
                             <FlWeight as Into<f64>>::into(experienced_time),
                             <FlWeight as Into<f64>>::into(travel_times[i]),
@@ -189,7 +181,7 @@ pub struct Args {
     pub dta_dir: String,
 
     /// the output file to write the relative gaps to
-    #[arg(long = "output-file", default_value = "relative_gaps.txt")]
+    #[arg(long = "output-file", default_value = "rel_gaps.txt")]
     pub output_file: String,
 
     /// the iteration to read from the dta directory (optional: defaults to read all iterations)
