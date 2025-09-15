@@ -82,7 +82,11 @@
       "label": "Run DTA (grid; CH)",
       "type": "shell",
       "command": "python",
-      "dependsOn": ["Copy duaIterate.py to SUMO", "Clean grid-ch"],
+      "dependsOn": [
+        "Build (debug)",
+        "Copy duaIterate.py to SUMO",
+        "Clean grid-ch"
+      ],
       "options": {
         "cwd": "${workspaceFolder}/data/imported/sumo/grid-ch",
         "env": {
@@ -145,11 +149,17 @@
         "0",
         "--end",
         "36000",
+        "--relative-gap",
+        "0.001",
         "duarouter--write-costs",
         "true",
         "dijkstra-preprocessor--input-prefix",
         "grid",
         "dijkstra-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/grid",
+        "relative-gap--net-prefix",
+        "grid",
+        "relative-gap--net-dir",
         "${workspaceFolder}/import/sumo/grid"
       ]
     },
