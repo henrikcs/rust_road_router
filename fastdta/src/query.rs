@@ -14,6 +14,12 @@ pub fn get_paths_with_cch_queries(query_server: &mut Server, input_dir: &Path, g
     get_paths_from_queries(
         |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
+
+            if from_edge == to_edge {
+                // special case: from and to are the same edge
+                return Some((vec![from_edge], from_edge_tt));
+            }
+
             let delayed_departure = departure + from_edge_tt;
 
             let result = query_server.td_query(TDQuery {
