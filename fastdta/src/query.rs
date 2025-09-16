@@ -31,17 +31,13 @@ pub fn get_paths_with_cch_queries(query_server: &mut Server, input_dir: &Path, g
             if let Some(mut result) = result.found() {
                 let edge_path = result.edge_path();
 
-                let mut path: Vec<u32> = Vec::with_capacity(edge_path.len() + 2);
+                let mut path = Vec::with_capacity(edge_path.len() + 2);
                 path.push(from_edge);
                 path.extend(edge_path.iter().map(|edge| edge.0));
                 path.push(to_edge);
 
-                // let mut distance = from_edge_tt + result.distance();
-                // let concatinated_distance = distance + graph.get_travel_time_along_path(departure + distance, &[to_edge]);
-
-                let distance = graph.get_travel_time_along_path(departure, &path);
-
-                // debug_assert!(distance.fuzzy_eq(concatinated_distance), "Distance mismatch: {:?} != {:?}", &distance, &concatinated_distance);
+                let mut distance = from_edge_tt + result.distance();
+                distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
 
                 Some((path, distance))
             } else {

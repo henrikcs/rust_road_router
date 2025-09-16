@@ -68,7 +68,7 @@ fn main() {
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
         let cch = get_cch(&temp_cch_dir, &graph);
         let customized_graph = customize(&cch, &graph);
-        let (paths, travel_times, arrivals) = get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
+        let (paths, travel_times, _) = get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
         println!("Reading routes from file {}", routes_path.display());
@@ -97,7 +97,6 @@ fn main() {
                     };
 
                     let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &path);
-                    let best_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &paths[i]);
 
                     if <FlWeight as Into<f64>>::into(experienced_time) - <FlWeight as Into<f64>>::into(travel_times[i]) < -EPSILON_TRAVEL_TIME {
                         // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
@@ -106,7 +105,7 @@ fn main() {
                             id,
                             <FlWeight as Into<f64>>::into(experienced_time),
                             <FlWeight as Into<f64>>::into(travel_times[i]),
-                            <FlWeight as Into<f64>>::into(best_time),
+                            <FlWeight as Into<f64>>::into(travel_times[i]),
                             get_path_ids_from_indices(&edge_ids, &path),
                             get_path_ids_from_indices(&edge_ids, &paths[i]),
                             v.depart
