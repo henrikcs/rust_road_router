@@ -4,31 +4,33 @@ use rust_road_router::io::{write_strings_to_file, Store};
 
 use crate::{
     sumo::{
+        connections::{Connection, ConnectionsDocumentRoot},
+        connections_reader::SumoConnectionsReader,
         edges::{Edge, EdgesDocumentRoot},
         edges_reader::SumoEdgesReader,
         nodes::{Node, NodesDocumentRoot},
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML,
+        FileReader, RoutingKitTDGraph, SumoTravelTime, CON_XML, EDG_XML, NOD_XML,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC,
     FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM,
     FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 
-pub struct FlattenedSumoEdge<'a> {
+pub struct FlattenedSumoEdge {
     from_node_index: u32,
     to_node_index: u32,
-    edge_id: &'a String,
+    edge_id: String,
     // travel time in seconds
     weight: SumoTravelTime,
     // length in meters
     length: SumoTravelTime,
 }
 
-impl<'a> FlattenedSumoEdge<'a> {
-    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: &'a String, weight: SumoTravelTime, length: SumoTravelTime) -> Self {
+impl FlattenedSumoEdge {
+    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: String, weight: SumoTravelTime, length: SumoTravelTime) -> Self {
         FlattenedSumoEdge {
             from_node_index,
             to_node_index,
@@ -37,11 +39,15 @@ impl<'a> FlattenedSumoEdge<'a> {
             length,
         }
     }
+
+    pub fn get_edge_id_for_connection(from_connection: &str, to_connection: &str) -> String {
+        format!("{}$${}", from_connection, to_connection)
+    }
 }
 
-impl Clone for FlattenedSumoEdge<'_> {
+impl Clone for FlattenedSumoEdge {
     fn clone(&self) -> Self {
-        FlattenedSumoEdge::new(self.from_node_index, self.to_node_index, self.edge_id, self.weight, self.length)
+        FlattenedSumoEdge::new(self.from_node_index, self.to_node_index, self.edge_id.clone(), self.weight, self.length)
     }
 }
 
@@ -66,11 +72,11 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     trips_file: &Path,
     output_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (nodes, edges, trips) = read_nodes_edges_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
-    let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+    let (nodes, edges, connections, trips) = read_nodes_edges_connections_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
+    let (g, expanded_nodes, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
     let (trip_ids, from, to, departure, original_trip_from_edges, original_trip_to_edges) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
-    let (lat, lon) = get_lan_lon_from_nodes(&nodes);
+    let (lat, lon) = get_lan_lon_from_nodes(&expanded_nodes);
 
     // create output_dir, if not exists:
     std::fs::create_dir_all(output_dir)?;
@@ -96,7 +102,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(
 
     edge_default_travel_times.write_to(&output_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES))?;
 
-    write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id)?;
+    write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id.iter().collect())?;
     write_strings_to_file(&output_dir.join(FILE_QUERY_IDS), &trip_ids)?;
 
     original_trip_from_edges.write_to(&output_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES))?;
@@ -109,7 +115,10 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     Ok(())
 }
 
-pub fn read_nodes_and_edges_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot) {
+pub fn read_nodes_edges_and_connections_from_plain_xml(
+    input_dir: &Path,
+    files_prefix: &String,
+) -> (NodesDocumentRoot, EdgesDocumentRoot, ConnectionsDocumentRoot) {
     let Ok(edges) = SumoEdgesReader::read(input_dir.join(files_prefix.clone() + EDG_XML).as_path()) else {
         panic!("Edges could not be read form {}.", &input_dir.display());
     };
@@ -118,20 +127,24 @@ pub fn read_nodes_and_edges_from_plain_xml(input_dir: &Path, files_prefix: &Stri
         panic!("Edges could not be read from {}.", input_dir.display());
     };
 
-    (nodes, edges)
+    let Ok(connections) = SumoConnectionsReader::read(input_dir.join(files_prefix.clone() + CON_XML).as_path()) else {
+        panic!("Connections could not be read from {}.", input_dir.display());
+    };
+
+    (nodes, edges, connections)
 }
 
-pub fn read_nodes_edges_and_trips_from_plain_xml(
+pub fn read_nodes_edges_connections_and_trips_from_plain_xml(
     input_dir: &Path,
     files_prefix: &String,
     trips_file: &Path,
-) -> (NodesDocumentRoot, EdgesDocumentRoot, TripsDocumentRoot) {
-    let (nodes, edges) = read_nodes_and_edges_from_plain_xml(input_dir, files_prefix);
+) -> (NodesDocumentRoot, EdgesDocumentRoot, ConnectionsDocumentRoot, TripsDocumentRoot) {
+    let (nodes, edges, connections) = read_nodes_edges_and_connections_from_plain_xml(input_dir, files_prefix);
     let Ok(trips) = SumoTripsReader::read(trips_file) else {
         panic!("Trips could not be read from {}.", trips_file.display());
     };
 
-    (nodes, edges, trips)
+    (nodes, edges, connections, trips)
 }
 
 /// Extract queries from the trips document root.
@@ -141,7 +154,7 @@ pub fn read_nodes_edges_and_trips_from_plain_xml(
 /// We add to the departure time of the query the time it takes to travel from a random point from the edge to the first node of the query.
 pub fn get_queries_from_trips<'a>(
     trips_document_root: &'a TripsDocumentRoot,
-    edge_id_to_edge: &HashMap<&String, (usize, FlattenedSumoEdge)>,
+    edge_id_to_edge: &HashMap<String, (usize, FlattenedSumoEdge)>,
 ) -> (Vec<&'a String>, Vec<u32>, Vec<u32>, Vec<SerializedTimestamp>, Vec<u32>, Vec<u32>) {
     // create a vector of from nodes, to nodes and departure times
     let mut trip_ids = Vec::with_capacity(trips_document_root.trips.len());
@@ -182,46 +195,43 @@ pub fn get_queries_from_trips<'a>(
 pub fn get_routing_kit_td_graph_from_sumo<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
-) -> (RoutingKitTDGraph, HashMap<&'a String, (usize, FlattenedSumoEdge<'a>)>, Vec<&'a String>) {
+    connections_document_root: &'a ConnectionsDocumentRoot,
+) -> (RoutingKitTDGraph, Vec<Node>, HashMap<String, (usize, FlattenedSumoEdge)>, Vec<String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
     // interpolation points should be initialized with only one timespan (from 0 to end-of-day in seconds)
     // weights are the edge lengths divided by speed (i.e. the travel time).
     // if edge length is not provided, the euclidean distance between the edge's endpoints is used
 
-    // create a map from node id to node index
-    // this is used to find the node index of the from and to nodes of each edge
-
-    let node_id_to_index: HashMap<&String, usize> = node_document_root.nodes.iter().enumerate().map(|(index, node)| (&node.id, index)).collect();
-
     let nodes = &node_document_root.nodes;
     let edges = &edges_document_root.edges;
-
-    let edges_sorted_by_node_index: Vec<FlattenedSumoEdge<'a>> = initialize_edges_for_td_graph(&nodes, &edges, &node_id_to_index);
+    let connections = &connections_document_root.connections;
+    let (expanded_nodes, edges_sorted_by_node_index) = initialize_edges_for_td_graph(&nodes, &edges, &connections);
 
     let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
-        create_implicit_td_graph(nodes.len(), edges.len(), &edges_sorted_by_node_index);
+        create_implicit_td_graph(2 * edges.len(), edges_sorted_by_node_index.len(), &edges_sorted_by_node_index);
 
     // with the edge_ids we can write a file containing the edge ids in the order of the edges_sorted_by_node_index
     // this will be used for reconstructing the edges in the TDGraph
-    let edge_index_to_edge_id: Vec<&String> = edges_sorted_by_node_index.iter().map(|edge| edge.edge_id).collect();
+    let edge_index_to_edge_id: Vec<String> = edges_sorted_by_node_index.iter().map(|edge| edge.edge_id.clone()).collect();
 
-    let edge_id_to_index: HashMap<&String, (usize, FlattenedSumoEdge<'a>)> = edges_sorted_by_node_index
+    let edge_id_to_index: HashMap<String, (usize, FlattenedSumoEdge)> = edges_sorted_by_node_index
         .iter()
         .enumerate()
-        .map(|(index, e)| (e.edge_id, (index, e.clone())))
+        .map(|(index, e)| (e.edge_id.clone(), (index, e.clone())))
         .collect();
 
     (
         (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time),
+        expanded_nodes,
         edge_id_to_index,
         edge_index_to_edge_id,
     )
 }
 
-fn get_lan_lon_from_nodes(nodes: &NodesDocumentRoot) -> (Vec<SerializedPosition>, Vec<SerializedPosition>) {
-    let lat: Vec<SerializedPosition> = nodes.nodes.iter().map(|n| n.y as SerializedPosition).collect();
-    let lon: Vec<SerializedPosition> = nodes.nodes.iter().map(|n| n.x as SerializedPosition).collect();
+fn get_lan_lon_from_nodes(nodes: &Vec<Node>) -> (Vec<SerializedPosition>, Vec<SerializedPosition>) {
+    let lat: Vec<SerializedPosition> = nodes.iter().map(|n| n.y as SerializedPosition).collect();
+    let lon: Vec<SerializedPosition> = nodes.iter().map(|n| n.x as SerializedPosition).collect();
 
     (lat, lon)
 }
@@ -309,15 +319,34 @@ fn assert_correct_number_of_vec_items(
     );
 }
 
-fn initialize_edges_for_td_graph<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>, node_id_to_index: &HashMap<&String, usize>) -> Vec<FlattenedSumoEdge<'a>> {
+fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connections: &Vec<Connection>) -> (Vec<Node>, Vec<FlattenedSumoEdge>) {
+    // create a map from node id to node index
+    // this is used to find the node index of the from and to nodes of each edge
+    let expanded_nodes = expand_nodes(nodes, edges);
+
+    let node_id_to_index: HashMap<&String, usize> = expanded_nodes.iter().enumerate().map(|(index, node)| (&node.id, index)).collect();
+
+    // map from edge id to connections, such that edge_id is the "from" edge of the connection
+    let edge_id_to_connections = {
+        let mut map: HashMap<&String, Vec<&Connection>> = HashMap::new();
+        for connection in connections {
+            map.entry(&connection.from).or_default().push(connection);
+        }
+        map
+    };
+
     // edges should be sorted by node index of the tail of the edge
     let mut edges_sorted_by_node_index = Vec::with_capacity(edges.len());
     for edge in edges {
-        let &from_node_index = node_id_to_index.get(&edge.from).expect("From node not found in nodes document root");
-        let &to_node_index = node_id_to_index.get(&edge.to).expect("To node not found in nodes document root");
+        let &from_node_index = node_id_to_index
+            .get(&Node::get_node_id_for_internal_node(&edge.from, &edge.id))
+            .expect("From node not found in nodes document root");
+        let &to_node_index = node_id_to_index
+            .get(&Node::get_node_id_for_internal_node(&edge.to, &edge.id))
+            .expect("To node not found in nodes document root");
 
-        let from_node = &nodes[from_node_index];
-        let to_node = &nodes[to_node_index];
+        let from_node = &expanded_nodes[from_node_index];
+        let to_node = &expanded_nodes[to_node_index];
 
         let length = edge.get_length((from_node.x, from_node.y), (to_node.x, to_node.y));
 
@@ -326,12 +355,61 @@ fn initialize_edges_for_td_graph<'a>(nodes: &'a Vec<Node>, edges: &'a Vec<Edge>,
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
 
-        edges_sorted_by_node_index.push(FlattenedSumoEdge::new(from_node_index, to_node_index, &edge.id, weight, length));
+        edges_sorted_by_node_index.push(FlattenedSumoEdge::new(from_node_index, to_node_index, edge.id.clone(), weight, length));
+
+        // add internal edges
+        for con in edge_id_to_connections.get(&edge.id).unwrap_or(&Vec::new()) {
+            let node_id = Node::get_node_id_from_internal_node(&to_node.id);
+
+            let internal_from_node_id = Node::get_node_id_for_internal_node(&node_id, &edge.id);
+            let &from_node_index = node_id_to_index
+                .get(&to_node.id)
+                .expect(format!("Internal Node with id {} found in list of nodes", internal_from_node_id).as_ref());
+
+            let internal_to_node_id: String = Node::get_node_id_for_internal_node(&node_id, &con.to);
+            let &to_node_index = node_id_to_index
+                .get(&internal_to_node_id)
+                .expect(format!("Internal Node with id {} found in list of nodes", internal_to_node_id).as_ref());
+
+            let from_node_index = from_node_index as u32;
+            let to_node_index = to_node_index as u32;
+
+            edges_sorted_by_node_index.push(FlattenedSumoEdge::new(
+                from_node_index,
+                to_node_index,
+                FlattenedSumoEdge::get_edge_id_for_connection(&edge.id, &con.to),
+                0.0,
+                0.0,
+            ));
+        }
     }
 
     edges_sorted_by_node_index.sort_by_key(|e| (e.from_node_index, e.to_node_index));
 
-    edges_sorted_by_node_index
+    (expanded_nodes, edges_sorted_by_node_index)
+}
+
+/// For each edge, we create two nodes with the id "<node_id>\n<edge_id>" with weight 0.0.
+/// The position should be the same as the original node.
+/// This is necessary to model turn restrictions and turn costs.
+fn expand_nodes(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Node> {
+    // create a temporaray map from node id to node
+    let node_id_to_node: HashMap<&String, &Node> = nodes.iter().map(|node| (&node.id, node)).collect();
+
+    let mut expanded_nodes = Vec::with_capacity(edges.len() * 2);
+    for edge in edges {
+        expanded_nodes.push(Node {
+            id: Node::get_node_id_for_internal_node(&edge.from, &edge.id),
+            x: node_id_to_node.get(&edge.from).unwrap().x,
+            y: node_id_to_node.get(&edge.from).unwrap().y,
+        });
+        expanded_nodes.push(Node {
+            id: Node::get_node_id_for_internal_node(&edge.to, &edge.id),
+            x: node_id_to_node.get(&edge.to).unwrap().x,
+            y: node_id_to_node.get(&edge.to).unwrap().y,
+        });
+    }
+    expanded_nodes
 }
 
 #[cfg(test)]
@@ -364,6 +442,16 @@ mod tests {
         let edges = EdgesDocumentRoot {
             edges: vec![
                 Edge {
+                    id: String::from("e2"),
+                    from: String::from("n2"),
+                    to: String::from("n1"),
+                    num_lanes: Some(1),
+                    speed: Some(13.9),
+                    length: None,
+                    lanes: vec![],
+                    params: vec![],
+                },
+                Edge {
                     id: String::from("e1"),
                     from: String::from("n1"),
                     to: String::from("n2"),
@@ -373,6 +461,51 @@ mod tests {
                     lanes: vec![],
                     params: vec![],
                 },
+            ],
+        };
+
+        let connections = ConnectionsDocumentRoot { connections: vec![] };
+
+        let (td_graph, expanded_nodes, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+
+        assert_eq!(td_graph.0.len(), 5); // 2 edges = 4 nodes + 1 for the end
+        assert_eq!(td_graph.1.len(), 2); // 2 edges
+        assert_eq!(td_graph.2.len(), 2 + 1); // 2 edges each having 1 ipp
+
+        // Check expanded node names using Node::get_node_id_for_internal_node
+        use crate::sumo::nodes::Node;
+        let expected_node_names = vec![
+            Node::get_node_id_for_internal_node("n2", "e2"),
+            Node::get_node_id_for_internal_node("n1", "e2"),
+            Node::get_node_id_for_internal_node("n1", "e1"),
+            Node::get_node_id_for_internal_node("n2", "e1"),
+        ];
+        let actual_node_names: Vec<_> = expanded_nodes.iter().map(|n| n.id.as_str()).collect();
+        let expected_node_names: Vec<_> = expected_node_names.iter().map(|s| s.as_str()).collect();
+        assert_eq!(actual_node_names, expected_node_names);
+    }
+
+    #[test]
+    fn test_td_graph_with_some_connections() {
+        // 2 nodes, 2 edges, 1 connection from e1 to e2
+        let nodes = NodesDocumentRoot {
+            nodes: vec![
+                crate::sumo::nodes::Node {
+                    id: String::from("n2"),
+                    x: 0.0,
+                    y: 0.0,
+                },
+                crate::sumo::nodes::Node {
+                    id: String::from("n1"),
+                    x: 1.0,
+                    y: 1.0,
+                },
+            ],
+            location: None,
+        };
+
+        let edges = EdgesDocumentRoot {
+            edges: vec![
                 Edge {
                     id: String::from("e2"),
                     from: String::from("n2"),
@@ -383,17 +516,130 @@ mod tests {
                     lanes: vec![],
                     params: vec![],
                 },
+                Edge {
+                    id: String::from("e1"),
+                    from: String::from("n1"),
+                    to: String::from("n2"),
+                    num_lanes: Some(1),
+                    speed: Some(13.9),
+                    length: None,
+                    lanes: vec![],
+                    params: vec![],
+                },
             ],
         };
 
-        let (td_graph, edge_ids, edge_indices) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+        let connections = ConnectionsDocumentRoot {
+            connections: vec![Connection {
+                from: String::from("e1"),
+                to: String::from("e2"),
+                from_lane: None,
+                to_lane: None,
+            }],
+        };
 
-        assert_eq!(td_graph.0.len(), 3); // 2 nodes + 1 for the end
-        assert_eq!(td_graph.1.len(), 2); // 2 edges
-        assert_eq!(td_graph.2.len(), 2 + 1); // 2 edges each having 1 ipp
+        let (td_graph, expanded_nodes, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
 
-        assert_eq!(edge_ids.len(), 2); // 2 edges
-        assert_eq!(edge_indices[0], "e2");
-        assert_eq!(edge_indices[1], "e1");
+        // 2 original edges + 1 connection edge
+        assert_eq!(td_graph.1.len(), 3);
+        // The edge_ids should contain the connection edge id
+        assert!(edge_ids
+            .iter()
+            .any(|id| id.contains(&FlattenedSumoEdge::get_edge_id_for_connection("e1", "e2"))));
+
+        // Check expanded node names using Node::get_node_id_for_internal_node
+        use crate::sumo::nodes::Node;
+        let expected_node_names = vec![
+            Node::get_node_id_for_internal_node("n2", "e2"),
+            Node::get_node_id_for_internal_node("n1", "e2"),
+            Node::get_node_id_for_internal_node("n1", "e1"),
+            Node::get_node_id_for_internal_node("n2", "e1"),
+        ];
+        let actual_node_names: Vec<_> = expanded_nodes.iter().map(|n| n.id.as_str()).collect();
+        let expected_node_names: Vec<_> = expected_node_names.iter().map(|s| s.as_str()).collect();
+        assert_eq!(actual_node_names, expected_node_names);
+    }
+
+    #[test]
+    fn test_td_graph_with_all_possible_connections() {
+        // 2 nodes, 2 edges, connections from every edge to every edge (including self)
+        let nodes = NodesDocumentRoot {
+            nodes: vec![
+                crate::sumo::nodes::Node {
+                    id: String::from("n2"),
+                    x: 0.0,
+                    y: 0.0,
+                },
+                crate::sumo::nodes::Node {
+                    id: String::from("n1"),
+                    x: 1.0,
+                    y: 1.0,
+                },
+            ],
+            location: None,
+        };
+
+        let edges = EdgesDocumentRoot {
+            edges: vec![
+                Edge {
+                    id: String::from("e2"),
+                    from: String::from("n2"),
+                    to: String::from("n1"),
+                    num_lanes: Some(1),
+                    speed: Some(13.9),
+                    length: None,
+                    lanes: vec![],
+                    params: vec![],
+                },
+                Edge {
+                    id: String::from("e1"),
+                    from: String::from("n1"),
+                    to: String::from("n2"),
+                    num_lanes: Some(1),
+                    speed: Some(13.9),
+                    length: None,
+                    lanes: vec![],
+                    params: vec![],
+                },
+            ],
+        };
+
+        let mut connections_vec = Vec::new();
+        let edge_ids = vec!["e1", "e2"];
+        for from in &edge_ids {
+            for to in &edge_ids {
+                connections_vec.push(Connection {
+                    from: from.to_string(),
+                    to: to.to_string(),
+                    from_lane: None,
+                    to_lane: None,
+                });
+            }
+        }
+        let connections = ConnectionsDocumentRoot { connections: connections_vec };
+
+        let (td_graph, expanded_nodes, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+
+        // 2 original edges + 4 connection edges (2 from each edge to both edges)
+        assert_eq!(td_graph.1.len(), 6);
+        // All possible connection edge ids should be present
+        for from in &["e1", "e2"] {
+            for to in &["e1", "e2"] {
+                let conn_id = FlattenedSumoEdge::get_edge_id_for_connection(from, to);
+                assert!(edge_ids.iter().any(|id| id == &conn_id), "Missing connection edge id: {}", conn_id);
+            }
+        }
+
+        // Check expanded node names using Node::get_node_id_for_internal_node
+        use crate::sumo::nodes::Node;
+        let expected_node_names = vec![
+            Node::get_node_id_for_internal_node("n2", "e2"),
+            Node::get_node_id_for_internal_node("n1", "e2"),
+            Node::get_node_id_for_internal_node("n1", "e1"),
+            Node::get_node_id_for_internal_node("n2", "e1"),
+        ];
+        let actual_node_names: Vec<_> = expanded_nodes.iter().map(|n| n.id.as_str()).collect();
+        let expected_node_names: Vec<_> = expected_node_names.iter().map(|s| s.as_str()).collect();
+        assert_eq!(actual_node_names, expected_node_names);
     }
 }

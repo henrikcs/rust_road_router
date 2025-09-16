@@ -6,8 +6,8 @@ use conversion::{
 
 use rust_road_router::algo::catchup::Server;
 use rust_road_router::algo::{self, TDQuery, TDQueryServer};
-use rust_road_router::datastr::graph::EdgeId;
 use rust_road_router::datastr::graph::floating_time_dependent::{FlWeight, TDGraph, Timestamp};
+use rust_road_router::datastr::graph::{EdgeId, EdgeIdT};
 use rust_road_router::io::Load;
 
 pub fn get_paths_with_cch_queries(query_server: &mut Server, input_dir: &Path, graph: &TDGraph) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
@@ -29,15 +29,7 @@ pub fn get_paths_with_cch_queries(query_server: &mut Server, input_dir: &Path, g
             });
 
             if let Some(mut result) = result.found() {
-                let edge_path = result.edge_path();
-
-                let mut path = Vec::with_capacity(edge_path.len() + 2);
-                path.push(from_edge);
-                path.extend(edge_path.iter().map(|edge| edge.0));
-                path.push(to_edge);
-
-                let mut distance = from_edge_tt + result.distance();
-                distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
+                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, result.edge_path(), result.distance());
 
                 Some((path, distance))
             } else {
@@ -66,16 +58,7 @@ pub fn get_paths_with_dijkstra_queries(
             });
 
             if let Some(mut result) = result.found() {
-                let mut distance = from_edge_tt + result.distance();
-
-                let edge_path = result.edge_path();
-
-                let mut path = Vec::with_capacity(edge_path.len() + 2);
-                path.push(from_edge);
-                path.extend(edge_path.iter().map(|edge| edge.0));
-                path.push(to_edge);
-
-                distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
+                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, result.edge_path(), result.distance());
 
                 Some((path, distance))
             } else {
@@ -124,4 +107,30 @@ fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph
     }
     // distances is in seconds
     (paths, distances, queries_departure)
+}
+
+fn construct_path_and_time(
+    graph: &TDGraph,
+    from_edge: EdgeId,
+    from_edge_tt: FlWeight,
+    to_edge: EdgeId,
+    departure: Timestamp,
+    remaining_path: Vec<EdgeIdT>,
+    remaining_path_distance: FlWeight,
+) -> (Vec<EdgeId>, FlWeight) {
+    let mut path = Vec::with_capacity(remaining_path.len() + 2);
+    path.push(from_edge);
+
+    // the edge_path alternates between internal edges and normal edges, the first edge being internal
+    // we only want the normal edges, so we skip every second edge
+
+    path.extend(remaining_path.iter().skip(1).step_by(2).map(|edge| edge.0));
+
+    // path.extend(edge_path.iter().map(|edge| edge.0));
+    path.push(to_edge);
+
+    let mut distance = from_edge_tt + remaining_path_distance;
+    distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
+
+    (path, distance)
 }
