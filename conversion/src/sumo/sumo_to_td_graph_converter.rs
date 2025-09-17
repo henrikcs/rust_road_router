@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use rust_road_router::io::{write_strings_to_file, Store};
 
@@ -327,10 +330,11 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
     let node_id_to_index: HashMap<&String, usize> = expanded_nodes.iter().enumerate().map(|(index, node)| (&node.id, index)).collect();
 
     // map from edge id to connections, such that edge_id is the "from" edge of the connection
+    // connection is a hashset to avoid multiple connections from the same edge to the same edge
     let edge_id_to_connections = {
-        let mut map: HashMap<&String, Vec<&Connection>> = HashMap::new();
+        let mut map: HashMap<&String, HashSet<&Connection>> = HashMap::new();
         for connection in connections {
-            map.entry(&connection.from).or_default().push(connection);
+            map.entry(&connection.from).or_default().insert(connection);
         }
         map
     };
@@ -358,7 +362,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
         edges_sorted_by_node_index.push(FlattenedSumoEdge::new(from_node_index, to_node_index, edge.id.clone(), weight, length));
 
         // add internal edges
-        for con in edge_id_to_connections.get(&edge.id).unwrap_or(&Vec::new()) {
+        for con in edge_id_to_connections.get(&edge.id).unwrap_or(&HashSet::new()) {
             let node_id = Node::get_node_id_from_internal_node(&to_node.id);
 
             let internal_from_node_id = Node::get_node_id_for_internal_node(&node_id, &edge.id);
@@ -561,7 +565,7 @@ mod tests {
     }
 
     #[test]
-    fn test_td_graph_with_all_possible_connections() {
+    fn test_td_graph_with_multi_connections() {
         // 2 nodes, 2 edges, connections from every edge to every edge (including self)
         let nodes = NodesDocumentRoot {
             nodes: vec![
@@ -604,30 +608,41 @@ mod tests {
             ],
         };
 
-        let mut connections_vec = Vec::new();
-        let edge_ids = vec!["e1", "e2"];
-        for from in &edge_ids {
-            for to in &edge_ids {
-                connections_vec.push(Connection {
-                    from: from.to_string(),
-                    to: to.to_string(),
+        let connections = ConnectionsDocumentRoot {
+            connections: vec![
+                Connection {
+                    from: String::from("e1"),
+                    to: String::from("e2"),
                     from_lane: None,
                     to_lane: None,
-                });
-            }
-        }
-        let connections = ConnectionsDocumentRoot { connections: connections_vec };
+                },
+                Connection {
+                    from: String::from("e2"),
+                    to: String::from("e1"),
+                    from_lane: Some(String::from("0")),
+                    to_lane: Some(String::from("0")),
+                },
+                Connection {
+                    from: String::from("e2"),
+                    to: String::from("e1"),
+                    from_lane: Some(String::from("1")),
+                    to_lane: Some(String::from("1")),
+                },
+            ],
+        };
 
         let (td_graph, expanded_nodes, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
 
-        // 2 original edges + 4 connection edges (2 from each edge to both edges)
-        assert_eq!(td_graph.1.len(), 6);
+        // 2 original edges + 2 connection edges (2 from each edge to both edges)
+        assert_eq!(td_graph.1.len(), 4);
+
         // All possible connection edge ids should be present
-        for from in &["e1", "e2"] {
-            for to in &["e1", "e2"] {
-                let conn_id = FlattenedSumoEdge::get_edge_id_for_connection(from, to);
-                assert!(edge_ids.iter().any(|id| id == &conn_id), "Missing connection edge id: {}", conn_id);
-            }
+        let expected_connections = vec![
+            FlattenedSumoEdge::get_edge_id_for_connection("e1", "e2"),
+            FlattenedSumoEdge::get_edge_id_for_connection("e2", "e1"),
+        ];
+        for conn in expected_connections {
+            assert!(edge_ids.iter().any(|id| id.contains(&conn)), "Missing connection edge id: {}", conn);
         }
 
         // Check expanded node names using Node::get_node_id_for_internal_node
