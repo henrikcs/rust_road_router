@@ -10,6 +10,8 @@ declare output_dir
 output_dir=$(pwd)
 declare timestamp
 timestamp=$(date +'%Y-%m-%d-%H-%M')
+declare start_time
+start_time=$(date '+%Y-%m-%d %H:%M:%S')
 
 # --- Function to display usage ---
 usage() {
@@ -94,8 +96,44 @@ fi
 # --- Set up environment ---
 spack env activate "$spack_env"
 declare base_output_dir="${output_dir%/}/$timestamp"
+
+
 echo "Base output directory: $base_output_dir"
 mkdir -p "$base_output_dir"
+
+# Copy the experiment file into the output directory for reproducibility
+cp "$experiment" "$base_output_dir/"
+
+# --- Write README.md with experiment info ---
+(
+    
+    # Get git info
+    git_hash=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    # Get CPU info (first line of lscpu output)
+    cpu_info=$(lscpu | grep 'Model name' | head -n1 | sed 's/Model name:[ ]*//')
+    # Get RAM info (total in GB)
+    ram_info=$(free -g | awk '/^Mem:/ {print $2 " GB"}')
+    # List algorithms
+    algos="${routing_algorithms[*]}"
+    
+    cd "$base_output_dir" || exit 1
+    # Write README.md
+    cat > README.md << EOF
+# Experiment Batch Information
+
+**Git Information**
+- Commit hash: $git_hash
+- Branch: $git_branch
+
+**Start time:** $start_time
+
+**CPU:** ${cpu_info:-unknown}
+**RAM:** ${ram_info:-unknown}
+
+**Algorithms run:** $algos
+EOF
+)
 
 declare pwd=$(pwd)
 P=$(basename $(find ~/.user_spack/environments/"$spack_env"/.spack-env/._view -mindepth 1 -maxdepth 1 -type d))
