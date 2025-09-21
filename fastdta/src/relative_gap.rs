@@ -23,6 +23,10 @@ pub fn get_relative_gap(best_tt: &Vec<f64>, simulated_tt: &Vec<f64>) -> f64 {
                 return 0.0;
             }
 
+            if f64::abs(simulated_tt[i] - tt) < EPSILON_TRAVEL_TIME {
+                return 0.0;
+            }
+
             simulated_tt[i] - tt
         })
         .sum::<f64>()
