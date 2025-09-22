@@ -248,11 +248,7 @@ def call_binary(binary, args):
     return subprocess.call([binary] + args)
 
 
-def writeRouteConf(duarouterBinary, step, options, dua_args, file,
-                   output, routesInfo):
-    filename = os.path.basename(file)
-    filename = filename.split('.')[0]
-    cfgname = "%03i/iteration_%03i_%s.duarcfg" % (step, step, filename)
+def getArgs(step, options, file, output, routesInfo):
 
     args = [
         '--net-file', options.net,
@@ -310,6 +306,18 @@ def writeRouteConf(duarouterBinary, step, options, dua_args, file,
         args += ['--logit.theta', str(options.logittheta)]
     if options.end:
         args += ['--end', str(options.end)]
+
+    return args
+
+
+def writeRouteConf(duarouterBinary, step, options, dua_args, file,
+                   output, routesInfo):
+
+    args = getArgs(step, options, file, output, routesInfo)
+
+    filename = os.path.basename(file)
+    filename = filename.split('.')[0]
+    cfgname = "%03i/iteration_%03i_%s.duarcfg" % (step, step, filename)
 
     args += ["--save-configuration", cfgname]
 
@@ -741,6 +749,8 @@ def main(args=None):
                 print(">>> Begin time: %s" % btime)
                 cfgname = writeRouteConf(duaBinary, step, options, dua_args, router_input,
                                          output, options.routefile)
+                arguments_for_router = getArgs(
+                    step, options, router_input, output, options.routefile)
                 log.flush()
                 sys.stdout.flush()
                 if options.marginal_cost:
@@ -750,10 +760,10 @@ def main(args=None):
                 if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
                     ret = call_binary(
                         CCH_ROUTER_BINARY,
-                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + cch_routing_args)
+                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + arguments_for_router + cch_routing_args)
                 elif ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
                     ret = call_binary(DIJKSTRA_ROUTER_BINARY,
-                                      ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + dijkstra_routing_args)
+                                      ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + arguments_for_router + dijkstra_routing_args)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 
