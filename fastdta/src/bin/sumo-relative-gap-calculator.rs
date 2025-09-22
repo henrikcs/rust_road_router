@@ -97,15 +97,16 @@ fn main() {
                     };
 
                     let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &path);
+                    let experienced_time_f64: f64 = <FlWeight as Into<f64>>::into(experienced_time);
+                    let best_time_f64: f64 = <FlWeight as Into<f64>>::into(travel_times[i]);
 
-                    if <FlWeight as Into<f64>>::into(experienced_time) - <FlWeight as Into<f64>>::into(travel_times[i]) < -EPSILON_TRAVEL_TIME {
+                    if experienced_time_f64 - best_time_f64 < -EPSILON_TRAVEL_TIME {
                         // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
                         eprintln!(
-                            "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nBest time from tt along path: {}.\nExperienced path: {:?}, \nbest path:        {:?},\ndeparture time: {}",
+                            "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nExperienced path: {:?}, \nbest path:        {:?},\ndeparture time: {}",
                             id,
-                            <FlWeight as Into<f64>>::into(experienced_time),
-                            <FlWeight as Into<f64>>::into(travel_times[i]),
-                            <FlWeight as Into<f64>>::into(travel_times[i]),
+                            experienced_time_f64,
+                            best_time_f64,
                             get_path_ids_from_indices(&edge_ids, &path),
                             get_path_ids_from_indices(&edge_ids, &paths[i]),
                             v.depart

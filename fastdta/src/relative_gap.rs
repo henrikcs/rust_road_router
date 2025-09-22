@@ -1,34 +1,34 @@
 use rayon::prelude::*;
 
-/// two travel times are considered equal if they differ at most by 1ms
+/// two travel times are considered equal if they differ at most by 1s
 /// Time is given in seconds
-pub const EPSILON_TRAVEL_TIME: f64 = 0.000_1;
+pub const EPSILON_TRAVEL_TIME: f64 = 1.0;
 
-pub fn get_relative_gap(best_tt: &Vec<f64>, simulated_tt: &Vec<f64>) -> f64 {
-    assert_eq!(best_tt.len(), simulated_tt.len());
+pub fn get_relative_gap(best_tts: &Vec<f64>, simulated_tts: &Vec<f64>) -> f64 {
+    assert_eq!(best_tts.len(), simulated_tts.len());
 
-    best_tt
+    best_tts
         .par_iter()
         .enumerate()
-        .map(|(i, &tt)| {
-            if tt == 0.0 {
+        .map(|(i, &best_tt)| {
+            if best_tt == 0.0 {
                 return 0.0;
             }
 
-            if simulated_tt[i] - tt < -EPSILON_TRAVEL_TIME {
+            if simulated_tts[i] - best_tt < -EPSILON_TRAVEL_TIME {
                 eprintln!(
                     "Simulated travel time for trip {} is less than best travel time: {} < {}",
-                    i, simulated_tt[i], tt
+                    i, simulated_tts[i], best_tt
                 );
                 return 0.0;
             }
 
-            if f64::abs(simulated_tt[i] - tt) < EPSILON_TRAVEL_TIME {
+            if f64::abs(simulated_tts[i] - best_tt) < EPSILON_TRAVEL_TIME {
                 return 0.0;
             }
 
-            simulated_tt[i] - tt
+            simulated_tts[i] - best_tt
         })
         .sum::<f64>()
-        / best_tt.par_iter().sum::<f64>()
+        / best_tts.par_iter().sum::<f64>()
 }
