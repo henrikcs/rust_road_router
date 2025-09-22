@@ -3,7 +3,6 @@ use std::path::Path;
 use conversion::FILE_EDGE_INDICES_TO_ID;
 use conversion::sumo::sumo_to_new_graph_weights::get_graph_with_travel_times_from_previous_iteration;
 use fastdta::alternative_path_assembler::assemble_alternative_paths;
-use fastdta::choice::{self};
 use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::query::get_paths_with_dijkstra_queries;
@@ -14,16 +13,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::RouterArgs::parse();
 
     let input_dir = Path::new(&args.input_dir);
-    let input_prefix = args.input_prefix;
+    let input_prefix = &args.input_prefix;
     let iteration = args.iteration;
 
     log(&input_dir.display().to_string(), iteration, "startup", 0);
 
-    let choice_algorithm = match args.route_choice_method.as_str() {
-        choice::LOGIT => choice::ChoiceAlgorithm::create_logit(args.logit_beta, args.logit_gamma, args.logit_theta),
-        choice::GAWRON => choice::ChoiceAlgorithm::create_gawron(args.gawron_a, args.gawron_beta),
-        _ => panic!("Unknown choice algorithm: {}", args.route_choice_method),
-    };
+    let choice_algorithm = args.get_choice_algorithm();
 
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 

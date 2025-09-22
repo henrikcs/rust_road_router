@@ -2,6 +2,8 @@ use std::env;
 
 pub use clap::Parser;
 
+use crate::choice;
+
 /// Command-line arguments for fast-dta preprocessing
 #[derive(Parser, Debug)]
 #[command(version, about = "fast-dta preprocessing CLI options", long_about = None)]
@@ -388,4 +390,23 @@ pub struct RouterArgs {
     /// if set skips writing the alternative routes file in the sumo format
     #[arg(long = "no-write-sumo-alternatives", default_value_t = String::from("False"))]
     pub no_write_sumo_alternatives: String,
+}
+
+impl RouterArgs {
+    pub fn get_choice_algorithm(&self) -> choice::ChoiceAlgorithm {
+        match self.route_choice_method.as_str() {
+            choice::LOGIT => {
+                println!(
+                    "Using logit with beta={}, gamma={}, theta={}",
+                    self.logit_beta, self.logit_gamma, self.logit_theta
+                );
+                choice::ChoiceAlgorithm::create_logit(self.logit_beta, self.logit_gamma, self.logit_theta)
+            }
+            choice::GAWRON => {
+                println!("Using gawron with a={}, beta={}", self.gawron_a, self.gawron_beta);
+                choice::ChoiceAlgorithm::create_gawron(self.gawron_a, self.gawron_beta)
+            }
+            _ => panic!("Unknown choice algorithm: {}", self.route_choice_method),
+        }
+    }
 }
