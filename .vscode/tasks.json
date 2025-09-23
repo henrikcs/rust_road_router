@@ -15,6 +15,47 @@
       "args": ["build"],
       "label": "Build (debug)"
     },
+
+    {
+      "label": "Relative Gap (grid)",
+      "type": "shell",
+      "command": "sumo-relative-gap-calculator",
+      "dependsOn": ["Build (debug)"],
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo/grid",
+        "env": {
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${env:PATH}"
+        }
+      },
+      "args": [
+        "--net-dir",
+        "${workspaceFolder}/import/sumo/grid",
+        "--net-prefix",
+        "grid",
+        "--trips-file",
+        "${workspaceFolder}/import/sumo/grid/grid.trips.xml"
+      ]
+    },
+    {
+      "label": "Compare Routes (grid)",
+      "type": "shell",
+      "command": "sumo-routes-comparator",
+      "dependsOn": ["Build (debug)"],
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo/grid-dijkstra",
+        "env": {
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${env:PATH}"
+        }
+      },
+      "args": [
+        "--net-dir",
+        "${workspaceFolder}/import/sumo/grid",
+        "--net-prefix",
+        "grid",
+        "--trips-file",
+        "${workspaceFolder}/import/sumo/grid/grid.trips.xml"
+      ]
+    },
     {
       "label": "Run DTA (grid)",
       "type": "shell",
@@ -41,13 +82,18 @@
         "CCH",
         "--mesosim",
         "--aggregation",
-        "900",
+        "300",
         "--begin",
         "0",
         "--end",
-        "36000",
+        "12000",
         "--relative-gap",
-        "0.001",
+        "0.0001",
+        "--max-convergence-deviation",
+        "0.0000001",
+        "--nointernal-link",
+        "sumo--default.speeddev",
+        "0.0",
         "cch-preprocessor--input-prefix",
         "grid",
         "cch-preprocessor--input-dir",
@@ -56,26 +102,6 @@
         "grid",
         "relative-gap--net-dir",
         "${workspaceFolder}/import/sumo/grid"
-      ]
-    },
-    {
-      "label": "Relative Gap (grid)",
-      "type": "shell",
-      "command": "sumo-relative-gap-calculator",
-      "dependsOn": ["Build (debug)"],
-      "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/grid",
-        "env": {
-          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${env:PATH}"
-        }
-      },
-      "args": [
-        "--net-dir",
-        "${workspaceFolder}/import/sumo/grid",
-        "--net-prefix",
-        "grid",
-        "--trips-file",
-        "${workspaceFolder}/import/sumo/grid/grid.trips.xml"
       ]
     },
     {
@@ -103,15 +129,18 @@
         "CH",
         "--mesosim",
         "--aggregation",
-        "900",
+        "300",
         "--begin",
         "0",
         "--end",
-        "36000",
+        "12000",
         "--relative-gap",
-        "0.001",
-        "duarouter--write-costs",
-        "true",
+        "0.0001",
+        "--max-convergence-deviation",
+        "0.0000001",
+        "--nointernal-link",
+        "sumo--default.speeddev",
+        "0.0",
         "relative-gap--net-prefix",
         "grid",
         "relative-gap--net-dir",
@@ -141,22 +170,20 @@
         "-t",
         "${workspaceFolder}/import/sumo/grid/grid.trips.xml",
         "--routing-algorithm",
-        "dijkstra-rust",
+        "dijkstra",
         "--mesosim",
         "--aggregation",
-        "900",
+        "300",
         "--begin",
         "0",
         "--end",
-        "36000",
+        "12000",
         "--relative-gap",
-        "0.001",
-        "duarouter--write-costs",
-        "true",
-        "dijkstra-preprocessor--input-prefix",
-        "grid",
-        "dijkstra-preprocessor--input-dir",
-        "${workspaceFolder}/import/sumo/grid",
+        "0.0001",
+        "--max-convergence-deviation",
+        "0.0000001",
+        "sumo--default.speeddev",
+        "0.0",
         "relative-gap--net-prefix",
         "grid",
         "relative-gap--net-dir",
@@ -164,16 +191,16 @@
       ]
     },
     {
-      "label": "Run DTA (kelheim; dijkstra)",
+      "label": "Run DTA (grid; dijkstra-rust)",
       "type": "shell",
       "command": "python",
       "dependsOn": [
         "Copy duaIterate.py to SUMO",
-        "Clean kelheim",
+        "Clean grid-dijkstra-rust",
         "Build (debug)"
       ],
       "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/kelheim",
+        "cwd": "${workspaceFolder}/data/imported/sumo/grid-dijkstra-rust",
         "env": {
           "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
           "RUST_BACKTRACE": "1"
@@ -182,18 +209,32 @@
       "args": [
         "${workspaceFolder}/lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py",
         "-n",
-        "${workspaceFolder}/import/sumo/kelheim/kelheim.net.xml",
+        "${workspaceFolder}/import/sumo/grid/grid.net.xml",
         "-t",
-        "${workspaceFolder}/import/sumo/kelheim/kelheim.trips.xml",
+        "${workspaceFolder}/import/sumo/grid/grid.trips.xml",
         "--routing-algorithm",
-        "dijkstra",
+        "dijkstra-rust",
         "--mesosim",
         "--aggregation",
-        "900",
+        "300",
         "--begin",
         "0",
         "--end",
-        "36000"
+        "12000",
+        "--relative-gap",
+        "0.0001",
+        "--max-convergence-deviation",
+        "0.0000001",
+        "sumo--default.speeddev",
+        "0.0",
+        "dijkstra-preprocessor--input-prefix",
+        "grid",
+        "dijkstra-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/grid",
+        "relative-gap--net-prefix",
+        "grid",
+        "relative-gap--net-dir",
+        "${workspaceFolder}/import/sumo/grid"
       ]
     },
     {
@@ -239,42 +280,6 @@
       ]
     },
     {
-      "label": "Run DTA (karlsruhe)",
-      "type": "shell",
-      "dependsOn": [
-        "Build (debug)",
-        "Copy duaIterate.py to SUMO",
-        "Clean karlsruhe"
-      ],
-      "command": "python",
-      "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/karlsruhe",
-        "env": {
-          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}"
-        }
-      },
-      "args": [
-        "${workspaceFolder}/lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py",
-        "-n",
-        "${workspaceFolder}/import/sumo/karlsruhe/karlsruhe.net.xml",
-        "-t",
-        "${workspaceFolder}/import/sumo/karlsruhe/karlsruhe.trips.xml",
-        "--routing-algorithm",
-        "CCH",
-        "--mesosim",
-        "--aggregation",
-        "900",
-        "--begin",
-        "0",
-        "--end",
-        "36000",
-        "cch-preprocessor--input-prefix",
-        "karlsruhe",
-        "cch-preprocessor--input-dir",
-        "${workspaceFolder}/import/sumo/karlsruhe"
-      ]
-    },
-    {
       "label": "Clean grid",
       "type": "shell",
       "command": "rm",
@@ -303,6 +308,16 @@
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
       "args": ["-rf", "grid-dijkstra/*"],
+      "hide": true
+    },
+    {
+      "label": "Clean grid-dijkstra-rust",
+      "type": "shell",
+      "command": "rm",
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo"
+      },
+      "args": ["-rf", "grid-dijkstra-rust/*"],
       "hide": true
     },
     {
