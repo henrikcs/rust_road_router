@@ -60,3 +60,51 @@ fn gawron_g(a: f64, x: f64) -> f64 {
 
     ((a * x) / denominator).exp()
 }
+
+#[cfg(test)]
+pub mod tests {
+
+    use super::*;
+    use crate::alternative_paths::{AlternativePath, AlternativePaths};
+
+    // previous alternative paths:
+    // cost="569.10" probability="0.13094327"
+    // cost="560.00" probability="0.19342774"
+    // cost="555.70" probability="0.22657958"
+    // cost="555.68" probability="0.22577343"
+    // cost="555.90" probability="0.22327598"
+    // chosen: index 4
+    // a = 0.5 (beta = 0.9)
+
+    // expected:
+    // cost="569.10" probability="0.12916244"
+    // cost="560.00" probability="0.19314789"
+    // cost="555.70" probability="0.22728348"
+    // cost="555.68" probability="0.22647978"
+    // cost="555.90" probability="0.22392642"
+
+    #[test]
+    fn test_gawron() {
+        let alternatives = AlternativePaths {
+            paths: vec![
+                AlternativePath { edges: vec![] },
+                AlternativePath { edges: vec![] },
+                AlternativePath { edges: vec![] },
+                AlternativePath { edges: vec![] },
+                AlternativePath { edges: vec![] },
+            ],
+            choice: 4,
+            costs: vec![569.10, 560.00, 555.70, 555.68, 555.90],
+            probabilities: vec![0.13094327, 0.19342774, 0.22657958, 0.22577343, 0.22327598],
+        };
+
+        let a = 0.5;
+        let beta = 0.9;
+        let new_probabilities = gawron(&alternatives, a, beta);
+        let expected_probabilities = vec![0.12916244, 0.19314789, 0.22728348, 0.22647978, 0.22392642];
+        for (new, expected) in new_probabilities.iter().zip(expected_probabilities.iter()) {
+            let diff = (new - expected).abs();
+            assert!(diff < 0.0001, "Expected {}, got {}, diff {}", expected, new, diff);
+        }
+    }
+}
