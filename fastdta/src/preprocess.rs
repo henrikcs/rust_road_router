@@ -98,11 +98,8 @@ pub fn run_inertial_flow_cutter(directory: &Path, seed: i32, threads: i32) -> Re
         .arg("flow_cutter_set")
         .arg("initial_assimilated_fraction")
         .arg("0.05")
-        .arg("flow_cutter_config")
-        .arg("report_time")
         .arg("reorder_nodes_in_accelerated_flow_cutter_cch_order")
         .arg("do_not_report_time")
-        .arg("examine_chordal_supergraph")
         .arg("save_routingkit_node_permutation_since_last_load")
         .arg(directory.join(FILE_CCH_PERM).to_str().unwrap())
         .status()?;

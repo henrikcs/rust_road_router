@@ -93,7 +93,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     g.2.write_to(&output_dir.join(FILE_FIRST_IPP_OF_ARC))?;
     g.3.write_to(&output_dir.join(FILE_IPP_DEPARTURE_TIME))?;
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
-    println!("writing edge default travel times");
+
     // extract default weights of all edges and write them to a file
     let edge_default_travel_times: Vec<SerializedTravelTime> = edge_indices_to_id
         .iter()
