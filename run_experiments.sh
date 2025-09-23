@@ -187,12 +187,11 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                 --max-convergence-deviation "$convergence_deviation"
                 --relative-gap "$convergence_relgap"
                 duarouter--weights.interpolate
-                duarouter--seed $seed
-                duarouter--unsorted-input
+                duarouter--seed $speeddev
                 sumo--ignore-route-errors
-                sumo--time-to-teleport.disconnected 1
                 sumo--aggregate-warnings 5
                 sumo--seed $seed
+                sumo--default.speeddev 0
                 relative-gap--net-prefix "$prefix"
                 relative-gap--net-dir "$in_dir"
             )
