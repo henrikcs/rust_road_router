@@ -5,10 +5,8 @@
         origBoundary="0.00,0.00,3600.00,3600.00" projParameter="!" />
 
     <node id="v0" x="0" y="0" type="priority" />
-    <node id="v1" x="200" y="0" type="priority" />
-    <node id="v2" x="200" y="200" type="priority" />
-    <node id="v3" x="400" y="200" type="priority" />
-    <node id="v4" x="400" y="0" type="priority" />
-    <node id="v5" x="600" y="0" type="priority" />
+    <node id="v1" x="150" y="0" type="priority" />
+    <node id="v2" x="300" y="0" type="priority" />
+    <node id="v3" x="450" y="0" type="priority" />
 
 </nodes>
