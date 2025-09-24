@@ -2,6 +2,6 @@
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <trip id="0" depart="0.00" from="v0v1" to="v4v5" departLane="best" departSpeed="max"
+    <trip id="0" depart="870.00" from="v0v1" to="v4v5" departLane="best" departSpeed="max"
         departPos="base" arrivalPos="0.0" />
 </routes>
