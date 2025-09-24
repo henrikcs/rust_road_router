@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ConnectionsDocumentRoot>
+    <connection from="v0v1" to="v1v2" fromLane="0" toLane="0" />
+    <connection from="v0v1" to="v1v4" fromLane="0" toLane="0" />
+    <connection from="v1v2" to="v2v3" fromLane="0" toLane="0" />
+    <connection from="v2v3" to="v3v4" fromLane="0" toLane="0" />
+    <connection from="v3v4" to="v4v5" fromLane="0" toLane="0" />
+</ConnectionsDocumentRoot>
