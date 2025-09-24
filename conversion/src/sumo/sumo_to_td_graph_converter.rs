@@ -356,16 +356,6 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
 
         let weight = length / edge.get_speed();
 
-        println!(
-            "Edge {} from {} to {} has length {} and speed {}, resulting in weight {}",
-            edge.id,
-            edge.from,
-            edge.to,
-            length,
-            edge.get_speed(),
-            weight
-        );
-
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
 
