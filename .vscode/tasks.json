@@ -238,16 +238,25 @@
       ]
     },
     {
-      "label": "Run DTA (suboptimal routing)",
+      "label": "init subopt.-ex",
       "type": "shell",
-      "dependsOn": [
-        "Build (debug)",
-        "Copy duaIterate.py to SUMO",
-        "Clean example data"
-      ],
+      "dependsOn": ["suboptimal-routing (initial)"],
+      "command": "cp",
+      "options": {
+        "cwd": "${workspaceFolder}/"
+      },
+      "args": [
+        "import/sumo/suboptimal-routing/suboptimal-routing.tt.xml",
+        "data/imported/sumo/suboptimal-routing/000/dump_60.0.xml"
+      ]
+    },
+    {
+      "label": "subopt.-ex. (cch)",
+      "type": "shell",
+      "dependsOn": [],
       "command": "python",
       "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/example-data",
+        "cwd": "${workspaceFolder}/data/imported/sumo/suboptimal-routing",
         "env": {
           "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}"
         }
@@ -266,9 +275,9 @@
         "--begin",
         "0",
         "--end",
-        "1800",
+        "360",
         "-f",
-        "0",
+        "1",
         "-l",
         "2",
         "sumo--default.speeddev",
@@ -280,12 +289,12 @@
       ]
     },
     {
-      "label": "Run DTA (suboptimal routing - sumo)",
+      "label": "subopt.-ex. (sumo)",
       "type": "shell",
-      "dependsOn": ["Build (debug)", "Copy duaIterate.py to SUMO"],
+      "dependsOn": [],
       "command": "python",
       "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/example-data",
+        "cwd": "${workspaceFolder}/data/imported/sumo/suboptimal-routing",
         "env": {
           "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}"
         }
@@ -304,7 +313,7 @@
         "--begin",
         "0",
         "--end",
-        "1800",
+        "360",
         "-f",
         "1",
         "-l",
@@ -356,13 +365,13 @@
       "hide": true
     },
     {
-      "label": "Clean example data",
+      "label": "Clean suboptimal-routing",
       "type": "shell",
       "command": "rm",
       "options": {
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
-      "args": ["-rf", "example-data/*"],
+      "args": ["-rf", "suboptimal-routing/*"],
       "hide": true
     },
     {
@@ -399,32 +408,47 @@
       "hide": true
     },
     {
-      "label": "Preprocess (example data)",
+      "label": "suboptimal-routing (initial)",
+      "hide": true,
       "type": "shell",
-      "command": "cargo",
-      "args": [
-        "run",
-        "--package",
-        "fastdta",
-        "--bin",
-        "sumo-tdcch-preprocessor",
-        "--",
-        "--input-dir",
-        "${workspaceFolder}/import/sumo/example-data",
-        "--input-prefix",
-        "example-data",
-        "--trips-file",
-        "${workspaceFolder}/import/sumo/example-data/example-data.trips.xml",
-        "--output-dir",
-        "${workspaceFolder}/data/imported/sumo/example-data"
+      "dependsOn": [
+        "Build (debug)",
+        "Copy duaIterate.py to SUMO",
+        "Clean suboptimal-routing"
       ],
+      "command": "python",
       "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo/suboptimal-routing",
         "env": {
           "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}"
         }
       },
-      "hide": true,
-      "dependsOn": ["Build (debug)", "Copy duaIterate.py to SUMO"]
+      "args": [
+        "${workspaceFolder}/lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py",
+        "-n",
+        "${workspaceFolder}/import/sumo/suboptimal-routing/suboptimal-routing.net.xml",
+        "-t",
+        "${workspaceFolder}/import/sumo/suboptimal-routing/suboptimal-routing.trips.xml",
+        "--routing-algorithm",
+        "CCH",
+        "--mesosim",
+        "--aggregation",
+        "60",
+        "--begin",
+        "0",
+        "--end",
+        "360",
+        "-f",
+        "0",
+        "-l",
+        "1",
+        "sumo--default.speeddev",
+        "0.0",
+        "cch-preprocessor--input-prefix",
+        "suboptimal-routing",
+        "cch-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/suboptimal-routing"
+      ]
     }
   ]
 }

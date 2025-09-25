@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<meandata xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/meandata_file.xsd">
+    <interval begin="0.00" end="60.00" id="dump_60.0">
+        <edge id="e0" traveltime="180" />
+        <edge id="e1" traveltime="60" />
+        <edge id="e2" traveltime="100" />
+        <edge id="e3" traveltime="30" />
+    </interval>
+    <interval begin="60.00" end="120.00" id="dump_60.0">
+        <edge id="e0" traveltime="120" />
+        <edge id="e1" traveltime="60" />
+        <edge id="e2" traveltime="100" />
+        <edge id="e3" traveltime="30" />
+    </interval>
+    <interval begin="120.00" end="180.00" id="dump_60.0">
+        <edge id="e0" traveltime="60" />
+        <edge id="e1" traveltime="60" />
+        <edge id="e2" traveltime="100" />
+        <edge id="e3" traveltime="30" />
+    </interval>
+    <interval begin="180.00" end="240.00" id="dump_60.0">
+        <edge id="e0" traveltime="30" />
+        <edge id="e1" traveltime="60" />
+        <edge id="e2" traveltime="100" />
+        <edge id="e3" traveltime="30" />
+    </interval>
+    <interval begin="240.00" end="300.00" id="dump_60.0">
+        <edge id="e0" traveltime="30" />
+        <edge id="e1" traveltime="240" />
+        <edge id="e2" traveltime="100" />
+        <edge id="e3" traveltime="30" />
+    </interval>
+    <interval begin="300.00" end="360.00" id="dump_60.0">
+        <edge id="e0" traveltime="30" />
+        <edge id="e1" traveltime="180" />
+        <edge id="e2" traveltime="100" />
+        <edge id="e3" traveltime="30" />
+    </interval>
+    <interval begin="360.00" end="420.00" id="dump_60.0">
+        <edge id="e0" traveltime="30" />
+        <edge id="e1" traveltime="120" />
+        <edge id="e2" traveltime="100" />
+        <edge id="e3" traveltime="30" />
+    </interval>
+</meandata>
