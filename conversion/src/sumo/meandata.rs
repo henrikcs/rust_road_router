@@ -36,3 +36,9 @@ pub struct Edge {
     #[serde(rename = "@sampledSeconds")]
     pub sampled_seconds: Option<f64>,
 }
+
+impl Edge {
+    pub fn get_average_traffic_volume(&self) -> f64 {
+        self.density.unwrap_or(0.0) * self.speed.unwrap_or(0.0) * 3.6
+    }
+}
