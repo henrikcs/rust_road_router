@@ -23,10 +23,16 @@ pub struct Interval {
     pub edges: Vec<Edge>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Edge {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@traveltime")]
     pub traveltime: Option<SumoTravelTime>,
+    #[serde(rename = "@density")]
+    pub density: Option<f64>,
+    #[serde(rename = "@speed")]
+    pub speed: Option<f64>,
+    #[serde(rename = "@sampledSeconds")]
+    pub sampled_seconds: Option<f64>,
 }

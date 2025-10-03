@@ -240,10 +240,12 @@ pub mod tests {
                         meandata::Edge {
                             id: "edge1".to_string(),
                             traveltime: Some(4.0),
+                            ..Default::default()
                         },
                         meandata::Edge {
                             id: "edge2".to_string(),
                             traveltime: None, // will use default travel time
+                            ..Default::default()
                         },
                     ],
                 },
@@ -254,6 +256,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(6.0),
+                        ..Default::default()
                     }],
                 },
             ],
@@ -311,10 +314,12 @@ pub mod tests {
                         meandata::Edge {
                             id: "edge1".to_string(),
                             traveltime: Some(20.0),
+                            ..Default::default()
                         },
                         meandata::Edge {
                             id: "edge2".to_string(),
                             traveltime: None, // will use default travel time
+                            ..Default::default()
                         },
                     ],
                 },
@@ -325,6 +330,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(6.0),
+                        ..Default::default()
                     }],
                 },
             ],
@@ -381,6 +387,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(1100.0),
+                        ..Default::default()
                     }],
                 },
                 meandata::Interval {
@@ -390,6 +397,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(1000.0),
+                        ..Default::default()
                     }],
                 },
                 meandata::Interval {
@@ -399,6 +407,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(150.0),
+                        ..Default::default()
                     }],
                 },
             ],
@@ -448,6 +457,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(70_874.95),
+                        ..Default::default()
                     }],
                 },
                 meandata::Interval {
@@ -457,6 +467,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(70_643.718),
+                        ..Default::default()
                     }],
                 },
             ],
@@ -507,6 +518,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(50.0),
+                        ..Default::default()
                     }],
                 },
                 meandata::Interval {
@@ -516,6 +528,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(1000.0),
+                        ..Default::default()
                     }],
                 },
                 meandata::Interval {
@@ -525,6 +538,7 @@ pub mod tests {
                     edges: vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(200.0),
+                        ..Default::default()
                     }],
                 },
             ],
