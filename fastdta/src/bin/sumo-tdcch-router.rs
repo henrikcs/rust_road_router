@@ -7,7 +7,7 @@ use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::customize::customize;
 use fastdta::preprocess::get_cch;
-use fastdta::query::get_paths_with_cch_queries;
+use fastdta::query::get_paths_with_cch;
 use rust_road_router::algo::catchup::Server;
 use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
@@ -41,8 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (customized_graph, duration) = measure(|| customize(&cch, &graph));
     log(&input_dir.display().to_string(), iteration, "cch customization", duration.as_nanos());
 
-    let ((shortest_paths, travel_times, departures), duration) =
-        measure(|| get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &input_dir, &graph));
+    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &input_dir, &graph));
     log(&input_dir.display().to_string(), iteration, "cch routing", duration.as_nanos());
 
     let write_sumo_alternatives =

@@ -5,7 +5,7 @@ use conversion::sumo::sumo_to_new_graph_weights::get_graph_with_travel_times_fro
 use fastdta::alternative_path_assembler::assemble_alternative_paths;
 use fastdta::cli;
 use fastdta::cli::Parser;
-use fastdta::query::get_paths_with_dijkstra_queries;
+use fastdta::query::get_paths_with_dijkstra;
 use rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server;
 use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
@@ -28,8 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     log(&input_dir.display().to_string(), iteration, "preprocessing", duration.as_nanos());
 
-    let ((shortest_paths, travel_times, departures), duration) =
-        measure(|| get_paths_with_dijkstra_queries(&mut Server::new(graph.clone()), input_dir, &graph));
+    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_dijkstra(&mut Server::new(graph.clone()), input_dir, &graph));
     log(&input_dir.display().to_string(), iteration, "dijkstra routing", duration.as_nanos());
 
     let write_sumo_alternatives =

@@ -10,7 +10,28 @@ use rust_road_router::datastr::graph::floating_time_dependent::{FlWeight, TDGrap
 use rust_road_router::datastr::graph::{EdgeId, EdgeIdT};
 use rust_road_router::io::Load;
 
-pub fn get_paths_with_cch_queries(query_server: &mut Server, input_dir: &Path, graph: &TDGraph) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+pub fn get_paths_with_cch(query_server: &mut Server, input_dir: &Path, graph: &TDGraph) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+    let (queries_from, queries_to, queries_departure, queries_original_from_edges, queries_original_to_edges) = read_queries(input_dir);
+    get_paths_with_cch_queries(
+        query_server,
+        &queries_from,
+        &queries_to,
+        &queries_departure,
+        &queries_original_from_edges,
+        &queries_original_to_edges,
+        graph,
+    )
+}
+
+pub fn get_paths_with_cch_queries(
+    query_server: &mut Server,
+    queries_from: &Vec<u32>,
+    queries_to: &Vec<u32>,
+    queries_departure: &Vec<SerializedTimestamp>,
+    queries_original_from_edges: &Vec<u32>,
+    queries_original_to_edges: &Vec<u32>,
+    graph: &TDGraph,
+) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     get_paths_from_queries(
         |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
@@ -36,14 +57,39 @@ pub fn get_paths_with_cch_queries(query_server: &mut Server, input_dir: &Path, g
                 None
             }
         },
-        input_dir,
+        queries_from,
+        queries_to,
+        queries_departure,
+        queries_original_from_edges,
+        queries_original_to_edges,
+        graph,
+    )
+}
+
+pub fn get_paths_with_dijkstra(
+    query_server: &mut algo::dijkstra::query::floating_td_dijkstra::Server,
+    input_dir: &Path,
+    graph: &TDGraph,
+) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+    let (queries_from, queries_to, queries_departure, queries_original_from_edges, queries_original_to_edges) = read_queries(input_dir);
+    get_paths_with_dijkstra_queries(
+        query_server,
+        &queries_from,
+        &queries_to,
+        &queries_departure,
+        &queries_original_from_edges,
+        &queries_original_to_edges,
         graph,
     )
 }
 
 pub fn get_paths_with_dijkstra_queries(
     query_server: &mut algo::dijkstra::query::floating_td_dijkstra::Server,
-    input_dir: &Path,
+    queries_from: &Vec<u32>,
+    queries_to: &Vec<u32>,
+    queries_departure: &Vec<SerializedTimestamp>,
+    queries_original_from_edges: &Vec<u32>,
+    queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     get_paths_from_queries(
@@ -71,28 +117,46 @@ pub fn get_paths_with_dijkstra_queries(
                 None
             }
         },
-        input_dir,
+        queries_from,
+        queries_to,
+        queries_departure,
+        queries_original_from_edges,
+        queries_original_to_edges,
         graph,
     )
 }
 
-fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
-    mut path_collector: F,
-    input_dir: &Path,
-    graph: &TDGraph,
-) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    // read queries from input_dir
+pub fn read_queries(input_dir: &Path) -> (Vec<u32>, Vec<u32>, Vec<SerializedTimestamp>, Vec<u32>, Vec<u32>) {
     let queries_from = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_FROM)).unwrap();
     let queries_to = Vec::<u32>::load_from(input_dir.join(FILE_QUERIES_TO)).unwrap();
-    let queries_departure = Vec::<SerializedTimestamp>::load_from(input_dir.join(FILE_QUERIES_DEPARTURE)).unwrap();
+    let queries_departure: Vec<SerializedTimestamp> = Vec::<SerializedTimestamp>::load_from(input_dir.join(FILE_QUERIES_DEPARTURE)).unwrap();
     let queries_original_from_edges = Vec::<u32>::load_from(&input_dir.join(FILE_QUERY_ORIGINAL_FROM_EDGES)).unwrap();
     let queries_original_to_edges = Vec::<u32>::load_from(input_dir.join(FILE_QUERY_ORIGINAL_TO_EDGES)).unwrap();
 
     assert!(queries_from.len() == queries_to.len());
     assert!(queries_from.len() == queries_departure.len());
 
+    (
+        queries_from,
+        queries_to,
+        queries_departure,
+        queries_original_from_edges,
+        queries_original_to_edges,
+    )
+}
+
+fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
+    mut path_collector: F,
+    queries_from: &Vec<u32>,
+    queries_to: &Vec<u32>,
+    queries_departure: &Vec<SerializedTimestamp>,
+    queries_original_from_edges: &Vec<u32>,
+    queries_original_to_edges: &Vec<u32>,
+    graph: &TDGraph,
+) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let mut paths: Vec<Vec<EdgeId>> = Vec::with_capacity(queries_from.len());
     let mut distances = Vec::with_capacity(queries_from.len());
+    let mut departures = Vec::with_capacity(queries_from.len());
 
     for i in 0..queries_from.len() {
         let dep = queries_departure[i];
@@ -107,12 +171,13 @@ fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph
         ) {
             paths.push(path);
             distances.push(distance);
+            departures.push(dep);
         } else {
             println!("No path found from {} to {} at {dep:?}", queries_from[i], queries_to[i]);
         }
     }
     // distances is in seconds
-    (paths, distances, queries_departure)
+    (paths, distances, departures)
 }
 
 fn construct_path_and_time(

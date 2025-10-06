@@ -8,3 +8,4 @@ pub mod logit;
 pub mod preprocess;
 pub mod query;
 pub mod relative_gap;
+pub mod vdf;

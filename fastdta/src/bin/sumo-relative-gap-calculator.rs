@@ -12,7 +12,7 @@ use std::{fs::remove_dir_all, io::Write};
 use fastdta::{
     customize::customize,
     preprocess::{get_cch, preprocess, run_inertial_flow_cutter},
-    query::get_paths_with_cch_queries,
+    query::get_paths_with_cch,
     relative_gap::{EPSILON_TRAVEL_TIME, get_relative_gap},
 };
 use rayon::prelude::*;
@@ -68,7 +68,7 @@ fn main() {
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
         let cch = get_cch(&temp_cch_dir, &graph);
         let customized_graph = customize(&cch, &graph);
-        let (paths, travel_times, _) = get_paths_with_cch_queries(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
+        let (paths, travel_times, _) = get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
         println!("Reading routes from file {}", routes_path.display());
