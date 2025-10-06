@@ -9,36 +9,23 @@ use rust_road_router::datastr::node_order::NodeOrder;
 use rust_road_router::io::{Deconstruct, Load, Reconstruct, ReconstructPrepared};
 
 pub fn preprocess(working_dir: &Path) -> Result<(), Box<dyn Error>> {
-    // TODO: instead of reading from files, we should have parameters passed to the function; evaluate the memory usage
-    // use first_out and head to reconstruct the graph
     let graph = UnweightedOwnedGraph::reconstruct_from(&working_dir)?;
-
-    // let mut algo_runs_ctxt = push_collection_context("algo_runs");
-
     let cch_folder = working_dir.join(DIR_CCH);
 
     let cch_order = NodeOrder::from_node_order(Vec::load_from(working_dir.join(FILE_CCH_PERM))?);
-    // let cch_build_ctxt = algo_runs_ctxt.push_collection_item();
     let cch = contract(&graph, cch_order);
-    // drop(cch_build_ctxt);
 
     let latitude = Vec::<SerializedPosition>::load_from(working_dir.join(FILE_LATITUDE))?;
     let longitude = Vec::<SerializedPosition>::load_from(working_dir.join(FILE_LONGITUDE))?;
 
     let cch_order = reorder(&cch, &latitude, &longitude);
-
-    // let cch_build_ctxt = algo_runs_ctxt.push_collection_item();
     let cch = contract(&graph, cch_order.clone());
-    // drop(cch_build_ctxt);
 
     // TODO optimize away the clone
     let cch_order = reorder_for_seperator_based_customization(&cch_order, cch.separators().clone());
     cch_order.deconstruct_to(&cch_folder)?;
 
-    // let cch_build_ctxt = algo_runs_ctxt.push_collection_item();
     let cch = contract(&graph, cch_order);
-    // drop(cch_build_ctxt);
-
     cch.deconstruct_to(&cch_folder)?;
 
     Ok(())
