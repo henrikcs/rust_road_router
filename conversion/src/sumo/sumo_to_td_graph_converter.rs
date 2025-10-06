@@ -17,9 +17,9 @@ use crate::{
         trips_reader::SumoTripsReader,
         FileReader, RoutingKitTDGraph, SumoTravelTime, CON_XML, EDG_XML, NOD_XML,
     },
-    SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC,
-    FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM,
-    FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
+    SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
+    FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE,
+    FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 
 pub struct FlattenedSumoEdge {
@@ -30,16 +30,18 @@ pub struct FlattenedSumoEdge {
     weight: SumoTravelTime,
     // length in meters
     length: SumoTravelTime,
+    capacity: u32,
 }
 
 impl FlattenedSumoEdge {
-    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: String, weight: SumoTravelTime, length: SumoTravelTime) -> Self {
+    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: String, weight: SumoTravelTime, length: SumoTravelTime, capacity: u32) -> Self {
         FlattenedSumoEdge {
             from_node_index,
             to_node_index,
             edge_id,
             weight,
             length,
+            capacity,
         }
     }
 
@@ -50,7 +52,14 @@ impl FlattenedSumoEdge {
 
 impl Clone for FlattenedSumoEdge {
     fn clone(&self) -> Self {
-        FlattenedSumoEdge::new(self.from_node_index, self.to_node_index, self.edge_id.clone(), self.weight, self.length)
+        FlattenedSumoEdge::new(
+            self.from_node_index,
+            self.to_node_index,
+            self.edge_id.clone(),
+            self.weight,
+            self.length,
+            self.capacity,
+        )
     }
 }
 
@@ -95,15 +104,19 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
     // extract default weights of all edges and write them to a file
-    let edge_default_travel_times: Vec<SerializedTravelTime> = edge_indices_to_id
+    let (edge_default_travel_times, capas): (Vec<u32>, Vec<u32>) = edge_indices_to_id
         .iter()
         .map(|edge| {
             // weight is calculated in method `initialize_edges_for_td_graph`
-            (edge_ids_to_index.get(edge).unwrap().1.weight * 1000.0) as u32 // convert seconds to milliseconds
+            let e = &edge_ids_to_index.get(edge).unwrap().1;
+            let default_tt = (e.weight * 1000.0) as u32; // convert seconds to milliseconds
+            let capa = e.capacity;
+            (default_tt, capa)
         })
         .collect();
 
     edge_default_travel_times.write_to(&output_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES))?;
+    capas.write_to(&output_dir.join(FILE_EDGE_CAPACITIES))?;
 
     write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id.iter().collect())?;
     write_strings_to_file(&output_dir.join(FILE_QUERY_IDS), &trip_ids)?;
@@ -359,7 +372,14 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
 
-        edges_sorted_by_node_index.push(FlattenedSumoEdge::new(from_node_index, to_node_index, edge.id.clone(), weight, length));
+        edges_sorted_by_node_index.push(FlattenedSumoEdge::new(
+            from_node_index,
+            to_node_index,
+            edge.id.clone(),
+            weight,
+            length,
+            edge.get_capacity(),
+        ));
 
         // add internal edges
         for con in edge_id_to_connections.get(&edge.id).unwrap_or(&HashSet::new()) {
@@ -384,6 +404,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
                 FlattenedSumoEdge::get_edge_id_for_connection(&edge.id, &con.to),
                 0.0,
                 0.0,
+                u32::MAX, // infinite capacity for internal edges
             ));
         }
     }

@@ -51,6 +51,9 @@ pub const FILE_EDGE_INDICES_TO_ID: &str = "edge_indices_to_id";
 // the travel times are encoded as SerializedTravelTime in milliseconds
 pub const FILE_EDGE_DEFAULT_TRAVEL_TIMES: &str = "edge_default_travel_times";
 
+// contains the capacities of the edges calculated during the preprocessing step
+pub const FILE_EDGE_CAPACITIES: &str = "edge_capacities";
+
 /// in milliseconds
 pub type SerializedTravelTime = u32;
 /// in milliseconds

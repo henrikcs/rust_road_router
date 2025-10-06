@@ -36,7 +36,6 @@ pub struct Edge {
 
     #[serde(rename = "param", default)]
     pub params: Vec<Param>,
-    // TODO: support splits?
 }
 
 impl Edge {
@@ -50,6 +49,20 @@ impl Edge {
             let dy = from_y - to_y;
             (dx * dx + dy * dy).sqrt() // euclidean distance
         })
+    }
+
+    /// returns the capacity of the edge in vehicles per hour
+    /// based on the formula from https://sumo.dlr.de/docs/Simulation/RoadCapacity.html
+    pub fn get_capacity(&self) -> u32 {
+        // minimum time headway a vehicle wants to have (seconds)
+        let tau = 1.0;
+        // meters
+        let vehicle_size = 5.0;
+        // meters
+        let min_gap = 2.5;
+
+        let gross_time_headway = (vehicle_size + min_gap) / self.get_speed() + tau; // in seconds
+        self.num_lanes.unwrap_or(1) * (3600.0 / gross_time_headway).floor() as u32
     }
 }
 
