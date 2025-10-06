@@ -16,8 +16,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_prefix = &args.input_prefix;
     let iteration = args.iteration;
 
-    log(&input_dir.display().to_string(), iteration, "startup", 0);
-
     let choice_algorithm = args.get_choice_algorithm();
 
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
@@ -60,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Logs the operation with the duration in nanoseconds within a certain iteration of certain run identified by identifier.
-/// The format is: "sumo-tdcch-router; <identifier>; <iteration>; <operation>; <duration_in_nanos>"
+/// The format is: "sumo-tddijkstra-router; <identifier>; <iteration>; <operation>; <duration_in_nanos>"
 fn log(identifier: &str, iteration: u32, operation: &str, duration_in_nanos: u128) {
     println!("sumo-tddijkstra-router; {}; {}; {}; {}", identifier, iteration, operation, duration_in_nanos);
 }

@@ -63,7 +63,7 @@ DIJKSTRA_ROUTER_BINARY = "sumo-tddijkstra-router"
 
 make sure the the binary is in PATH 
 """
-DIJKSTRA_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
+DIJKSTRA_PREPROCESS_BINARY = "sumo-tddijkstra-preprocessor"
 """Binary used for conversion from Sumo input to CCH Preprocessing
 
 make sure the the binary is in PATH
