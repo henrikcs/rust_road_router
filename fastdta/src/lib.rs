@@ -3,6 +3,7 @@ pub mod alternative_paths;
 pub mod choice;
 pub mod cli;
 pub mod customize;
+pub mod edge_occupancy;
 pub mod gawron;
 pub mod logit;
 pub mod preprocess;

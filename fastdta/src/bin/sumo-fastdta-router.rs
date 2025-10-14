@@ -1,14 +1,23 @@
+use std::collections::HashMap;
 use std::path::Path;
 
-use conversion::FILE_EDGE_INDICES_TO_ID;
+use conversion::sumo::FileReader;
+use conversion::sumo::meandata_reader::SumoMeandataReader;
+use conversion::sumo::routes::Vehicle;
+use conversion::sumo::routes_reader::SumoRoutesReader;
+use conversion::sumo::sumo_find_file::{get_meandata_file, get_routes_file_name_in_iteration};
 use conversion::sumo::sumo_to_new_graph_weights::get_graph_with_travel_times_from_previous_iteration;
+use conversion::{DIR_DTA, FILE_EDGE_INDICES_TO_ID};
 use fastdta::alternative_path_assembler::assemble_alternative_paths;
+use fastdta::alternative_paths::AlternativePathsForDTA;
 use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::customize::customize;
+use fastdta::edge_occupancy::get_edge_occupancy_deltas;
 use fastdta::preprocess::get_cch;
 use fastdta::query::{get_paths_with_cch_queries, read_queries};
 use rust_road_router::algo::catchup::Server;
+use rust_road_router::datastr::graph::floating_time_dependent::Timestamp;
 use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
 
@@ -23,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
-    let ((edge_ids, graph, cch, query_data, old_paths), duration) = measure(|| {
+    let ((edge_ids, graph, cch, query_data, meandata, old_paths), duration) = measure(|| {
         let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap_or_else(|_| {
             panic!(
                 "Failed to read edge indices from file {} in directory {}",
@@ -34,15 +43,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
         let cch = get_cch(input_dir, &graph);
         let query_data = read_queries(input_dir);
+        let dta_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1)).join(DIR_DTA);
 
-        // paths, which have been used the previous iteration
-        let old_paths: Vec<Vec<u32>> = Vec::new();
+        // TODO: in `get_graph_with_travel_times_from_previous_iteration` we already read meandata; reuse it here
+        let meandata = if iteration > 0 {
+            Some(SumoMeandataReader::read(&get_meandata_file(&dta_iteration_dir)).expect("Failed to read SUMO meandata"))
+        } else {
+            None
+        };
 
-        (edge_ids, graph, cch, query_data, old_paths)
+        if iteration == 0 {
+            return (edge_ids, graph, cch, query_data, None, vec![Vec::new()]);
+        }
+
+        let alternative_paths = AlternativePathsForDTA::reconstruct(&dta_iteration_dir);
+
+        let old_paths: Vec<Vec<u32>> = alternative_paths
+            .alternatives_in_query
+            .iter()
+            .map(|ap| ap.paths[ap.choice].edges.clone())
+            .collect();
+
+        (edge_ids, graph, cch, query_data, meandata, old_paths)
     });
     log(&input_dir.display().to_string(), iteration, "preprocessing", duration.as_nanos());
 
-    let (customized_graph, duration) = measure(|| customize(&cch, &graph));
+    let (mut customized_graph, duration) = measure(|| customize(&cch, &graph));
     log(&input_dir.display().to_string(), iteration, "cch customization", duration.as_nanos());
 
     // customize with previous travel times
@@ -76,6 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &graph,
             )
         });
+
         log(
             &input_dir.display().to_string(),
             iteration,
@@ -83,18 +110,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             duration.as_nanos(),
         );
 
+        let mut sampled_old_paths = Vec::with_capacity(sample.len());
+        let mut sampled_departures_seconds = Vec::with_capacity(sample.len());
+
         sample.iter().for_each(|&i| {
             shortest_paths.insert(i, sampled_shortest_paths[i].clone());
             travel_times.insert(i, sampled_travel_times[i]);
             departures.insert(i, sampled_departures[i]);
+            sampled_old_paths.push(old_paths.get(i).unwrap_or(&vec![]).clone());
+            sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
         });
 
-        //TODO: update the graph's travel times according to the changed vehicle flows on the edges
-        // graph = update_edge_capacities(graph, &old_paths, &new_paths, &departures);
+        let deltas = get_edge_occupancy_deltas(
+            &graph,
+            &sampled_old_paths,
+            &sampled_shortest_paths,
+            &sampled_departures_seconds,
+            &vec![(0.0, 84600.0)], //TODO: extract from meandata
+        );
 
-        let (_, duration) = measure(|| {
-            customize(&cch, &graph);
-        });
+        // TODO: apply deltas to meandata
+
+        // TODO: use extract_interpolation_points_from_meandata to get the IPPs for the edges
+        // TODO: create a new graph with the IPPs
+
+        let (cg, duration) = measure(|| customize(&cch, &graph));
+        customized_graph = cg;
         log(
             &input_dir.display().to_string(),
             iteration,
@@ -102,9 +143,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             duration.as_nanos(),
         );
     }
-
-    let write_sumo_alternatives =
-        args.no_write_sumo_alternatives == "false" || args.no_write_sumo_alternatives == "0" || args.no_write_sumo_alternatives == "False";
 
     let (_, duration) = measure(|| {
         assemble_alternative_paths(
@@ -117,7 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &graph,
             choice_algorithm,
             args.max_alternatives,
-            write_sumo_alternatives,
+            args.get_write_some_alternatives(),
             args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
         )
