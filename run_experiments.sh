@@ -189,10 +189,12 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                 duarouter--weights.interpolate
                 duarouter--seed $seed
                 duarouter--unsorted-input
+                duarouter--precision 6
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
                 sumo--seed $seed
                 sumo--default.speeddev 0
+                sumo--precision 6
                 relative-gap--net-prefix "$prefix"
                 relative-gap--net-dir "$in_dir"
             )
@@ -205,12 +207,20 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                     cch-router--seed $seed
                 )
             fi
-            # Add preprocessor args only for td-dijkstra-rust
+            # Add preprocessor args only for dijkstra-rust
             if [ "$algorithm" = "dijkstra-rust" ]; then
                 dua_args+=(
                     dijkstra-preprocessor--input-prefix "$prefix"
                     dijkstra-preprocessor--input-dir "$in_dir"
                     dijkstra-router--seed $seed
+                )
+            fi
+            # Add preprocessor args only for fastdta
+            if [ "$algorithm" = "fastdta" ]; then
+                dua_args+=(
+                    fastdta-preprocessor--input-prefix "$prefix"
+                    fastdta-preprocessor--input-dir "$in_dir"
+                    fastdta-router--seed $seed
                 )
             fi
 

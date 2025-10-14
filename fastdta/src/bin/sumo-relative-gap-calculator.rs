@@ -1,10 +1,8 @@
 use clap::Parser;
 use conversion::{
-    FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
     sumo::{
-        FileReader, SumoTravelTime, routes::Vehicle, routes_reader::SumoRoutesReader, sumo_to_new_graph_weights::extract_travel_times_from_iteration_directory,
-        sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries,
-    },
+        routes::Vehicle, routes_reader::SumoRoutesReader, sumo_find_file::get_routes_file_name_in_iteration, sumo_to_new_graph_weights::extract_travel_times_from_iteration_directory, sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries, FileReader, SumoTravelTime
+    }, FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS
 };
 use std::{collections::HashMap, env, fs::OpenOptions, path::Path};
 use std::{fs::remove_dir_all, io::Write};
@@ -100,6 +98,7 @@ fn main() {
                     let experienced_time_f64: f64 = <FlWeight as Into<f64>>::into(experienced_time);
                     let best_time_f64: f64 = <FlWeight as Into<f64>>::into(travel_times[i]);
 
+                    
                     if experienced_time_f64 - best_time_f64 < -EPSILON_TRAVEL_TIME {
                         // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
                         eprintln!(
@@ -140,20 +139,6 @@ fn main() {
 
     // remove the temporary CCH directory
     remove_dir_all(&temp_cch_dir).unwrap();
-}
-
-/// trips_file has the following format: "<name>[.trips].xml"
-/// the routes file in iteration <iteration> should have the following name:
-/// "<name>_<iteration>.rou.xml"
-pub fn get_routes_file_name_in_iteration(trips_file: &Path, iteration: u32) -> String {
-    let mut file_stem = trips_file.file_stem().unwrap().to_str().unwrap();
-    file_stem = if file_stem.ends_with(".trips") {
-        &file_stem[..file_stem.len() - 6]
-    } else {
-        file_stem
-    };
-    let routes_file_name = format!("{}_{}.rou.xml", file_stem, format!("{:0>3}", iteration));
-    routes_file_name
 }
 
 pub fn get_path_ids_from_indices(edge_ids: &Vec<String>, indices: &Vec<u32>) -> Vec<String> {

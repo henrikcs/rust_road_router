@@ -45,6 +45,7 @@ EDGEDATA_ADD = "edgedata.add.xml"
 
 ROUTING_ALGORITHM_CCH = "CCH"
 ROUTING_ALGORITHM_DIJKSTRA_RUST = "dijkstra-rust"
+ROUTING_ALGORITHM_FASTDTA = "fastdta"
 
 CCH_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
 """Binary used for conversion from Sumo input to CCH Preprocessing
@@ -67,6 +68,18 @@ DIJKSTRA_PREPROCESS_BINARY = "sumo-tddijkstra-preprocessor"
 """Binary used for conversion from Sumo input to CCH Preprocessing
 
 make sure the the binary is in PATH
+"""
+
+FASTDTA_PREPROCESS_BINARY = "sumo-fastdta-preprocessor"
+"""Binary used for conversion from Sumo input to FASTDTA Preprocessing
+
+make sure the the binary is in PATH
+"""
+
+FASTDTA_ROUTER_BINARY = "sumo-fastdta-router"
+""" Binary used for querying using the fastdta router.
+
+make sure the the binary is in PATH 
 """
 
 RELATIVE_GAP_BINARY = "sumo-relative-gap-calculator"
@@ -586,28 +599,6 @@ def generateEdgedataAddFile(EDGEDATA_ADD, options):
     fd.close()
 
 
-def generateEdgedataAddFileForRustRoadRouter(EDGEDATA_ADD, options):
-    """write detectorfile for Rust Road Router"""
-    with open(EDGEDATA_ADD, 'w') as fd:
-        vTypes = ' vTypes="%s"' % ' '.join(
-            options.measureVTypes.split(',')) if options.measureVTypes else ""
-        print("<a>", file=fd)
-        print('    <edgeData id="dump_%s" freq="%s" file="%s" excludeEmpty="true" minSamples="1"%s/>' % (
-            options.aggregation,
-            options.aggregation,
-            get_dumpfilename(options, -1, "dump", False),
-            vTypes), file=fd)
-        if options.eco_measure:
-            print(('    <edgeData id="eco_%s" type="emissions" freq="%s" file="%s" ' +
-                   'excludeEmpty="defaults" minSamples="1"%s/>') % (
-                       options.aggregation,
-                       options.aggregation,
-                       get_dumpfilename(options, -1, "dump", False),
-                       vTypes), file=fd)
-        print("</a>", file=fd)
-    fd.close()
-
-
 def main(args=None):
     argParser = initOptions()
 
@@ -653,6 +644,10 @@ def main(args=None):
         DIJKSTRA_PREPROCESS_BINARY, 'dijkstra-preprocessor', options.remaining_args)
     dijkstra_routing_args = assign_remaining_args(
         DIJKSTRA_ROUTER_BINARY, 'dijkstra-router', options.remaining_args)
+    fastdta_preprocessing_args = assign_remaining_args(
+        FASTDTA_PREPROCESS_BINARY, 'fastdta-preprocessor', options.remaining_args)
+    fastdta_routing_args = assign_remaining_args(
+        FASTDTA_ROUTER_BINARY, 'fastdta-router', options.remaining_args)
     relative_gap_args = assign_remaining_args(
         RELATIVE_GAP_BINARY, 'relative-gap', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
@@ -689,11 +684,7 @@ def main(args=None):
             print(">>> Loading %s" % dumpfile)
             costmemory.load_costs(dumpfile, step, get_scale(options, step))
 
-    # generate edgedata.add.xml
-    if ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm or ROUTING_ALGORITHM_CCH in options.routing_algorithm:
-        generateEdgedataAddFileForRustRoadRouter(EDGEDATA_ADD, options)
-    else:
-        generateEdgedataAddFile(EDGEDATA_ADD, options)
+    generateEdgedataAddFile(EDGEDATA_ADD, options)
 
     # do a preprocessing step if CCH is used
     # note that the rust libraries only support a single demand file as an input.
@@ -706,8 +697,6 @@ def main(args=None):
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: CCH preprocessing failed.")
-        print(">> End time: %s" % tok)
-        print(">> Duration: %s" % (tok - tik))
 
     if ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
         tik = datetime.now()
@@ -718,8 +707,19 @@ def main(args=None):
         tok = datetime.now()
         if ret != 0:
             sys.exit("Error: Dijkstra preprocessing failed.")
-        print(">> End time: %s" % tok)
-        print(">> Duration: %s" % (tok - tik))
+
+    if ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
+        tik = datetime.now()
+        print("> Preprocessing network for Dijkstra Rust")
+        print(">> Begin time: %s" % tik)
+        ret = call_binary(FASTDTA_ROUTER_BINARY,
+                          fastdta_preprocessing_args + ["--trips-file", input_demands[0]])
+        tok = datetime.now()
+        if ret != 0:
+            sys.exit("Error: Dijkstra preprocessing failed.")
+
+    print(">> End time: %s" % tok)
+    print(">> Duration: %s" % (tok - tik))
 
     avgTT = sumolib.miscutils.Statistics()
     ret = 0
@@ -760,10 +760,24 @@ def main(args=None):
                 if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
                     ret = call_binary(
                         CCH_ROUTER_BINARY,
-                        ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + arguments_for_router + cch_routing_args)
+                        ["--iteration", str(step),
+                         "--input-prefix", get_basename(input_demands[0])]
+                        + arguments_for_router
+                        + cch_routing_args)
                 elif ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
-                    ret = call_binary(DIJKSTRA_ROUTER_BINARY,
-                                      ["--iteration", str(step), "--input-prefix", get_basename(input_demands[0])] + arguments_for_router + dijkstra_routing_args)
+                    ret = call_binary(
+                        DIJKSTRA_ROUTER_BINARY,
+                        ["--iteration", str(step),
+                         "--input-prefix", get_basename(input_demands[0])]
+                        + arguments_for_router
+                        + dijkstra_routing_args)
+                elif ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
+                    ret = call_binary(
+                        FASTDTA_ROUTER_BINARY,
+                        ["--iteration", str(step),
+                         "--input-prefix", get_basename(input_demands[0])]
+                        + arguments_for_router
+                        + fastdta_routing_args)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 

@@ -15,6 +15,7 @@ use crate::{
     sumo::{
         meandata::{Edge, MeandataDocumentRoot},
         meandata_reader::SumoMeandataReader,
+        sumo_find_file::get_meandata_file,
         FileReader,
     },
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
@@ -194,27 +195,6 @@ fn get_ipp_vectors(
     first_ipp_of_arc.push(added);
 
     (first_ipp_of_arc, ipp_travel_time, ipp_departure_time)
-}
-
-fn get_meandata_file(previous_iteration_dir: &Path) -> PathBuf {
-    fs::read_dir(previous_iteration_dir)
-        .unwrap()
-        .find(|entry| {
-            // check if entry is a file
-            entry.is_ok()
-                && entry.as_ref().unwrap().file_type().unwrap().is_file()
-                && entry
-                    .as_ref()
-                    .unwrap()
-                    .file_name()
-                    .to_str()
-                    .unwrap()
-                    // check if file name starts with "dump_" and ends with ".xml"
-                    .starts_with("dump_")
-                && entry.as_ref().unwrap().file_name().to_str().unwrap().ends_with(".xml")
-        })
-        .map(|entry| entry.unwrap().path())
-        .unwrap()
 }
 
 // Tests for the extract_interpolation_points_from_meandata function
