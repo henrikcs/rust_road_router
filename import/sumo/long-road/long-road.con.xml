@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ConnectionsDocumentRoot>
+    <connection from="v0v1" to="v1v3" fromLane="0" toLane="0" />
+    <connection from="v0v2" to="v2v0" fromLane="0" toLane="0" />
+    <connection from="v0v3" to="v3v1" fromLane="0" toLane="0" />
+    <connection from="v1v0" to="v0v2" fromLane="0" toLane="0" />
+    <connection from="v1v0" to="v0v3" fromLane="0" toLane="0" />
+    <connection from="v1v0" to="v0v1" fromLane="0" toLane="0" />
+    <connection from="v1v3" to="v3v0" fromLane="0" toLane="0" />
+    <connection from="v2v0" to="v0v3" fromLane="0" toLane="0" />
+    <connection from="v2v0" to="v0v1" fromLane="0" toLane="0" />
+    <connection from="v2v0" to="v0v2" fromLane="0" toLane="0" />
+    <connection from="v3v0" to="v0v1" fromLane="0" toLane="0" />
+    <connection from="v3v0" to="v0v2" fromLane="0" toLane="0" />
+    <connection from="v3v0" to="v0v3" fromLane="0" toLane="0" />
+    <connection from="v3v1" to="v1v0" fromLane="0" toLane="0" />
+</ConnectionsDocumentRoot>
