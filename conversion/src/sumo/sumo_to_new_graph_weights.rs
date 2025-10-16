@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::Path};
 
 use rayon::prelude::*;
 
@@ -112,6 +108,7 @@ fn preprocess_tt<'a>(
                     .map(|val| (val * 1000.0) as SerializedTravelTime)
                     .unwrap_or(default_travel_time);
 
+                // TODO: this also needs to be periodic, ie. the first and the last interval should have the same tt
                 if interval_index == 0 {
                     // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
                     // this ensures the fifo property for the travel time in the last interval
@@ -212,11 +209,11 @@ pub mod tests {
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
-                meandata::Interval {
-                    id: "interval1".to_string(),
-                    begin: 0.0,
-                    end: 10.0,
-                    edges: vec![
+                meandata::Interval::create(
+                    "interval1".to_string(),
+                    0.0,
+                    10.0,
+                    vec![
                         meandata::Edge {
                             id: "edge1".to_string(),
                             traveltime: Some(4.0),
@@ -228,17 +225,17 @@ pub mod tests {
                             ..Default::default()
                         },
                     ],
-                },
-                meandata::Interval {
-                    id: "interval2".to_string(),
-                    begin: 10.0,
-                    end: 20.0,
-                    edges: vec![meandata::Edge {
+                ),
+                meandata::Interval::create(
+                    "interval2".to_string(),
+                    10.0,
+                    20.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(6.0),
                         ..Default::default()
                     }],
-                },
+                ),
             ],
         };
 
@@ -286,11 +283,11 @@ pub mod tests {
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
-                meandata::Interval {
-                    id: "interval1".to_string(),
-                    begin: 0.0,
-                    end: 10.0,
-                    edges: vec![
+                meandata::Interval::create(
+                    "interval1".to_string(),
+                    0.0,
+                    10.0,
+                    vec![
                         meandata::Edge {
                             id: "edge1".to_string(),
                             traveltime: Some(20.0),
@@ -302,17 +299,17 @@ pub mod tests {
                             ..Default::default()
                         },
                     ],
-                },
-                meandata::Interval {
-                    id: "interval2".to_string(),
-                    begin: 10.0,
-                    end: 20.0,
-                    edges: vec![meandata::Edge {
+                ),
+                meandata::Interval::create(
+                    "interval2".to_string(),
+                    10.0,
+                    20.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(6.0),
                         ..Default::default()
                     }],
-                },
+                ),
             ],
         };
 
@@ -360,36 +357,36 @@ pub mod tests {
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
-                meandata::Interval {
-                    id: "interval1".to_string(),
-                    begin: 0.0,
-                    end: 100.0,
-                    edges: vec![meandata::Edge {
+                meandata::Interval::create(
+                    "interval1".to_string(),
+                    0.0,
+                    100.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(1100.0),
                         ..Default::default()
                     }],
-                },
-                meandata::Interval {
-                    id: "interval2".to_string(),
-                    begin: 100.0,
-                    end: 200.0,
-                    edges: vec![meandata::Edge {
+                ),
+                meandata::Interval::create(
+                    "interval2".to_string(),
+                    100.0,
+                    200.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(1000.0),
                         ..Default::default()
                     }],
-                },
-                meandata::Interval {
-                    id: "interval2".to_string(),
-                    begin: 200.0,
-                    end: 250.0,
-                    edges: vec![meandata::Edge {
+                ),
+                meandata::Interval::create(
+                    "interval2".to_string(),
+                    200.0,
+                    250.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(150.0),
                         ..Default::default()
                     }],
-                },
+                ),
             ],
         };
 
@@ -430,26 +427,26 @@ pub mod tests {
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
-                meandata::Interval {
-                    id: "interval1".to_string(),
-                    begin: 86_340.0,
-                    end: 86_400.0,
-                    edges: vec![meandata::Edge {
+                meandata::Interval::create(
+                    "interval1".to_string(),
+                    86_340.0,
+                    86_400.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(70_874.95),
                         ..Default::default()
                     }],
-                },
-                meandata::Interval {
-                    id: "interval2".to_string(),
-                    begin: 86_400.0,
-                    end: 86_460.0,
-                    edges: vec![meandata::Edge {
+                ),
+                meandata::Interval::create(
+                    "interval2".to_string(),
+                    86_400.0,
+                    86_460.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(70_643.718),
                         ..Default::default()
                     }],
-                },
+                ),
             ],
         };
 
@@ -491,36 +488,36 @@ pub mod tests {
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
-                meandata::Interval {
-                    id: "interval1".to_string(),
-                    begin: 0.0,
-                    end: 100.0,
-                    edges: vec![meandata::Edge {
+                meandata::Interval::create(
+                    "interval1".to_string(),
+                    0.0,
+                    100.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(50.0),
                         ..Default::default()
                     }],
-                },
-                meandata::Interval {
-                    id: "interval2".to_string(),
-                    begin: 100.0,
-                    end: 200.0,
-                    edges: vec![meandata::Edge {
+                ),
+                meandata::Interval::create(
+                    "interval2".to_string(),
+                    100.0,
+                    200.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(1000.0),
                         ..Default::default()
                     }],
-                },
-                meandata::Interval {
-                    id: "interval2".to_string(),
-                    begin: 200.0,
-                    end: 250.0,
-                    edges: vec![meandata::Edge {
+                ),
+                meandata::Interval::create(
+                    "interval2".to_string(),
+                    200.0,
+                    250.0,
+                    vec![meandata::Edge {
                         id: "edge1".to_string(),
                         traveltime: Some(200.0),
                         ..Default::default()
                     }],
-                },
+                ),
             ],
         };
 

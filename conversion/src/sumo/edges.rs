@@ -31,6 +31,10 @@ pub struct Edge {
     #[serde(rename = "@length")]
     pub length: Option<SumoTravelTime>,
 
+    /// priority of a piece of road, used to determine capacity
+    #[serde(rename = "@priority")]
+    pub priority: Option<i32>,
+
     #[serde(rename = "lane", default)]
     pub lanes: Vec<Lane>,
 
@@ -53,16 +57,66 @@ impl Edge {
 
     /// returns the capacity of the edge in vehicles per hour
     /// based on the formula from https://sumo.dlr.de/docs/Simulation/RoadCapacity.html
-    pub fn get_capacity(&self) -> u32 {
-        // minimum time headway a vehicle wants to have (seconds)
-        let tau = 1.0;
-        // meters
-        let vehicle_size = 5.0;
-        // meters
-        let min_gap = 2.5;
+    pub fn get_capacity(&self) -> f64 {
+        if self.num_lanes == Some(0) {
+            return 0.0;
+        }
 
-        let gross_time_headway = (vehicle_size + min_gap) / self.get_speed() + tau; // in seconds
-        self.num_lanes.unwrap_or(1) * (3600.0 / gross_time_headway).floor() as u32
+        // Convert priority to road class (negative priority in SUMO)
+        let road_class = if let Some(prio) = self.priority { -prio } else { -1 };
+        let speed = if let Some(speed) = self.speed { speed } else { 13.9 }; // default speed is 13.9 m/s (50 km/h)
+        let lanes = if let Some(lanes) = self.num_lanes { lanes as f64 } else { 1.0 };
+
+        // Based on the definitions in PTV-Validate and in the VISUM-Cologne network
+        let capacity_per_lane = match road_class {
+            0 | 1 => 2000.0, // CR13 in table.py
+            2 => {
+                if speed <= 11.0 {
+                    1333.33 // CR5 in table.py
+                } else if speed <= 16.0 {
+                    1500.0 // CR3 in table.py
+                } else {
+                    2000.0 // CR13 in table.py
+                }
+            }
+            3 => {
+                if speed <= 11.0 {
+                    800.0 // CR5 in table.py
+                } else if speed <= 13.0 {
+                    875.0 // CR5 in table.py
+                } else if speed <= 16.0 {
+                    1500.0 // CR4 in table.py
+                } else {
+                    1800.0 // CR13 in table.py
+                }
+            }
+            _ => {
+                // road_class >= 4 or road_class == -1
+                if speed <= 5.0 {
+                    200.0 // CR7 in table.py
+                } else if speed <= 7.0 {
+                    412.5 // CR7 in table.py
+                } else if speed <= 9.0 {
+                    600.0 // CR6 in table.py
+                } else if speed <= 11.0 {
+                    800.0 // CR5 in table.py
+                } else if speed <= 13.0 {
+                    1125.0 // CR5 in table.py
+                } else if speed <= 16.0 {
+                    1583.0 // CR4 in table.py
+                } else if speed <= 18.0 {
+                    1100.0 // CR3 in table.py
+                } else if speed <= 22.0 {
+                    1200.0 // CR3 in table.py
+                } else if speed <= 26.0 {
+                    1300.0 // CR3 in table.py
+                } else {
+                    1400.0 // CR3 in table.py
+                }
+            }
+        };
+
+        lanes * capacity_per_lane
     }
 }
 

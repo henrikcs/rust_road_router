@@ -30,11 +30,11 @@ pub struct FlattenedSumoEdge {
     weight: SumoTravelTime,
     // length in meters
     length: SumoTravelTime,
-    capacity: u32,
+    capacity: f64,
 }
 
 impl FlattenedSumoEdge {
-    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: String, weight: SumoTravelTime, length: SumoTravelTime, capacity: u32) -> Self {
+    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: String, weight: SumoTravelTime, length: SumoTravelTime, capacity: f64) -> Self {
         FlattenedSumoEdge {
             from_node_index,
             to_node_index,
@@ -104,7 +104,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
     // extract default weights of all edges and write them to a file
-    let (edge_default_travel_times, capas): (Vec<u32>, Vec<u32>) = edge_indices_to_id
+    let (edge_default_travel_times, capas): (Vec<u32>, Vec<f64>) = edge_indices_to_id
         .iter()
         .map(|edge| {
             // weight is calculated in method `initialize_edges_for_td_graph`
@@ -404,7 +404,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
                 FlattenedSumoEdge::get_edge_id_for_connection(&edge.id, &con.to),
                 0.0,
                 0.0,
-                u32::MAX, // infinite capacity for internal edges
+                f64::MAX, // infinite capacity for internal edges
             ));
         }
     }
@@ -475,6 +475,7 @@ mod tests {
                     length: None,
                     lanes: vec![],
                     params: vec![],
+                    priority: Some(-1),
                 },
                 Edge {
                     id: String::from("e1"),
@@ -485,6 +486,7 @@ mod tests {
                     length: None,
                     lanes: vec![],
                     params: vec![],
+                    priority: Some(-1),
                 },
             ],
         };
@@ -540,6 +542,7 @@ mod tests {
                     length: None,
                     lanes: vec![],
                     params: vec![],
+                    priority: Some(-1),
                 },
                 Edge {
                     id: String::from("e1"),
@@ -550,6 +553,7 @@ mod tests {
                     length: None,
                     lanes: vec![],
                     params: vec![],
+                    priority: Some(-1),
                 },
             ],
         };
@@ -615,6 +619,7 @@ mod tests {
                     length: None,
                     lanes: vec![],
                     params: vec![],
+                    priority: Some(-1),
                 },
                 Edge {
                     id: String::from("e1"),
@@ -625,6 +630,7 @@ mod tests {
                     length: None,
                     lanes: vec![],
                     params: vec![],
+                    priority: Some(-1),
                 },
             ],
         };
