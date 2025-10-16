@@ -108,14 +108,14 @@
       "type": "shell",
       "command": "python",
       "dependsOn": [
-        "Build (release)",
+        "Build (debug)",
         "Copy duaIterate.py to SUMO",
         "Clean random"
       ],
       "options": {
         "cwd": "${workspaceFolder}/data/imported/sumo/random",
         "env": {
-          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/release/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
           "RUST_BACKTRACE": "1"
         }
       },
@@ -133,15 +133,13 @@
         "--begin",
         "0",
         "--end",
-        "86400",
+        "36000",
         "--relative-gap",
         "0.0001",
         "--max-convergence-deviation",
         "0.0000001",
         "duarouter--precision",
         "6",
-        "sumo--default.speeddev",
-        "0.0",
         "sumo--step-length",
         "0.1",
         "sumo--precision",
@@ -159,7 +157,61 @@
       ]
     },
     {
+      "label": "Run FastDTA (random)",
+      "type": "shell",
+      "command": "python",
+      "dependsOn": [
+        "Build (debug)",
+        "Copy duaIterate.py to SUMO",
+        "Clean random-fast-dta"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo/random-fast-dta",
+        "env": {
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
+          "RUST_BACKTRACE": "1"
+        }
+      },
+      "args": [
+        "${workspaceFolder}/lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py",
+        "-n",
+        "${workspaceFolder}/import/sumo/random/random.net.xml",
+        "-t",
+        "${workspaceFolder}/import/sumo/random/random.trips.xml",
+        "--routing-algorithm",
+        "fastdta",
+        "--mesosim",
+        "--aggregation",
+        "300",
+        "--begin",
+        "0",
+        "--end",
+        "86400",
+        "--relative-gap",
+        "0.0001",
+        "--max-convergence-deviation",
+        "0.0000001",
+        "duarouter--precision",
+        "6",
+        "sumo--step-length",
+        "0.1",
+        "sumo--precision",
+        "6",
+        "sumo--default.speeddev",
+        "0.0",
+        "fastdta-preprocessor--input-prefix",
+        "random",
+        "fastdta-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/random",
+        "relative-gap--net-prefix",
+        "random",
+        "relative-gap--net-dir",
+        "${workspaceFolder}/import/sumo/random"
+      ]
+    },
+    {
       "label": "Run DTA (grid; CH)",
+      "hide": true,
       "type": "shell",
       "command": "python",
       "dependsOn": [
@@ -405,6 +457,16 @@
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
       "args": ["-rf", "random/*"],
+      "hide": true
+    },
+    {
+      "label": "Clean random-fast-dta",
+      "type": "shell",
+      "command": "rm",
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo"
+      },
+      "args": ["-rf", "random-fast-dta/*"],
       "hide": true
     },
     {

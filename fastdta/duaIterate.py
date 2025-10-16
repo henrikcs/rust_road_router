@@ -710,9 +710,9 @@ def main(args=None):
 
     if ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
         tik = datetime.now()
-        print("> Preprocessing network for Dijkstra Rust")
+        print("> Preprocessing network for FastDTA")
         print(">> Begin time: %s" % tik)
-        ret = call_binary(FASTDTA_ROUTER_BINARY,
+        ret = call_binary(FASTDTA_PREPROCESS_BINARY,
                           fastdta_preprocessing_args + ["--trips-file", input_demands[0]])
         tok = datetime.now()
         if ret != 0:
