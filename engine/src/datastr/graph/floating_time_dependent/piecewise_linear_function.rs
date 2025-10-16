@@ -133,7 +133,12 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
     /// In debug will validate the invariants we need from the function.
     pub fn new(ipps: &'a [TTFPoint]) -> Self {
         debug_assert!(ipps.first().unwrap().at == Timestamp::ZERO, "{:?}", ipps);
-        debug_assert!(ipps.first().unwrap().val.fuzzy_eq(ipps.last().unwrap().val), "{:?}", ipps);
+        debug_assert!(
+            ipps.first().unwrap().val.fuzzy_eq(ipps.last().unwrap().val),
+            "{:?}, {:?}",
+            ipps.first(),
+            ipps.last()
+        );
         debug_assert!(ipps.len() == 1 || ipps.last().unwrap().at == period(), "{:?}", ipps);
 
         for points in ipps.windows(2) {

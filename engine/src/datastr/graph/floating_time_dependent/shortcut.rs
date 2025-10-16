@@ -205,7 +205,17 @@ impl Shortcut {
                 if cfg!(feature = "detailed-stats") {
                     CONSIDERED_FOR_APPROX.fetch_add(old, Relaxed);
                 }
-                merged = PeriodicATTF::from(&merged).approximate(buffers);
+                let dbg_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    merged = PeriodicATTF::from(&merged).approximate(buffers);
+                }));
+                if dbg_res.is_err() {
+                    panic!(
+                        "Merging failed! {:?}\n EdgeIds: {:?}, {:?}",
+                        dbg_res.err(),
+                        linked_ids,
+                        (linked_ids.0, linked_ids.1)
+                    );
+                }
                 if cfg!(feature = "detailed-stats") {
                     SAVED_BY_APPROX.fetch_add(old as isize - merged.num_points() as isize, Relaxed);
                 }

@@ -225,7 +225,7 @@ pub trait Reconstruct: Sized {
     }
 }
 
-// TODO: This is a workaround for the fact that we cannot implement `Store` for `Vec<String>`
+/// This is a workaround for the fact that we cannot implement `Store` for `Vec<String>`
 /// Helper function to write a vector of strings to a file, each string on a new line.
 /// We need this method to keep track of the edge ids given by sumo
 /// We cannot let Vec<String> implement Store, because it rust says that in future versions String might implement Copy
