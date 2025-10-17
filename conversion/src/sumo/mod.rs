@@ -40,6 +40,13 @@ pub type SumoTimestamp = f64;
 /// in meters
 pub type SumoPosition = f64;
 
+// in seconds
+pub const DEPARTURE_OFFSET: f64 = 1.0;
+// in seconds
+pub const SUMO_COOLDOWN: f64 = 100000.0;
+// in seconds
+pub const SUMO_PERIOD: f64 = 86400.0;
+
 /// Implicit time dependent graph representation defined by RoutingKit.
 /// This is a tuple of:
 /// - `first_out`: first out index for each node (length n+1)

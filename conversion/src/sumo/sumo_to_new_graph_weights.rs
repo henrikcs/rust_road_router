@@ -9,10 +9,10 @@ use rust_road_router::{
 
 use crate::{
     sumo::{
-        meandata::{Edge, MeandataDocumentRoot},
+        meandata::{Edge, Interval, MeandataDocumentRoot},
         meandata_reader::SumoMeandataReader,
         sumo_find_file::get_meandata_file,
-        FileReader,
+        FileReader, DEPARTURE_OFFSET, SUMO_COOLDOWN, SUMO_PERIOD,
     },
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
 };
@@ -29,9 +29,9 @@ pub fn get_graph_with_travel_times_from_previous_iteration(input_dir: &Path, ite
     TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph")
 }
 
-pub fn extract_travel_times_from_iteration_directory(previous_iteration_dir: &Path, path_to_graph_weights: &Path, edge_indices_to_id: &Vec<String>) {
+pub fn extract_travel_times_from_iteration_directory(dta_iteration_dir: &Path, path_to_graph_weights: &Path, edge_indices_to_id: &Vec<String>) {
     // dump file starts with "dump_" and ends with ".xml"
-    let dump_file = get_meandata_file(&previous_iteration_dir);
+    let dump_file = get_meandata_file(&dta_iteration_dir);
 
     set_new_graph_weights_from_meandata_file(
         &path_to_graph_weights,
@@ -47,7 +47,9 @@ pub fn set_new_graph_weights_from_meandata_file(
     edge_indices_to_id: &Vec<String>,
     edge_default_travel_times: &Vec<SerializedTravelTime>,
 ) {
-    let meandata = SumoMeandataReader::read(path_to_sumo_meandata).expect("Failed to read SUMO meandata");
+    let mut meandata = SumoMeandataReader::read(path_to_sumo_meandata).expect("Failed to read SUMO meandata");
+
+    adapt_intervals_for_periodicity(&mut meandata);
 
     let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
         extract_interpolation_points_from_meandata(&meandata, &edge_indices_to_id, &edge_default_travel_times);
@@ -67,6 +69,27 @@ pub fn extract_interpolation_points_from_meandata(
         edge_indices_to_id,
         &preprocess_tt(&meandata, edge_indices_to_id, edge_default_travel_times),
     )
+}
+
+pub fn adapt_intervals_for_periodicity(meandata: &mut MeandataDocumentRoot) {
+    let prefix = vec![Interval::create(String::from("prefix"), -DEPARTURE_OFFSET, 0.0, vec![])];
+    let suffix = vec![
+        Interval::create(String::from("cooldown"), SUMO_PERIOD, SUMO_PERIOD + SUMO_COOLDOWN, vec![]),
+        Interval::create(
+            String::from("suffix"),
+            SUMO_PERIOD + SUMO_COOLDOWN,
+            SUMO_PERIOD + SUMO_COOLDOWN + DEPARTURE_OFFSET,
+            vec![],
+        ),
+    ];
+
+    meandata.intervals.splice(0..0, prefix);
+    meandata.intervals.extend(suffix);
+
+    meandata.intervals.par_iter_mut().for_each(|interval| {
+        interval.begin += DEPARTURE_OFFSET;
+        interval.end += DEPARTURE_OFFSET;
+    });
 }
 
 fn preprocess_tt<'a>(
@@ -108,38 +131,20 @@ fn preprocess_tt<'a>(
                     .map(|val| (val * 1000.0) as SerializedTravelTime)
                     .unwrap_or(default_travel_time);
 
-                // TODO: this also needs to be periodic, ie. the first and the last interval should have the same tt
-                if interval_index == 0 {
-                    // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
-                    // this ensures the fifo property for the travel time in the last interval
-                    // since the time functions are periodic and wrap around
-                    let first_interval = meandata.intervals.first().unwrap();
-                    let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
-                    let next_timestamp = (first_interval.begin * 1000.0) as SerializedTravelTime;
-
-                    if interval_duration + default_travel_time < tt {
-                        // If the next travel time is less than the current, we adjust the current travel time
-                        println!(
-                            "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
-                            edge_id,
-                            timestamp,
-                            next_timestamp,
-                            tt,
-                            interval_duration,
-                            default_travel_time,
-                            interval_duration + default_travel_time
-                        );
-                        tt = interval_duration + default_travel_time;
+                match interval_index {
+                    0 => {
+                        // suffix interval, set travel time to 0
+                        tt = 0;
                     }
-                }
-                if interval_index > 0 {
-                    // Enforce FIFO condition if there is a next interval
-                    if let Some(next_interval) = meandata.intervals.get(meandata.intervals.len() - interval_index) {
-                        let next_timestamp = (next_interval.begin * 1000.0) as SerializedTimestamp;
-                        let interval_duration = next_timestamp - timestamp;
-                        let next_tt = adapted_tt.get(&next_timestamp).unwrap();
+                    1 => {
+                        // cooldown interval, set travel time to sumo's last interval time
+                        // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
+                        // this ensures the fifo property for the travel time in the last interval
+                        // since the time functions are periodic and wrap around
+                        let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
+                        let next_timestamp = (interval.begin * 1000.0) as SerializedTravelTime;
 
-                        if interval_duration + next_tt < tt {
+                        if interval_duration + default_travel_time < tt {
                             // If the next travel time is less than the current, we adjust the current travel time
                             println!(
                                 "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
@@ -148,10 +153,37 @@ fn preprocess_tt<'a>(
                                 next_timestamp,
                                 tt,
                                 interval_duration,
-                                next_tt,
-                                interval_duration + next_tt
+                                default_travel_time,
+                                interval_duration + default_travel_time
                             );
-                            tt = interval_duration + next_tt;
+                            tt = interval_duration + default_travel_time;
+                        }
+                    }
+                    i if i == meandata.intervals.len() - 1 => {
+                        // prefix interval, set travel time to 0
+                        tt = 0;
+                    }
+                    _ => {
+                        // Enforce FIFO condition if there is a next interval
+                        if let Some(next_interval) = meandata.intervals.get(meandata.intervals.len() - interval_index) {
+                            let next_timestamp = (next_interval.begin * 1000.0) as SerializedTimestamp;
+                            let interval_duration = next_timestamp - timestamp;
+                            let next_tt = adapted_tt.get(&next_timestamp).unwrap();
+
+                            if interval_duration + next_tt < tt {
+                                // If the next travel time is less than the current, we adjust the current travel time
+                                println!(
+                                    "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                                    edge_id,
+                                    timestamp,
+                                    next_timestamp,
+                                    tt,
+                                    interval_duration,
+                                    next_tt,
+                                    interval_duration + next_tt
+                                );
+                                tt = interval_duration + next_tt;
+                            }
                         }
                     }
                 }

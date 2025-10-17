@@ -342,7 +342,7 @@ pub fn period() -> Timestamp {
 #[cfg(not(test))]
 #[inline]
 pub fn period() -> Timestamp {
-    Timestamp::new(86_400.0)
+    Timestamp::new(186_402.0)
 }
 
 use std::sync::atomic::{AtomicIsize, AtomicUsize};

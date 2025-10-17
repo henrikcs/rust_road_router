@@ -15,7 +15,7 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        FileReader, RoutingKitTDGraph, SumoTravelTime, CON_XML, EDG_XML, NOD_XML,
+        FileReader, RoutingKitTDGraph, SumoTravelTime, CON_XML, DEPARTURE_OFFSET, EDG_XML, NOD_XML,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
     FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE,
@@ -193,7 +193,7 @@ pub fn get_queries_from_trips<'a>(
             .unwrap_or_else(|| panic!("To edge {} not found in edge_id_to_index_map", veh.to));
         to_nodes.push(to_edge.from_node_index);
 
-        departure_times.push((veh.depart * 1000.0) as SerializedTimestamp); // convert seconds to milliseconds
+        departure_times.push(((veh.depart + DEPARTURE_OFFSET) * 1000.0) as SerializedTimestamp); // convert seconds to milliseconds
         original_trip_from_edges.push(*from_index as u32);
         original_trip_to_edges.push(*to_index as u32);
     }
