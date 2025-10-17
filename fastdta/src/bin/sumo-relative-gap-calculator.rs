@@ -1,7 +1,7 @@
 use clap::Parser;
 use conversion::{
     sumo::{
-        routes::Vehicle, routes_reader::SumoRoutesReader, sumo_find_file::get_routes_file_name_in_iteration, sumo_to_new_graph_weights::extract_travel_times_from_iteration_directory, sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries, FileReader, SumoTravelTime
+        routes::Vehicle, routes_reader::SumoRoutesReader, sumo_find_file::get_routes_file_name_in_iteration, sumo_to_new_graph_weights::extract_travel_times_from_iteration_directory, sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries, FileReader, SumoTravelTime, DEPARTURE_OFFSET
     }, FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS
 };
 use std::{collections::HashMap, env, fs::OpenOptions, path::Path};
@@ -94,7 +94,7 @@ fn main() {
                         panic!("No route found for vehicle id {}", id);
                     };
 
-                    let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &path);
+                    let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart + DEPARTURE_OFFSET), &path);
                     let experienced_time_f64: f64 = <FlWeight as Into<f64>>::into(experienced_time);
                     let best_time_f64: f64 = <FlWeight as Into<f64>>::into(travel_times[i]);
 

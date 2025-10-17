@@ -41,11 +41,11 @@ pub type SumoTimestamp = f64;
 pub type SumoPosition = f64;
 
 // in seconds
-pub const DEPARTURE_OFFSET: f64 = 1.0;
+pub const DEPARTURE_OFFSET: f64 = 100_000.0;
 // in seconds
-pub const SUMO_COOLDOWN: f64 = 100000.0;
+pub const SUMO_COOLDOWN: f64 = 100_000.0;
 // in seconds
-pub const SUMO_PERIOD: f64 = 86400.0;
+pub const SUMO_PERIOD: f64 = 86_400.0;
 
 /// Implicit time dependent graph representation defined by RoutingKit.
 /// This is a tuple of:

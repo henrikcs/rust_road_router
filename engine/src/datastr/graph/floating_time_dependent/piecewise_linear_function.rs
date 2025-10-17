@@ -53,7 +53,7 @@ fn append_point(points: &mut Vec<TTFPoint>, point: TTFPoint) {
 #[inline(never)]
 fn append_too_close(points: &mut Vec<TTFPoint>, mut point: TTFPoint) {
     let points_len = points.len();
-    debug_assert!(points[points_len - 1].at <= point.at);
+    debug_assert!(points[points_len - 1].at <= point.at, "{:?} {:?}", points[points_len - 1], point);
     let shifted_at = point.at - FlWeight::new(EPSILON);
     if points_len > 1 && points[points_len - 2].at.fuzzy_lt(shifted_at) {
         let shifted_val = interpolate_linear(&points[points_len - 2], &points[points_len - 1], point.at - FlWeight::new(EPSILON));
@@ -142,7 +142,7 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
         debug_assert!(ipps.len() == 1 || ipps.last().unwrap().at == period(), "{:?}", ipps);
 
         for points in ipps.windows(2) {
-            debug_assert!(points[0].at.fuzzy_lt(points[1].at), "{:?}", (points[0].at, points[1].at));
+            debug_assert!(points[0].at.fuzzy_lt(points[1].at), "{:?}\n{:?}", (points[0].at, points[1].at), ipps);
             assert!(
                 !(points[1].val - points[0].val).fuzzy_lt(points[0].at - points[1].at),
                 "FiFo broken {:#?}",

@@ -68,5 +68,5 @@ pub fn period() -> Timestamp {
 #[cfg(not(test))]
 #[inline]
 pub const fn period() -> Timestamp {
-    186_402_000
+    86_400_000 + 2 * 100_000_000 + 100_000_000
 }

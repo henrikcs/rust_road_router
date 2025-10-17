@@ -134,7 +134,7 @@ fn preprocess_tt<'a>(
                 match interval_index {
                     0 => {
                         // suffix interval, set travel time to 0
-                        tt = 0;
+                        tt = 1;
                     }
                     1 => {
                         // cooldown interval, set travel time to sumo's last interval time
@@ -161,7 +161,7 @@ fn preprocess_tt<'a>(
                     }
                     i if i == meandata.intervals.len() - 1 => {
                         // prefix interval, set travel time to 0
-                        tt = 0;
+                        tt = 1;
                     }
                     _ => {
                         // Enforce FIFO condition if there is a next interval
