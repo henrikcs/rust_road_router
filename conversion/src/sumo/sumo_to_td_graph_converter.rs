@@ -109,7 +109,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(
         .map(|edge| {
             // weight is calculated in method `initialize_edges_for_td_graph`
             let e = &edge_ids_to_index.get(edge).unwrap().1;
-            let default_tt = (e.weight * 1000.0) as u32; // convert seconds to milliseconds
+            let default_tt = u32::max((e.weight * 1000.0) as u32, 1); // convert seconds to milliseconds
             let capa = e.capacity;
             (default_tt, capa)
         })
