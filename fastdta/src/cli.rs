@@ -2,11 +2,11 @@ use std::env;
 
 pub use clap::Parser;
 
-use crate::choice;
+use crate::{choice, vdf::VDFType};
 
-/// Command-line arguments for fast-dta preprocessing
+/// Command-line arguments for preprocessing
 #[derive(Parser, Debug)]
-#[command(version, about = "fast-dta preprocessing CLI options", long_about = None)]
+#[command(version, about = "preprocessing CLI options", long_about = None)]
 pub struct PreprocesserArgs {
     /// the directory containing the input files
     #[arg(long = "input-dir", default_value_t = String::from(env::current_dir().unwrap().to_str().unwrap()))]
@@ -34,9 +34,9 @@ pub struct PreprocesserArgs {
     pub routing_threads: i32,
 }
 
-/// Command-line arguments for fast-dta router, derived from duarouter
+/// Command-line arguments for routing, derived from duarouter
 #[derive(Parser, Debug)]
-#[command(version, about = "fast-dta router CLI options", long_about = None)]
+#[command(version, about = "routing CLI options", long_about = None)]
 pub struct RouterArgs {
     #[arg(short = 'd', long = "additional-files")]
     pub additional_files: Option<String>,
@@ -412,5 +412,35 @@ impl RouterArgs {
 
     pub fn get_write_some_alternatives(&self) -> bool {
         self.no_write_sumo_alternatives == "false" || self.no_write_sumo_alternatives == "0" || self.no_write_sumo_alternatives == "False"
+    }
+}
+
+/// For FastDta add additional arguments:
+
+#[derive(Parser, Debug)]
+#[command(version, about = "fastdta routing CLI options", long_about = None)]
+pub struct FastDtaArgs {
+    #[command(flatten)]
+    pub router_args: RouterArgs,
+
+    ///sample sizes and number of sample per iteration
+    /// e.g. --samples 0.1 0.2 0.3 0.4 will sample 10% in the first iteration, 20% in the second, 30% in the third, and 40% in the fourth,
+    /// such that each sample does not intersect with previous samples
+    /// Samples are uniformly distributed over all trips  
+    #[arg(long = "samples")]
+    pub samples: Option<Vec<f64>>,
+
+    /// sets the VDF
+    #[arg(long = "vdf", default_value = "ptv")]
+    pub vdf: String,
+}
+
+impl FastDtaArgs {
+    pub fn get_vdf(&self) -> VDFType {
+        match self.vdf.as_str() {
+            "ptv" => VDFType::Ptv,
+            "bpr" => VDFType::Bpr,
+            _ => panic!("Unknown VDF type: {}", self.vdf),
+        }
     }
 }

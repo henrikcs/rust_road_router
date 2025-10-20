@@ -1,13 +1,12 @@
 use std::path::Path;
 
-use conversion::FILE_EDGE_INDICES_TO_ID;
-use conversion::sumo::sumo_to_new_graph_weights::get_graph_with_travel_times_from_previous_iteration;
 use fastdta::alternative_path_assembler::assemble_alternative_paths;
 use fastdta::cli;
 use fastdta::cli::Parser;
+use fastdta::logger::Logger;
 use fastdta::query::get_paths_with_dijkstra;
+use fastdta::route::get_graph_data_for_dijkstra;
 use rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server;
-use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::RouterArgs::parse();
@@ -20,16 +19,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
-    let ((edge_ids, graph), duration) = measure(|| {
-        let edge_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_EDGE_INDICES_TO_ID)).unwrap();
-        let graph = get_graph_with_travel_times_from_previous_iteration(input_dir, iteration, &edge_ids);
+    let logger = Logger::new("sumo-tddijkstra-router", &input_dir.display().to_string(), iteration as i32);
 
-        (edge_ids, graph)
-    });
-    log(&input_dir.display().to_string(), iteration, "preprocessing", duration.as_nanos());
+    let ((edge_ids, graph), duration) = measure(|| get_graph_data_for_dijkstra(input_dir, iteration));
+    logger.log("preprocessing", duration.as_nanos());
 
     let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_dijkstra(&mut Server::new(graph.clone()), input_dir, &graph));
-    log(&input_dir.display().to_string(), iteration, "dijkstra routing", duration.as_nanos());
+    logger.log("dijkstra routing", duration.as_nanos());
 
     let write_sumo_alternatives =
         args.no_write_sumo_alternatives == "false" || args.no_write_sumo_alternatives == "0" || args.no_write_sumo_alternatives == "False";
@@ -51,13 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     });
 
-    log(&input_dir.display().to_string(), iteration, "assembling alternative paths", duration.as_nanos());
+    logger.log("assembling alternative paths", duration.as_nanos());
 
     Ok(())
-}
-
-/// Logs the operation with the duration in nanoseconds within a certain iteration of certain run identified by identifier.
-/// The format is: "sumo-tddijkstra-router; <identifier>; <iteration>; <operation>; <duration_in_nanos>"
-fn log(identifier: &str, iteration: u32, operation: &str, duration_in_nanos: u128) {
-    println!("sumo-tddijkstra-router; {}; {}; {}; {}", identifier, iteration, operation, duration_in_nanos);
 }

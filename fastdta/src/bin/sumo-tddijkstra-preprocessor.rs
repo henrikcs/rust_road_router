@@ -4,6 +4,7 @@ use std::path::Path;
 use clap::Parser;
 use conversion::sumo::sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries;
 use fastdta::cli;
+use fastdta::logger::Logger;
 use rust_road_router::report::measure;
 
 /// has the following parameters:
@@ -20,14 +21,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let trips_file = Path::new(&args.trips_file);
     let output_dir = Path::new(&args.output_dir);
 
+    let logger = Logger::new("sumo-tddijkstra-preprocessor", &input_dir.display().to_string(), -1);
+
     let (_, duration) = measure(|| convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &trips_file, &output_dir));
-    log(&output_dir.display().to_string(), "preprocessing", duration.as_nanos());
+    logger.log("preprocessing", duration.as_nanos());
 
     Ok(())
-}
-
-/// Logs the operation with the duration in nanoseconds within a certain iteration of certain run identified by identifier.
-/// The format is: "sumo-tdcch-preprocessor; <identifier>; <iteration>; <operation>; <duration_in_nanos>"
-fn log(identifier: &str, operation: &str, duration_in_nanos: u128) {
-    println!("sumo-tddijkstra-preprocessor; {}; -1; {}; {}", identifier, operation, duration_in_nanos);
 }

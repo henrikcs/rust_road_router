@@ -1,3 +1,8 @@
+pub enum VDFType {
+    Ptv,
+    Bpr,
+}
+
 /// Trait for Volume Delay Functions (VDF)
 /// A VDF models the relationship between traffic flow and travel time on a road segment.
 pub trait VDF {
@@ -16,7 +21,7 @@ pub struct Bpr {
 }
 
 impl Bpr {
-    pub fn new(alpha: f64, beta: f64) -> Self {
+    pub fn create(alpha: f64, beta: f64) -> Self {
         Self { alpha, beta }
     }
 
@@ -36,12 +41,12 @@ impl VDF for Bpr {
 
 // based on the definitions in PTV-Validate and in the VISUM-Cologne network
 pub struct Ptv {
-    edge_priority: u32,
+    edge_priority: i32,
     edge_speedlimit: f64,
 }
 
 impl Ptv {
-    pub fn new(edge_priority: u32, edge_speedlimit: f64) -> Self {
+    pub fn create(edge_priority: i32, edge_speedlimit: f64) -> Self {
         Self {
             edge_priority,
             edge_speedlimit,
@@ -51,7 +56,7 @@ impl Ptv {
 
 impl VDF for Ptv {
     fn travel_time(&self, flow: f64, capacity: f64, free_flow_time: f64) -> f64 {
-        let road_class = -(self.edge_priority as i32);
+        let road_class = -self.edge_priority;
         let speed = self.edge_speedlimit;
 
         // Calculate the delay factor based on road class and speed
