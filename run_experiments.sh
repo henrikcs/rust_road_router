@@ -20,7 +20,7 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<first_iter>;<last_iter>;<seed>\n]"
+    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>\n]"
     echo ""
     echo "Routing algorithm options (at least one is required):"
     echo "  --cch                  Run all experiments with CCH routing."
@@ -157,7 +157,7 @@ cp ~/rust_road_router/fastdta/duaIterate.py ~/rust_road_router/venvs/libsumo/lib
 
 # --- Run experiments ---
 line_index=0
-while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end convergence_deviation convergence_relgap first_iter last_iter seed || [[ -n "$in_dir" ]]; do
+while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_deviation convergence_relgap last_iter seed || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
 
@@ -182,13 +182,12 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
             declare -a dua_args=(
                 -n "$net_file"
                 -t "$trips_file"
-                --mesosim --aggregation "$aggregation" --begin "$begin" --end "$end" -f $first_iter -l $last_iter
+                --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -l $last_iter
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
                 --relative-gap "$convergence_relgap"
                 duarouter--weights.interpolate
                 duarouter--seed $seed
-                duarouter--unsorted-input
                 duarouter--precision 6
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
@@ -221,6 +220,8 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation begin end converg
                     fastdta-preprocessor--input-prefix "$prefix"
                     fastdta-preprocessor--input-dir "$in_dir"
                     fastdta-router--seed $seed
+                    fastdta-router--vdf ptv
+                    fastdta-router--samples 0.9 0.1
                 )
             fi
 

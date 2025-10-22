@@ -438,9 +438,25 @@ pub struct FastDtaArgs {
 impl FastDtaArgs {
     pub fn get_vdf(&self) -> VDFType {
         match self.vdf.as_str() {
-            "ptv" => VDFType::Ptv,
-            "bpr" => VDFType::Bpr,
+            "ptv" => {
+                println!("Using PTV as VDF");
+                VDFType::Ptv
+            }
+            "bpr" => {
+                println!("Using BPR as VDF");
+                VDFType::Bpr
+            }
             _ => panic!("Unknown VDF type: {}", self.vdf),
         }
+    }
+
+    pub fn get_samples(&self) -> Vec<f64> {
+        let smpls = match &self.samples {
+            Some(s) => s.clone(),
+            None => vec![0.9, 0.1],
+        };
+
+        println!("Using samples: {:?}", smpls);
+        smpls
     }
 }

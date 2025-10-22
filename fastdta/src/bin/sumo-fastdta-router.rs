@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let choice_algorithm = args.router_args.get_choice_algorithm();
     let vdf = args.get_vdf();
+    let samples = args.get_samples();
 
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
@@ -25,13 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ((edge_ids, query_data, mut meandata, old_paths), duration) = measure(|| get_graph_data_for_fast_dta(input_dir, iteration));
     logger.log("preprocessing", duration.as_nanos());
 
-    let (samples, duration) = measure(|| {
-        sample(
-            &args.samples.unwrap_or(vec![0.1, 0.2, 0.3, 0.4]),
-            query_data.0.len(),
-            args.router_args.seed.unwrap_or(rand::random::<i32>()),
-        )
-    });
+    let (samples, duration) = measure(|| sample(&samples, query_data.0.len(), args.router_args.seed.unwrap_or(rand::random::<i32>())));
     logger.log("sample", duration.as_nanos());
 
     let ((graph, shortest_paths, travel_times, departures), duration) =

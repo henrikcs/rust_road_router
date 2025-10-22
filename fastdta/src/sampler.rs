@@ -6,6 +6,8 @@ pub fn sample(sample_relative_sizes: &Vec<f64>, n: usize, seed: i32) -> Vec<Vec<
     let mut samples: Vec<Vec<usize>> = Vec::new();
     let total_relative_size: f64 = sample_relative_sizes.iter().sum();
 
+    println!("Using samples {:?}", sample_relative_sizes);
+
     for (i, &relative_size) in sample_relative_sizes.iter().enumerate() {
         // For the last sample, take all remaining indices to avoid rounding errors
         let sample_size = if i == sample_relative_sizes.len() - 1 {
@@ -21,7 +23,7 @@ pub fn sample(sample_relative_sizes: &Vec<f64>, n: usize, seed: i32) -> Vec<Vec<
         remaining_indices.retain(|index| !sample.contains(index));
     }
 
-    assert_eq!(
+    debug_assert_eq!(
         samples.iter().map(|s| s.len()).sum::<usize>(),
         n,
         "Sampled indices do not sum up to total number of indices"
@@ -113,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn test_irrational_fractions() {
+    fn test_fractions() {
         // Test with fractions that don't divide evenly
         let sizes = vec![1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0];
         let n = 1000;
