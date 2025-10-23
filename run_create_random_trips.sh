@@ -28,7 +28,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Validate arguments ---
-if [ -z "$spack_env" ] then
+if [ -z "$spack_env" ]; then
     echo "Error: Missing required arguments."
     usage
 fi
