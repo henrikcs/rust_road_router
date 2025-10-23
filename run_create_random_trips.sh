@@ -34,8 +34,8 @@ if [ -z "$spack_env" ]; then
 fi
 
 # --- Set up environment ---
+echo "Using spack environment: $spack_env"
 spack env activate "$spack_env"
-
 
 declare pwd=$(pwd)
 P=$(basename $(find ~/.user_spack/environments/fast-dta/.spack-env/._view -mindepth 1 -maxdepth 1 -type d))
@@ -49,4 +49,7 @@ export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/fast-dt
 export SUMO_HOME=~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo
 export PATH=$SUMO_HOME/tools/assign:$SUMO_HOME/bin:$PATH
 
-python fastdta/create_random_instances.py -n 2 --min-nodes 300 --max-nodes 500 --min-trips 35000 --max-trips 50000 --seed 42 --output-folder /nfs/work/hcsoere/fast-dta/input/random
+
+echo "Calling create_random_instances.py"
+
+python "$pwd"/fastdta/create_random_instances.py -n 2 --min-nodes 300 --max-nodes 500 --min-trips 35000 --max-trips 50000 --seed 42 --output-folder /nfs/work/hcsoere/fast-dta/input/random
