@@ -27,6 +27,7 @@ usage() {
     echo "  --ch                   Run all experiments with CH routing."
     echo "  --dijkstra             Run all experiments with Dijkstra routing."
     echo "  --dijkstra-rust        Run all experiments with Dijkstra (Rust) routing."
+    echo "  --fast-dta             Run all experiments with Fast DTA routing."
     echo "  --a-star               Run all experiments with A* routing."
     echo ""
     echo "Other options:"
