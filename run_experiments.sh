@@ -228,7 +228,8 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                     fastdta-preprocessor--input-dir "$in_dir"
                     fastdta-router--seed $seed
                     fastdta-router--vdf ptv
-                    fastdta-router--samples 0.9 0.1
+                    fastdta-router--samples 0.1 
+                    fastdta-router--samples 0.9
                 )
             fi
 
