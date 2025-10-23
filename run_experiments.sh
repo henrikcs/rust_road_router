@@ -233,7 +233,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 )
             fi
 
-            python duaIterate.py "${dua_args[@]}"
+            python "$SUMO_HOME"/tools/assign/duaIterate.py "${dua_args[@]}"
         )
     done
     ((line_index++))
