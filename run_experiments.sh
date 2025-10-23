@@ -59,6 +59,10 @@ while [[ $# -gt 0 ]]; do
         routing_algorithms+=("CCH")
         shift
         ;;
+        --fast-dta)
+        routing_algorithms+=("fastdta")
+        shift
+        ;;
         --ch)
         routing_algorithms+=("CH")
         shift
