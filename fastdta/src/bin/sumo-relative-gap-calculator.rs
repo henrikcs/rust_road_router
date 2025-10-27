@@ -99,7 +99,7 @@ fn main() {
                     let best_time_f64: f64 = <FlWeight as Into<f64>>::into(travel_times[i]);
 
                     
-                    if experienced_time_f64 - best_time_f64 < -EPSILON_TRAVEL_TIME {
+                    if (experienced_time_f64 - best_time_f64) < -EPSILON_TRAVEL_TIME {
                         // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
                         eprintln!(
                             "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nExperienced path: {:?}, \nbest path:        {:?},\ndeparture time: {}",
@@ -121,6 +121,9 @@ fn main() {
             .collect();
 
         let best_tt: Vec<SumoTravelTime> = travel_times.par_iter().map(|&tt| tt.into()).collect();
+
+        print_network_travel_time(&experienced_tt);
+        print_highest_differences(&best_tt, &experienced_tt, &query_ids);
 
         let rel_gap = get_relative_gap(&best_tt, &experienced_tt);
 
@@ -174,4 +177,49 @@ pub struct Args {
     /// If specified, only the files for that iteration will be read
     #[arg(long = "iteration")]
     pub iteration: Option<u32>,
+}
+
+/// prints the experienced total network travel time
+fn print_network_travel_time(
+    experienced_tts: &Vec<SumoTravelTime>
+) {
+    let total_experienced_tt: f64 = experienced_tts
+        .par_iter()
+        .map(|&tt| <f64 as From<SumoTravelTime>>::from(tt))
+        .sum();
+
+    println!("Total experienced travel time: {:.6} seconds", total_experienced_tt);
+}
+
+fn print_highest_differences(
+    best_tts: &Vec<SumoTravelTime>,
+    experienced_tts: &Vec<SumoTravelTime>,
+    query_ids: &Vec<String>
+) {
+    let mut differences: Vec<(usize, f64)> = best_tts
+        .par_iter()
+        .enumerate()
+        .map(|(i, &best_tt)| {
+            let experienced_tt_f64: f64 = <f64 as From<SumoTravelTime>>::from(experienced_tts[i]);
+            let best_tt_f64: f64 = <f64 as From<SumoTravelTime>>::from(best_tt);
+            let diff = experienced_tt_f64 - best_tt_f64;
+            (i, diff)
+        })
+        .collect();
+
+    differences.par_sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+    println!("Top 20 highest differences between experienced and best travel times:");
+    for i in 0..20.min(differences.len()) {
+        let (index, diff) = differences[i];
+        if diff > EPSILON_TRAVEL_TIME {
+            println!(
+                "Query ID: {}, Difference: {:.6}, Best TT: {:.6}, Experienced TT: {:.6}",
+                query_ids[index],
+                diff,
+                <f64 as From<SumoTravelTime>>::from(best_tts[index]),
+                <f64 as From<SumoTravelTime>>::from(experienced_tts[index])
+            );
+        }
+    }
 }
