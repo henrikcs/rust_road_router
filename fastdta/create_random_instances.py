@@ -238,8 +238,8 @@ def generate_fastdta_parameters_csv(output_folder, instances):
     last_iter = 150
 
     with open(csv_file, 'w') as f:
-        # Write header
-        f.write("input_dir;prefix;trip_file_name;aggregation;convergence_deviation;convergence_relgap;last_iter;seed;samples;vdf\n")
+        # Writes the following values in each row:
+        # input_dir;prefix;trip_file_name;aggregation;convergence_deviation;convergence_relgap;last_iter;seed;samples;vdf
 
         # Write data for each instance and parameter combination
         for instance in instances:
@@ -267,8 +267,8 @@ def generate_runtime_experiment_csv(output_folder, instances):
     last_iter = 150
 
     with open(csv_file, 'w') as f:
-        # Write header
-        f.write("input_dir;prefix;trip_file_name;aggregation;convergence_deviation;convergence_relgap;last_iter;seed\n")
+        # Writes the following values in each row:
+        # input_dir;prefix;trip_file_name;aggregation;convergence_deviation;convergence_relgap;last_iter;seed
 
         # Write data for each instance and parameter combination
         for instance in instances:
