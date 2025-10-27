@@ -150,7 +150,7 @@ export LIBRARY_PATH=$LX/lib:$RL/lib:$NC/lib:$LIBRARY_PATH
 export CPATH=$RL/include:$NC/include:$LX/include
 export LD_LIBRARY_PATH=~/.local/libnsl1/lib64:~/.user_spack/environments/fast-dta/.spack-env/._view/"$P"/lib:$NC/lib:$LD_LIBRARY_PATH
 export SUMO_HOME=~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/sumo
-export PATH=$SUMO_HOME/tools/assign:$SUMO_HOME/bin:$PATH
+export PATH=$SUMO_HOME/bin:$PATH
 
 # --- Compile the project ---
 if [ "$release_type" = "debug" ]; then
