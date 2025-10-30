@@ -193,6 +193,13 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
                 --relative-gap "$convergence_relgap"
+                "--logit",
+                "--logitbeta",
+                "1.0",
+                "--logitgamma",
+                "1.0",
+                "--logittheta",
+                "1.0",
                 duarouter--weights.interpolate
                 duarouter--seed $seed
                 duarouter--precision 6
@@ -227,7 +234,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                     fastdta-preprocessor--input-prefix "$prefix"
                     fastdta-preprocessor--input-dir "$in_dir"
                     fastdta-router--seed $seed
-                    fastdta-router--vdf ptv
+                    fastdta-router--vdf bpr
                     fastdta-router--samples 0.1 
                     fastdta-router--samples 0.9
                 )
