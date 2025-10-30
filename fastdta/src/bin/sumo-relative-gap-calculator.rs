@@ -66,7 +66,7 @@ fn main() {
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
         let cch = get_cch(&temp_cch_dir, &graph);
         let customized_graph = customize(&cch, &graph);
-        let (paths, travel_times, _) = get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
+        let (best_paths, best_travel_times, _) = get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
         println!("Reading routes from file {}", routes_path.display());
@@ -78,7 +78,7 @@ fn main() {
             .enumerate()
             .map(|(i, id)| {
                 if let Some(v) = route_id_to_route.get(id) {
-                    let path: Vec<u32> = if let Some(route) = &v.route {
+                    let experienced_path: Vec<u32> = if let Some(route) = &v.route {
                         route
                             .edges
                             .split_ascii_whitespace()
@@ -94,9 +94,9 @@ fn main() {
                         panic!("No route found for vehicle id {}", id);
                     };
 
-                    let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &path);
+                    let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &experienced_path);
                     let experienced_time_f64: f64 = <FlWeight as Into<f64>>::into(experienced_time);
-                    let best_time_f64: f64 = <FlWeight as Into<f64>>::into(travel_times[i]);
+                    let best_time_f64: f64 = <FlWeight as Into<f64>>::into(best_travel_times[i]);
 
                     
                     if (experienced_time_f64 - best_time_f64) < -EPSILON_TRAVEL_TIME {
@@ -106,8 +106,8 @@ fn main() {
                             id,
                             experienced_time_f64,
                             best_time_f64,
-                            get_path_ids_from_indices(&edge_ids, &path),
-                            get_path_ids_from_indices(&edge_ids, &paths[i]),
+                            get_path_ids_from_indices(&edge_ids, &experienced_path),
+                            get_path_ids_from_indices(&edge_ids, &best_paths[i]),
                             v.depart
                         );
                     }
@@ -115,15 +115,15 @@ fn main() {
                     experienced_time.into()
                 } else {
                     // negative number will be ignored in the relative gap calculation.
-                    -1.0
+                    panic!("No route found for query id {}", id);
                 }
             })
             .collect();
 
-        let best_tt: Vec<SumoTravelTime> = travel_times.par_iter().map(|&tt| tt.into()).collect();
+        let best_tt: Vec<SumoTravelTime> = best_travel_times.par_iter().map(|&tt| tt.into()).collect();
 
         print_network_travel_time(&experienced_tt);
-        print_highest_differences(&best_tt, &experienced_tt, &query_ids);
+        print_highest_differences(&best_tt, &experienced_tt, &best_paths, &routes_document_root.vehicles, &query_ids,&edge_ids);
 
         let rel_gap = get_relative_gap(&best_tt, &experienced_tt);
 
@@ -194,7 +194,10 @@ fn print_network_travel_time(
 fn print_highest_differences(
     best_tts: &Vec<SumoTravelTime>,
     experienced_tts: &Vec<SumoTravelTime>,
-    query_ids: &Vec<String>
+    best_paths: &Vec<Vec<u32>>, 
+    vehicles: &Vec<Vehicle>,
+    query_ids: &Vec<String>,
+    edge_ids: &Vec<String>
 ) {
     let mut differences: Vec<(usize, f64)> = best_tts
         .par_iter()
@@ -214,11 +217,13 @@ fn print_highest_differences(
         let (index, diff) = differences[i];
         if diff > EPSILON_TRAVEL_TIME {
             println!(
-                "Query ID: {}, Difference: {:.6}, Best TT: {:.6}, Experienced TT: {:.6}",
+                "Query ID: {}, Difference: {:.6}, \nBest TT: {:.6}, \nPath: {}\n Experienced TT: {:.6}, \nPath: {}",
                 query_ids[index],
                 diff,
                 <f64 as From<SumoTravelTime>>::from(best_tts[index]),
-                <f64 as From<SumoTravelTime>>::from(experienced_tts[index])
+                get_path_ids_from_indices(edge_ids, &best_paths[index]).join(" "),
+                <f64 as From<SumoTravelTime>>::from(experienced_tts[index]),
+                vehicles[index].route.as_ref().map_or(String::from("No route"), |r| r.edges.clone())
             );
         }
     }
