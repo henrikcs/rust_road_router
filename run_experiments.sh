@@ -193,13 +193,13 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
                 --relative-gap "$convergence_relgap"
-                "--logit",
-                "--logitbeta",
-                "1.0",
-                "--logitgamma",
-                "1.0",
-                "--logittheta",
-                "1.0",
+                --logit
+                --logitbeta
+                1.0
+                --logitgamma
+                1.0
+                --logittheta
+                1.0
                 duarouter--weights.interpolate
                 duarouter--seed $seed
                 duarouter--precision 6
