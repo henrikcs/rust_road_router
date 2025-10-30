@@ -15,7 +15,7 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        FileReader, RoutingKitTDGraph, SumoTravelTime, CON_XML, EDG_XML, NOD_XML,
+        FileReader, RoutingKitTDGraph, SumoTravelTime, CON_XML, EDG_XML, NOD_XML, VEH_LENGTH,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
     FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE,
@@ -367,7 +367,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
 
         let length = edge.get_length((from_node.x, from_node.y), (to_node.x, to_node.y));
 
-        let weight = length / edge.get_speed();
+        let weight = f64::max(length - 2.0 * VEH_LENGTH, 0.0) / edge.get_speed();
 
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;

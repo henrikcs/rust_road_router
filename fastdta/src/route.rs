@@ -110,10 +110,6 @@ pub fn get_paths_by_samples(
     //   find shortest routes for the sampled trips
     //   customize the graph with the shortest routes using the density on the edges during a time window
 
-    // there should be two samples:
-    // 1. every 10th query
-    // 2. the remaining queries
-
     let mut shortest_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()]; // Vec::with_capacity(query_data.0.len());
     let mut travel_times = vec![FlWeight::INVALID; query_data.0.len()];
     let mut departures = vec![0; query_data.0.len()];
@@ -168,10 +164,14 @@ pub fn get_paths_by_samples(
                     if *delta == 0.0 {
                         continue;
                     }
-                    let period = interval.end - interval.begin;
+                    let interval_begin = interval.begin;
+                    let interval_end = interval.end;
+                    let period = interval_end - interval_begin;
                     let edge_name = &edge_ids[edge_id];
                     if let Some(edge) = interval.get_edge(edge_name) {
                         // keep sampled_seconds >= 0
+                        let previous_flow = edge.get_traffic_volume(period);
+                        let free_flow_tt = default_travel_times[edge_id] as f64 / 1000.0;
                         edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + *delta, 0.0));
 
                         let vdf: Box<dyn VDF> = match &vdf {
@@ -179,11 +179,26 @@ pub fn get_paths_by_samples(
                             VDFType::Bpr => Box::from(Bpr::create(0.15, 4.0)),
                         };
 
-                        edge.traveltime = Some(vdf.travel_time(
-                            edge.get_traffic_volume(period),
-                            edge_capas[edge_id],
-                            default_travel_times[edge_id] as f64 / 1000.0,
-                        ));
+                        let previous_tt = edge.traveltime.unwrap_or(free_flow_tt);
+
+                        edge.traveltime =
+                            Some(vdf.travel_time_estimation(previous_flow, previous_tt, edge.get_traffic_volume(period), edge_capas[edge_id], free_flow_tt));
+
+                        if edge_name == "a" || edge_name == "b" {
+                            println!(
+                                "Edge {} (capa: {}): tt updated from {:?} to {:?} (freeflow: {}) in interval {}-{}",
+                                edge_name, edge_capas[edge_id], previous_tt, edge.traveltime, free_flow_tt, interval_begin, interval_end
+                            );
+                            println!(
+                                "Edge {} (capa: {}): flow updated from {:?} to {:?} in interval {}-{}",
+                                edge_name,
+                                edge_capas[edge_id],
+                                previous_flow,
+                                edge.get_traffic_volume(period),
+                                interval_begin,
+                                interval_end
+                            );
+                        }
                     }
                 }
             }
