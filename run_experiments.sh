@@ -206,7 +206,6 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
                 sumo--seed $seed
-                sumo--default.speeddev 0
                 sumo--precision 6
                 relative-gap--net-prefix "$prefix"
                 relative-gap--net-dir "$in_dir"
@@ -236,7 +235,9 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                     fastdta-router--seed $seed
                     fastdta-router--vdf bpr
                     fastdta-router--samples 0.1 
-                    fastdta-router--samples 0.9
+                    fastdta-router--samples 0.2
+                    fastdta-router--samples 0.3
+                    fastdta-router--samples 0.4
                 )
             fi
 
