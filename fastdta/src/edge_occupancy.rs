@@ -88,9 +88,10 @@ fn process_path<G: TravelTimeGraph>(
             }
         }) {
             Ok(idx) => idx,
-            Err(idx) => {
-                println!("Binary search for current_time {} returned Err({})", f64::from(current_time), idx);
-                0
+            Err(_) => {
+                // no more periods to process
+                // println!("Binary search for current_time {} returned Err({})", f64::from(current_time), idx);
+                return;
             }
         };
 
@@ -117,17 +118,17 @@ fn process_path<G: TravelTimeGraph>(
             if overlap_duration > 0.0 {
                 edge_occupancy_deltas[bin_search_res + period_idx][edge_id as usize] += sign * overlap_duration;
 
-                if period_start == 300.0 && (edge_id == 6 || edge_id == 8) {
-                    // println!(
-                    //     "Edge ID: {}, Period: {}-{}, Overlap: {}, Sign: {}, Updated Delta: {}",
-                    //     edge_id,
-                    //     period_start,
-                    //     period_end,
-                    //     overlap_duration,
-                    //     sign,
-                    //     edge_occupancy_deltas[bin_search_res + period_idx][edge_id as usize]
-                    // );
-                }
+                // if period_start == 300.0 && (edge_id == 6 || edge_id == 8) {
+                //     println!(
+                //         "Edge ID: {}, Period: {}-{}, Overlap: {}, Sign: {}, Updated Delta: {}",
+                //         edge_id,
+                //         period_start,
+                //         period_end,
+                //         overlap_duration,
+                //         sign,
+                //         edge_occupancy_deltas[bin_search_res + period_idx][edge_id as usize]
+                //     );
+                // }
             }
             // Move to the next period boundary for the next iteration
             current_time = Timestamp::new(overlap_end);
