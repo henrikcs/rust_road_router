@@ -26,6 +26,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ((edge_ids, query_data, mut meandata, old_paths), duration) = measure(|| get_graph_data_for_fast_dta(input_dir, iteration));
     logger.log("preprocessing", duration.as_nanos());
 
+    // let dbg_veh_id = 871;
+    // println!(
+    //     "Old path of veh with ID {} (dep: {:?}): {:?}",
+    //     dbg_veh_id,
+    //     query_data.2.get(dbg_veh_id as usize),
+    //     old_paths.get(dbg_veh_id as usize)
+    // );
+
     let (samples, duration) = measure(|| sample(&samples, query_data.0.len(), args.router_args.seed.unwrap_or(rand::random::<i32>())));
     logger.log("sample", duration.as_nanos());
 

@@ -8,14 +8,24 @@ pub enum VDFType {
 pub trait VDF {
     fn travel_time(&self, flow: f64, capacity: f64, free_flow_time: f64) -> f64;
 
-    fn travel_time_estimation(&self, previous_flow: f64, previous_tt: f64, flow: f64, capacity: f64, free_flow_time: f64) -> f64 {
+    fn travel_time_estimation(&self, _previous_flow: f64, _previous_tt: f64, flow: f64, capacity: f64, free_flow_time: f64) -> f64 {
         if capacity == 0.0 {
             return f64::INFINITY;
         }
-        // Simple linear interpolation based on flow change
-        let flow_change = flow - previous_flow;
-        let tt_change = self.travel_time(flow, capacity, free_flow_time) - previous_tt;
-        previous_tt + (tt_change * (flow_change / previous_flow.max(1.0)))
+
+        let estimated_tt = self.travel_time(flow, capacity, free_flow_time);
+
+        // println!(
+        //     "Estimating travel time: flow = {}, capacity = {}, free_flow_time = {}, tt = {}",
+        //     flow, capacity, free_flow_time, estimated_tt
+        // );
+
+        // println!(
+        //     "Previous travel time: flow = {}, capacity = {}, free_flow_time = {}, tt = {}",
+        //     previous_flow, capacity, free_flow_time, previous_tt
+        // );
+
+        estimated_tt
     }
 }
 /// BPR (Bureau of Public Roads) VDF implementation

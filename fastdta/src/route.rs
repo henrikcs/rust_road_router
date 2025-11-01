@@ -1,8 +1,7 @@
 use std::path::Path;
 
 use conversion::{
-    DIR_DTA, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME,
-    FILE_IPP_TRAVEL_TIME, SerializedTimestamp, SerializedTravelTime,
+    DIR_DTA, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, SerializedTimestamp, SerializedTravelTime,
     sumo::{
         FileReader,
         meandata::MeandataDocumentRoot,
@@ -14,7 +13,7 @@ use conversion::{
 use rust_road_router::{
     algo::catchup::{Server, customize},
     datastr::graph::floating_time_dependent::Timestamp,
-    io::{Reconstruct, Store},
+    io::Reconstruct,
 };
 use rust_road_router::{
     algo::customizable_contraction_hierarchy::CCH,
@@ -155,6 +154,8 @@ pub fn get_paths_by_samples(
 
         let deltas = get_edge_occupancy_deltas(&graph, &sampled_old_paths, &sampled_shortest_paths, &sampled_departures_seconds, &periods);
 
+        // println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);
+
         if let Some(meandata) = meandata {
             // iterate over itervals in meandata, then apply deltas to the edges
             // from sampled_shortest_paths in the interval using edge_map
@@ -169,9 +170,10 @@ pub fn get_paths_by_samples(
                     let period = interval_end - interval_begin;
                     let edge_name = &edge_ids[edge_id];
                     if let Some(edge) = interval.get_edge(edge_name) {
-                        // keep sampled_seconds >= 0
-                        let previous_flow = edge.get_traffic_volume(period);
+                        let previous_flow: f64 = edge.get_traffic_volume(period);
                         let free_flow_tt = default_travel_times[edge_id] as f64 / 1000.0;
+                        let previous_tt = edge.traveltime.unwrap_or(free_flow_tt);
+
                         edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + *delta, 0.0));
 
                         let vdf: Box<dyn VDF> = match &vdf {
@@ -179,26 +181,27 @@ pub fn get_paths_by_samples(
                             VDFType::Bpr => Box::from(Bpr::create(0.15, 4.0)),
                         };
 
-                        let previous_tt = edge.traveltime.unwrap_or(free_flow_tt);
+                        let new_flow = edge.get_traffic_volume(period);
 
-                        edge.traveltime =
-                            Some(vdf.travel_time_estimation(previous_flow, previous_tt, edge.get_traffic_volume(period), edge_capas[edge_id], free_flow_tt));
+                        // set capacity of edge
+                        let capacity = if previous_flow > 0.0 {
+                            estimate_capacity_bpr(previous_tt, previous_flow, free_flow_tt)
+                        } else {
+                            edge_capas[edge_id]
+                        };
 
-                        if edge_name == "a" || edge_name == "b" {
-                            println!(
-                                "Edge {} (capa: {}): tt updated from {:?} to {:?} (freeflow: {}) in interval {}-{}",
-                                edge_name, edge_capas[edge_id], previous_tt, edge.traveltime, free_flow_tt, interval_begin, interval_end
-                            );
-                            println!(
-                                "Edge {} (capa: {}): flow updated from {:?} to {:?} in interval {}-{}",
-                                edge_name,
-                                edge_capas[edge_id],
-                                previous_flow,
-                                edge.get_traffic_volume(period),
-                                interval_begin,
-                                interval_end
-                            );
-                        }
+                        edge.traveltime = Some(vdf.travel_time_estimation(previous_flow, previous_tt, new_flow, capacity, free_flow_tt));
+
+                        // if (edge_name == "a" || edge_name == "b") && i == 0 {
+                        //     println!(
+                        //         "Edge {} (capa: {}): tt updated from {:?} to {:?} (freeflow: {}) in interval {}-{}",
+                        //         edge_name, capacity, previous_tt, edge.traveltime, free_flow_tt, interval_begin, interval_end
+                        //     );
+                        //     println!(
+                        //         "Edge {} (capa: {}): flow updated from {:?} to {:?} in interval {}-{}",
+                        //         edge_name, capacity, previous_flow, new_flow, interval_begin, interval_end
+                        //     );
+                        // }
                     }
                 }
             }
@@ -206,13 +209,28 @@ pub fn get_paths_by_samples(
             let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
                 extract_interpolation_points_from_meandata(&meandata, &edge_ids, default_travel_times);
 
-            first_ipp_of_arc.write_to(&input_dir.join(FILE_FIRST_IPP_OF_ARC)).unwrap();
-            ipp_travel_time.write_to(&input_dir.join(FILE_IPP_TRAVEL_TIME)).unwrap();
-            ipp_departure_time.write_to(&input_dir.join(FILE_IPP_DEPARTURE_TIME)).unwrap();
+            graph = TDGraph::new(
+                Vec::from(graph.first_out()),
+                Vec::from(graph.head()),
+                first_ipp_of_arc,
+                ipp_departure_time,
+                ipp_travel_time,
+            );
         }
-
-        graph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
     }
 
     (graph, shortest_paths, travel_times, departures)
+}
+
+fn estimate_capacity_bpr(previous_tt: f64, previous_flow: f64, free_flow_tt: f64) -> f64 {
+    if previous_tt <= free_flow_tt {
+        return f64::INFINITY;
+    }
+
+    let alpha = 0.15;
+    let beta = 4.0;
+
+    let capacity = previous_flow * (free_flow_tt / ((previous_tt - free_flow_tt) * alpha)).powf(-1.0 / beta);
+
+    capacity
 }

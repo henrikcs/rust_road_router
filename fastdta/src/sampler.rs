@@ -6,8 +6,6 @@ pub fn sample(sample_relative_sizes: &Vec<f64>, n: usize, seed: i32) -> Vec<Vec<
     let mut samples: Vec<Vec<usize>> = Vec::new();
     let total_relative_size: f64 = sample_relative_sizes.iter().sum();
 
-    println!("Using samples {:?}", sample_relative_sizes);
-
     for (i, &relative_size) in sample_relative_sizes.iter().enumerate() {
         // For the last sample, take all remaining indices to avoid rounding errors
         let sample_size = if i == sample_relative_sizes.len() - 1 {
@@ -16,9 +14,18 @@ pub fn sample(sample_relative_sizes: &Vec<f64>, n: usize, seed: i32) -> Vec<Vec<
             usize::min(((relative_size / total_relative_size) * (n as f64)).round() as usize, remaining_indices.len())
         };
 
+        // let sample: Vec<usize> = if i == 0 {
+        //     vec![871]
+        // } else {
         let sample: Vec<usize> = remaining_indices.choose_multiple(&mut rng, sample_size).cloned().collect();
+        // };
 
         // Remove sampled indices from remaining_indices
+
+        // if relative_size == 1.0 {
+        //     println!("Sample contains {:?} ", sample);
+        // }
+
         samples.push(sample.clone());
         remaining_indices.retain(|index| !sample.contains(index));
     }
