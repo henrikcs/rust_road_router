@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2025-10-23 18:15:42 by Eclipse SUMO netconvert Version 1.24.0
+<netconvertConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <sumo-net-file value="/nfs/work/hcsoere/fast-dta/input/random/instance_1/1_n463_t36824.net.xml"/>
+    </input>
+
+    <output>
+        <plain-output-prefix value="/nfs/work/hcsoere/fast-dta/input/random/instance_1/1_n463_t36824"/>
+    </output>
+
+    <processing>
+        <geometry.min-radius.fix.railways value="false"/>
+        <geometry.avoid-overlap value="false"/>
+        <geometry.max-grade.fix value="false"/>
+        <offset.disable-normalization value="true"/>
+        <lefthand value="0"/>
+    </processing>
+
+    <junctions>
+        <no-turnarounds value="true"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.50"/>
+        <rectangular-lane-cut value="0"/>
+    </junctions>
+
+    <pedestrian>
+        <walkingareas value="0"/>
+    </pedestrian>
+
+</netconvertConfiguration>
+-->
+
+<nodes version="1.20" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/nodes_file.xsd">
+    <location netOffset="0.00,0.00" convBoundary="0.00,0.00,3600.00,3600.00"
+        origBoundary="0.00,0.00,3600.00,3600.00" projParameter="!" />
+
+    <node id="s1" x="0" y="0" type="priority" />
+    <node id="s2" x="500" y="500" type="priority" />
+    <node id="sab" x="500" y="0" type="priority" />
+    <node id="abt" x="1000" y="0" type="priority" />
+    <node id="t" x="1500" y="0" type="priority" />
+
+</nodes>

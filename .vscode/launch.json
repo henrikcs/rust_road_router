@@ -95,6 +95,31 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Debug FastDTA Router (capa)",
+      "program": "${workspaceFolder}/target/debug/sumo-fastdta-router",
+      "args": [
+        "--input-dir",
+        "./data/imported/sumo/capa-fast-dta",
+        "--input-prefix",
+        "capa",
+        "--iteration",
+        "0",
+        "--vdf",
+        "bpr",
+        "--samples",
+        "1",
+        "--samples",
+        "1999"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
+      },
+      "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Debug Router (Iteration 1)",
       "program": "${workspaceFolder}/target/debug/sumo-tdcch-router",
       "args": [
