@@ -1,31 +1,21 @@
-use std::{collections::HashMap, fs::remove_dir_all, path::Path};
+use std::{fs::remove_dir_all, path::Path};
 
 use clap::Parser;
-use conversion::{
-    FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
-    sumo::{
-        EDG_XML, FileReader, FileWriter,
-        edges_reader::SumoEdgesReader,
-        sumo_to_td_graph_converter::{
-            convert_sumo_to_routing_kit_and_queries, get_queries_from_trips, get_routing_kit_td_graph_from_sumo,
-            read_nodes_edges_and_connections_from_plain_xml,
-        },
-        trips::{Trip, TripsDocumentRoot},
-        trips_reader::MatsimCsvTripsReader,
-        trips_writer::SumoTripsWriter,
-    },
+use conversion::sumo::{
+    EDG_XML, FileReader, FileWriter,
+    edges_reader::SumoEdgesReader,
+    sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries,
+    trips::{Trip, TripsDocumentRoot},
+    trips_reader::MatsimCsvTripsReader,
+    trips_writer::SumoTripsWriter,
 };
 use fastdta::{
     customize::customize,
     preprocess::{get_cch, preprocess, run_inertial_flow_cutter},
-    query::{get_paths_with_cch, get_paths_with_cch_queries},
+    query::get_paths_with_cch,
 };
 
-use rust_road_router::{
-    algo::catchup::Server,
-    datastr::graph::floating_time_dependent::TDGraph,
-    io::{Reconstruct, read_strings_from_file},
-};
+use rust_road_router::{algo::catchup::Server, datastr::graph::floating_time_dependent::TDGraph, io::Reconstruct};
 /// Given an xml file containing sumo edges <edges>, converts a matsim csv file <trips> to a SUMO trip file with the name <output>
 /// <trips> should contain the following headers:
 /// tripId, legId, tripBeginTime, locationFrom, locationTo
@@ -34,6 +24,7 @@ use rust_road_router::{
 /// <trip id="<tripId>-<legId>" depart="<convert_to_seconds_since_midnight(<tripBeginTime>)>" from="<parse_location(<locationFrom>)>" to="<parse_location(<locationTo>)>" departLane="best" departSpeed="max" departPos="base"/>
 /// ...
 /// </routes>
+///
 fn main() {
     let args = Args::parse();
 
@@ -74,8 +65,11 @@ fn main() {
 
     let temp_dir_name = "tmp";
     let temp_cch_dir = output_path.join(temp_dir_name);
-    let temp_trips_file = output_path.join(format!("temp_{}{}", input_prefix, conversion::sumo::TRIPS_XML));
+    let temp_trips_file = temp_cch_dir.join(format!("temp_{}{}", input_prefix, conversion::sumo::TRIPS_XML));
 
+    std::fs::create_dir_all(&temp_cch_dir).expect(format!("Failed to create temporary CCH directory {}", temp_cch_dir.display()).as_str());
+
+    println!("Writing temporary SUMO trips file...");
     // output the results as a trips file
     SumoTripsWriter::write(&temp_trips_file, &unchecked_sumo_trips_document_root).expect("Failed to write trips");
 
