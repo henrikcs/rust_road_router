@@ -3,6 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::sumo::ROUTES;
+
 /// trips_file has the following format: "<name>[.trips].xml"
 /// the routes file in iteration <iteration> should have the following name:
 /// "<name>_<iteration>.rou.xml"
@@ -13,7 +15,7 @@ pub fn get_routes_file_name_in_iteration(trips_file: &Path, iteration: u32) -> S
     } else {
         file_stem
     };
-    let routes_file_name = format!("{}_{}.rou.xml", file_stem, format!("{:0>3}", iteration));
+    let routes_file_name = format!("{}_{}{}", file_stem, format!("{:0>3}", iteration), ROUTES);
     routes_file_name
 }
 
