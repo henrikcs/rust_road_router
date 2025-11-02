@@ -1,17 +1,31 @@
-use std::path::Path;
+use std::{collections::HashMap, fs::remove_dir_all, path::Path};
 
 use clap::Parser;
-use conversion::sumo::{
-    EDG_XML, FileReader, FileWriter,
-    edges_reader::SumoEdgesReader,
-    sumo_to_td_graph_converter::{get_queries_from_trips, get_routing_kit_td_graph_from_sumo, read_nodes_edges_and_connections_from_plain_xml},
-    trips::{Trip, TripsDocumentRoot},
-    trips_reader::MatsimCsvTripsReader,
-    trips_writer::SumoTripsWriter,
+use conversion::{
+    FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
+    sumo::{
+        EDG_XML, FileReader, FileWriter,
+        edges_reader::SumoEdgesReader,
+        sumo_to_td_graph_converter::{
+            convert_sumo_to_routing_kit_and_queries, get_queries_from_trips, get_routing_kit_td_graph_from_sumo,
+            read_nodes_edges_and_connections_from_plain_xml,
+        },
+        trips::{Trip, TripsDocumentRoot},
+        trips_reader::MatsimCsvTripsReader,
+        trips_writer::SumoTripsWriter,
+    },
 };
-use fastdta::query::get_paths_with_dijkstra_queries;
+use fastdta::{
+    customize::customize,
+    preprocess::{get_cch, preprocess, run_inertial_flow_cutter},
+    query::{get_paths_with_cch, get_paths_with_cch_queries},
+};
 
-use rust_road_router::{algo::dijkstra::query::floating_td_dijkstra::Server, datastr::graph::floating_time_dependent::TDGraph};
+use rust_road_router::{
+    algo::catchup::Server,
+    datastr::graph::floating_time_dependent::TDGraph,
+    io::{Reconstruct, read_strings_from_file},
+};
 /// Given an xml file containing sumo edges <edges>, converts a matsim csv file <trips> to a SUMO trip file with the name <output>
 /// <trips> should contain the following headers:
 /// tripId, legId, tripBeginTime, locationFrom, locationTo
@@ -29,17 +43,22 @@ fn main() {
     let trips_path = Path::new(&args.trips);
     let output_path = Path::new(&args.output);
 
+    println!("Reading edges from: {}", edges_path.display());
     let edges = SumoEdgesReader::read(&edges_path).expect("Failed to read edges");
 
+    println!("Reading trips from: {}", trips_path.display());
     // read trips from csv file
     let mut trips = MatsimCsvTripsReader::read(&trips_path).expect("Failed to read trips");
     // sort trips by departure time
 
+    println!("Sorting trips by departure time...");
     trips.sort_by_key(|trip| trip.trip_begin_time.clone());
+    let input_trips_count = trips.len();
 
     // create a hashset of edge IDs for quick lookup
     let edge_ids: std::collections::HashSet<&String> = edges.edges.iter().map(|edge| &edge.id).collect();
 
+    println!("Filtering trips to only include those with valid edges...");
     // filter trips to only include those with valid edges
     let unchecked_sumo_trips: Vec<Trip> = trips
         .iter()
@@ -47,29 +66,36 @@ fn main() {
         .filter(|trip| edge_ids.contains(&trip.from) && edge_ids.contains(&trip.to))
         .collect();
 
-    let trips_count = trips.len();
-
-    // filter trips which can be routed on the graph
     let unchecked_sumo_trips_document_root = TripsDocumentRoot {
         trips: unchecked_sumo_trips.clone(),
     };
 
-    let (nodes, edges, connections) = read_nodes_edges_and_connections_from_plain_xml(input_dir, input_prefix);
-    let (graph, _, edge_ids_to_index, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
-    let query_data = get_queries_from_trips(&unchecked_sumo_trips_document_root, &edge_ids_to_index);
+    println!("Preprocessing graph for filtering trips which can be routed on the graph...");
 
-    let graph = TDGraph::new(graph.0, graph.1, graph.2, graph.3, graph.4);
+    let temp_dir_name = "tmp";
+    let temp_cch_dir = output_path.join(temp_dir_name);
+    let temp_trips_file = output_path.join(format!("temp_{}{}", input_prefix, conversion::sumo::TRIPS_XML));
 
-    let (shortest_paths, _, _) = get_paths_with_dijkstra_queries(
-        &mut Server::new(graph.clone()),
-        &query_data.1,
-        &query_data.2,
-        &query_data.3,
-        &query_data.4,
-        &query_data.5,
-        &graph,
-    );
+    // output the results as a trips file
+    SumoTripsWriter::write(&temp_trips_file, &unchecked_sumo_trips_document_root).expect("Failed to write trips");
 
+    convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &temp_trips_file, &temp_cch_dir).unwrap();
+
+    // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
+    run_inertial_flow_cutter(&temp_cch_dir, 42, std::thread::available_parallelism().unwrap().get() as i32).unwrap();
+
+    // run catchup preprocessing
+    preprocess(&temp_cch_dir).unwrap();
+
+    let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
+    let cch = get_cch(&temp_cch_dir, &graph);
+    let customized_graph = customize(&cch, &graph);
+
+    println!("Calculating paths...");
+    let (shortest_paths, _, _) = get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
+
+    // filter trips which can be routed on the graph
+    println!("Filter trips according to paths...");
     // filter out trips which do not have a path (shortest path is empty)
     let filtered_trips: Vec<Trip> = unchecked_sumo_trips
         .into_iter()
@@ -78,15 +104,19 @@ fn main() {
         .map(|(trip, _)| trip)
         .collect();
 
+    // remove the temporary CCH directory
+    remove_dir_all(&temp_cch_dir).unwrap();
+
     let filtered_count = filtered_trips.len();
 
-    println!("Filtered {} trips to {} valid trips", trips_count, filtered_count);
+    println!("Filtered {} trips to {} valid trips", input_trips_count, filtered_count);
 
     // create a TripsDocumentRoot from the filtered trips
     let trips = conversion::sumo::trips::TripsDocumentRoot { trips: filtered_trips };
 
     // output the results as a trips file
     SumoTripsWriter::write(output_path, &trips).expect("Failed to write trips");
+    println!("Wrote filtered trips to: {}", output_path.display());
 }
 
 /// Command-line arguments for counting connections and whether they are complete or not
