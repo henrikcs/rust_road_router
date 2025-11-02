@@ -2,7 +2,7 @@ use std::{fs::remove_dir_all, path::Path};
 
 use clap::Parser;
 use conversion::sumo::{
-    EDG_XML, FileReader, FileWriter,
+    EDG_XML, FileReader, FileWriter, TRIPS_XML,
     edges_reader::SumoEdgesReader,
     sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries,
     trips::{Trip, TripsDocumentRoot},
@@ -33,6 +33,7 @@ fn main() {
     let edges_path = input_dir.join(format!("{}{}", &input_prefix, EDG_XML));
     let trips_path = Path::new(&args.trips);
     let output_path = Path::new(&args.output);
+    let output_trips_file = output_path.join(format!("{}{}", &input_prefix, TRIPS_XML));
 
     println!("Reading edges from: {}", edges_path.display());
     let edges = SumoEdgesReader::read(&edges_path).expect("Failed to read edges");
@@ -109,8 +110,8 @@ fn main() {
     let trips = conversion::sumo::trips::TripsDocumentRoot { trips: filtered_trips };
 
     // output the results as a trips file
-    SumoTripsWriter::write(output_path, &trips).expect("Failed to write trips");
-    println!("Wrote filtered trips to: {}", output_path.display());
+    SumoTripsWriter::write(&output_trips_file, &trips).expect("Failed to write trips");
+    println!("Wrote filtered trips to: {}", output_trips_file.display());
 }
 
 /// Command-line arguments for counting connections and whether they are complete or not
@@ -129,6 +130,7 @@ pub struct Args {
     #[arg(long = "trips")]
     pub trips: String,
 
+    // path where <prefix>.trips.xml will be written
     #[arg(long = "output")]
     pub output: String,
 }
