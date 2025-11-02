@@ -20,7 +20,10 @@ fn main() {
     let edges = SumoEdgesReader::read(edges_path).expect("Failed to read edges");
 
     // read trips from csv file
-    let trips = MatsimCsvTripsReader::read(trips_path).expect("Failed to read trips");
+    let mut trips = MatsimCsvTripsReader::read(trips_path).expect("Failed to read trips");
+    // sort trips by departure time
+
+    trips.sort_by_key(|trip| trip.trip_begin_time.clone());
 
     // create a hashset of edge IDs for quick lookup
     let edge_ids: std::collections::HashSet<&String> = edges.edges.iter().map(|edge| &edge.id).collect();
