@@ -98,7 +98,7 @@ pub struct Args {
     pub input: String,
 
     /// Name of the *.<type>.xml files of the sumo inputs, such as <prefix>.nod.xml and <prefix>.edg.xml inside the inputs directory
-    #[arg(long = "edges")]
+    #[arg(long = "input-prefix")]
     pub input_prefix: String,
 
     /// path to the matsim csv trips file
