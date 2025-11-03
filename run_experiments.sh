@@ -193,6 +193,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -l $last_iter
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
+                --relative-gap "$convergence_relgap"
                 --logit
                 --logitbeta
                 1.0
@@ -208,6 +209,8 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 sumo--seed $seed
                 sumo--precision 9
                 sumo--threads $(nproc)
+                relative-gap--net-prefix "$prefix"
+                relative-gap--net-dir "$in_dir"
             )
 
             # Add preprocessor args only for CCH
