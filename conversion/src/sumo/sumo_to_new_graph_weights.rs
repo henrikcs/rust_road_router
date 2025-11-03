@@ -105,10 +105,10 @@ fn preprocess_tt<'a>(
                 let mut tt = edge_tts
                     .get(&timestamp)
                     .and_then(|edge| edge.traveltime)
-                    .map(|val| (val * 1000.0) as SerializedTravelTime)
+                    // should not go lower than the default travel time
+                    .map(|val| (u32::max((val * 1000.0) as u32, default_travel_time)) as SerializedTravelTime)
                     .unwrap_or(default_travel_time);
 
-                // TODO: this also needs to be periodic, ie. the first and the last interval should have the same tt
                 if interval_index == 0 {
                     // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
                     // this ensures the fifo property for the travel time in the last interval
