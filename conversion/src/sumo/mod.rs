@@ -41,7 +41,7 @@ pub type SumoTimestamp = f64;
 pub type SumoPosition = f64;
 
 // in seconds
-pub const DEPARTURE_OFFSET: f64 = 100_000.0;
+pub const DEPARTURE_OFFSET: f64 = 100.0;
 // in seconds
 pub const SUMO_COOLDOWN: f64 = 100_000.0;
 // in seconds

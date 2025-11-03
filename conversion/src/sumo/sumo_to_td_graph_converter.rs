@@ -367,7 +367,8 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
 
         let length = edge.get_length((from_node.x, from_node.y), (to_node.x, to_node.y));
 
-        let weight = f64::max(length - 2.0 * VEH_LENGTH, 0.0) / edge.get_speed();
+        // vehicles are set to drive at 110% of the speed limit if the edge is empty
+        let weight = f64::max(length - 2.0 * VEH_LENGTH, 0.0) / (edge.get_speed() * 1.1);
 
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;

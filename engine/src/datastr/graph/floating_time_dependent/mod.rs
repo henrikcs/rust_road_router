@@ -338,11 +338,11 @@ pub fn period() -> Timestamp {
 }
 
 /// Travel time functions are periodic. This value is the wraparound value.
-/// Hardcoded to `86400s`, that is 1 day.
+/// Hardcoded to `86400s`, that is 1 day plus the cooldown perdiod plus the prefix and suffix as departure offset for periodicity.
 #[cfg(not(test))]
 #[inline]
 pub fn period() -> Timestamp {
-    Timestamp::new(86_400.0 + 2.0 * 100_000.0 + 100_000.0)
+    Timestamp::new(86_400.0 + 2.0 * 100.0 + 100_000.0)
 }
 
 use std::sync::atomic::{AtomicIsize, AtomicUsize};
