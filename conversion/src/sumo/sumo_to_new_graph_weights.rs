@@ -134,7 +134,7 @@ fn preprocess_tt<'a>(
                 match interval_index {
                     0 => {
                         // suffix interval, set travel time to 0
-                        tt = 1;
+                        tt = 0;
                     }
                     1 => {
                         // cooldown interval, set travel time to sumo's last interval time
@@ -161,7 +161,7 @@ fn preprocess_tt<'a>(
                     }
                     i if i == meandata.intervals.len() - 1 => {
                         // prefix interval, set travel time to 0
-                        tt = 1;
+                        tt = 0;
                     }
                     _ => {
                         // Enforce FIFO condition if there is a next interval
@@ -232,17 +232,17 @@ fn get_ipp_vectors(
 pub mod tests {
     use rust_road_router::datastr::graph::floating_time_dependent::TDGraph;
 
-    use crate::sumo::meandata;
+    use crate::sumo::{meandata, sumo_to_new_graph_weights::adapt_intervals_for_periodicity, DEPARTURE_OFFSET, SUMO_COOLDOWN, SUMO_PERIOD};
 
     #[test]
     fn test_extract_interpolation_points_from_meandata() {
         let edges: Vec<String> = vec!["edge1".to_string(), "edge2".to_string()];
         let edge_default_travel_times: Vec<u32> = vec![5_000, 3_000];
 
-        let meandata = meandata::MeandataDocumentRoot {
+        let mut meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
                 meandata::Interval::create(
-                    "interval1".to_string(),
+                    "interval2".to_string(),
                     0.0,
                     10.0,
                     vec![
@@ -259,7 +259,7 @@ pub mod tests {
                     ],
                 ),
                 meandata::Interval::create(
-                    "interval2".to_string(),
+                    "interval3".to_string(),
                     10.0,
                     20.0,
                     vec![meandata::Edge {
@@ -271,24 +271,44 @@ pub mod tests {
             ],
         };
 
-        // should have 2 edges, each having 2 intervals. So we expect 4 interpolation points:
-        // 1. edge1, interval1: 4.0
-        // 2. edge2, interval1: 3.0 (default travel time)
-        // 3. edge1, interval2: 6.0
-        // 4. edge2, interval2: 3.0 (default travel time)
+        adapt_intervals_for_periodicity(&mut meandata);
+
+        // should have 2 edges, each having 5 intervals. So we expect 10 interpolation points:
+        // edge1, interval1: 0.0 (prefix)
+        // edge1, interval2: 4.0
+        // edge1, interval3: 6.0
+        // edge1, interval4: 6.0 (cooldown)
+        // edge1, interval5: 0.0 (suffix)
+        // edge2, interval1: 0.0 (prefix)
+        // edge2, interval2: 3.0 (default travel time)
+        // edge2, interval2: 3.0 (default travel time)
+        // edge2, interval4: 3.0 (cooldown)
+        // edge2, interval5: 0.0 (suffix)
         let expected = (
-            vec![0, 2, 4], // first_ipp_of_arc
+            vec![0, 5, 10], // first_ipp_of_arc
             vec![
-                4_000, // edge1, interval1
-                6_000, // edge1, interval2
-                3_000, // edge2, interval1 (default travel time)
+                0_000, // edge1, interval1 (prefix)
+                4_000, // edge1, interval2
+                6_000, // edge1, interval3
+                5_000, // edge1, interval4 (cooldown)
+                0_000, // edge1, interval5 (suffix)
+                0_000, // edge2, interval1 (prefix)
                 3_000, // edge2, interval2 (default travel time)
+                3_000, // edge2, interval3 (default travel time)
+                3_000, // edge2, interval4 (cooldown)
+                0_000, // edge2, interval5 (suffix)
             ],
             vec![
-                0_000,  // edge1, interval1
-                10_000, // edge1, interval2
-                0_000,  // edge2, interval1 (default travel time)
-                10_000, // edge2, interval2 (default travel time)
+                0_000,                                                                                    // edge1, interval1
+                DEPARTURE_OFFSET as u32 * 1000,                                                           // edge1, interval2
+                DEPARTURE_OFFSET as u32 * 1000 + 10_000,                                                  // edge1, interval3
+                DEPARTURE_OFFSET as u32 * 1000 + SUMO_PERIOD as u32 * 1000,                               // edge1, interval4
+                DEPARTURE_OFFSET as u32 * 1000 + SUMO_PERIOD as u32 * 1000 + SUMO_COOLDOWN as u32 * 1000, // edge1, interval5
+                0_000,                                                                                    // edge1, interval1
+                DEPARTURE_OFFSET as u32 * 1000,                                                           // edge1, interval2
+                DEPARTURE_OFFSET as u32 * 1000 + 10_000,                                                  // edge1, interval3
+                DEPARTURE_OFFSET as u32 * 1000 + SUMO_PERIOD as u32 * 1000,                               // edge1, interval4
+                DEPARTURE_OFFSET as u32 * 1000 + SUMO_PERIOD as u32 * 1000 + SUMO_COOLDOWN as u32 * 1000, // edge1, interval5
             ],
         );
 
