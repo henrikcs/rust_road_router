@@ -113,9 +113,7 @@ fn preprocess_tt<'a>(
                     // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
                     // this ensures the fifo property for the travel time in the last interval
                     // since the time functions are periodic and wrap around
-                    let first_interval = meandata.intervals.first().unwrap();
                     let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
-                    let next_timestamp = (first_interval.begin * 1000.0) as SerializedTravelTime;
 
                     if interval_duration + default_travel_time < tt {
                         // If the next travel time is less than the current, we adjust the current travel time
@@ -123,7 +121,7 @@ fn preprocess_tt<'a>(
                             "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
                             edge_id,
                             timestamp,
-                            next_timestamp,
+                            0,
                             tt,
                             interval_duration,
                             default_travel_time,
