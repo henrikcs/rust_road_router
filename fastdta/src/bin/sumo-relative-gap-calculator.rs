@@ -71,13 +71,13 @@ fn main() {
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
         println!("Reading routes from file {}", routes_path.display());
         let routes_document_root = SumoRoutesReader::read(&routes_path).unwrap();
-        let route_id_to_route: HashMap<&String, &Vehicle> = routes_document_root.vehicles.iter().map(|v| (&v.id, v)).collect();
+        let vehicle_id_to_vehicle: HashMap<&String, &Vehicle> = routes_document_root.vehicles.iter().map(|v| (&v.id, v)).collect();
 
         let experienced_tt: Vec<SumoTravelTime> = query_ids
             .par_iter()
             .enumerate()
             .map(|(i, id)| {
-                if let Some(v) = route_id_to_route.get(id) {
+                if let Some(v) = vehicle_id_to_vehicle.get(id) {
                     let experienced_path: Vec<u32> = if let Some(route) = &v.route {
                         route
                             .edges
