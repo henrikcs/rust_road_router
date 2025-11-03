@@ -173,7 +173,13 @@ fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph
             distances.push(distance);
             departures.push(dep);
         } else {
-            println!("No path found from {} to {} at {dep:?}", queries_from[i], queries_to[i]);
+            println!(
+                "No path found from {} to {} at {dep:?} in query {}",
+                queries_original_from_edges[i], queries_original_to_edges[i], i
+            );
+            paths.push(vec![]);
+            distances.push(FlWeight::INFINITY);
+            departures.push(dep);
         }
     }
     // distances is in seconds

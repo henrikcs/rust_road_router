@@ -9,7 +9,7 @@ pub struct TripsDocumentRoot {
     pub trips: Vec<Trip>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Trip {
     #[serde(rename = "@id")]
     pub id: String,

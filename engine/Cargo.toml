@@ -7,11 +7,9 @@ build = "build.rs"
 
 [features]
 default = [
-    "tdcch-approx",
     "tdcch-precustomization",
     "tdcch-postcustomization",
     "tdcch-triangle-sorting",
-    "tdcch-query-astar",
     "tdcch-query-lazy",
 ]
 tdcch-disable-par = ["cch-disable-par"]

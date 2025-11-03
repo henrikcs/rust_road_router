@@ -46,6 +46,8 @@ pub const DEPARTURE_OFFSET: f64 = 100_000.0;
 pub const SUMO_COOLDOWN: f64 = 100_000.0;
 // in seconds
 pub const SUMO_PERIOD: f64 = 86_400.0;
+/// in meters
+pub const VEH_LENGTH: f64 = 4.5;
 
 /// Implicit time dependent graph representation defined by RoutingKit.
 /// This is a tuple of:

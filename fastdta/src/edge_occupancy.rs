@@ -62,7 +62,6 @@ impl TravelTimeGraph for TDGraph {
 }
 
 /// Process a single path and update edge occupancy deltas
-/// This function was extracted from the original closure to enable testing
 fn process_path<G: TravelTimeGraph>(
     graph: &G,
     path: &Vec<u32>,
@@ -71,16 +70,33 @@ fn process_path<G: TravelTimeGraph>(
     periods: &Vec<(f64, f64)>,
     edge_occupancy_deltas: &mut Vec<Vec<f64>>,
 ) {
+    let mut current_time = departure_time;
     for &edge_id in path {
-        let travel_time = graph.get_travel_time_along_path(departure_time, &[edge_id]);
-        let arrival_time = departure_time + travel_time;
+        let travel_time = graph.get_travel_time_along_path(current_time, &[edge_id]);
+        // dbg!(f64::from(travel_time));
+        // println!("Edge ID: {}, Travel Time: {:?}", edge_id, travel_time);
+        let arrival_time = current_time + travel_time;
+        // dbg!(arrival_time);
+        let bin_search_res = match periods.binary_search_by(|(start, end)| {
+            // if current time is between start and end: return equal:
+            if *start <= f64::from(current_time) && f64::from(current_time) < *end {
+                std::cmp::Ordering::Equal
+            } else if f64::from(current_time) < *start {
+                std::cmp::Ordering::Greater
+            } else {
+                std::cmp::Ordering::Less
+            }
+        }) {
+            Ok(idx) => idx,
+            Err(_) => {
+                // no more periods to process
+                // println!("Binary search for current_time {} returned Err({})", f64::from(current_time), idx);
+                return;
+            }
+        };
 
-        // Find which periods this edge's travel time overlaps
-        let mut current_time = departure_time;
-        let end_time = arrival_time;
-
-        for (period_idx, &(period_start, period_end)) in periods.iter().enumerate() {
-            if current_time >= end_time {
+        for (period_idx, &(period_start, period_end)) in periods.iter().skip(bin_search_res).enumerate() {
+            if current_time >= arrival_time {
                 break; // No more travel time to distribute
             }
 
@@ -90,21 +106,33 @@ fn process_path<G: TravelTimeGraph>(
             }
 
             // Skip periods that start after our travel ends
-            if period_start >= f64::from(end_time) {
+            if period_start >= f64::from(arrival_time) {
                 break;
             }
 
             // Calculate the overlap between travel time and this period
             let overlap_start = f64::from(current_time).max(period_start);
-            let overlap_end = f64::from(end_time).min(period_end);
+            let overlap_end = f64::from(arrival_time).min(period_end);
             let overlap_duration = overlap_end - overlap_start;
 
             if overlap_duration > 0.0 {
-                edge_occupancy_deltas[period_idx][edge_id as usize] += sign * overlap_duration;
-            }
+                edge_occupancy_deltas[bin_search_res + period_idx][edge_id as usize] += sign * overlap_duration;
 
+                // if period_start == 300.0 && (edge_id == 6 || edge_id == 8) {
+                //     println!(
+                //         "Edge ID: {}, Period: {}-{}, Overlap: {}, Sign: {}, Updated Delta: {}",
+                //         edge_id,
+                //         period_start,
+                //         period_end,
+                //         overlap_duration,
+                //         sign,
+                //         edge_occupancy_deltas[bin_search_res + period_idx][edge_id as usize]
+                //     );
+                // }
+            }
             // Move to the next period boundary for the next iteration
-            current_time = Timestamp::new(period_end);
+            current_time = Timestamp::new(overlap_end);
+            // dbg!(current_time);
         }
     }
 }

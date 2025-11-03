@@ -4,6 +4,7 @@ use std::path::Path;
 use clap::Parser;
 use conversion::sumo::sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries;
 use fastdta::cli;
+use fastdta::logger::Logger;
 use fastdta::preprocess::{preprocess, run_inertial_flow_cutter};
 use rust_road_router::report::measure;
 
@@ -21,22 +22,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let trips_file = Path::new(&args.trips_file);
     let output_dir = Path::new(&args.output_dir);
 
+    let logger = Logger::new("sumo-tdcch-preprocessor", &input_dir.display().to_string(), -1);
+
     let (_, duration) = measure(|| convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &trips_file, &output_dir));
-    log(&output_dir.display().to_string(), "preprocessing", duration.as_nanos());
+    logger.log("preprocessing", duration.as_nanos());
 
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
     let (_, duration) = measure(|| run_inertial_flow_cutter(&output_dir, args.seed, args.routing_threads));
-    log(&output_dir.display().to_string(), "inertial flow cutter", duration.as_nanos());
+    logger.log("inertial flow cutter", duration.as_nanos());
 
     // run catchup preprocessing
     let (_, duration) = measure(|| preprocess(&output_dir));
-    log(&output_dir.display().to_string(), "cch preprocessing", duration.as_nanos());
+    logger.log("cch preprocessing", duration.as_nanos());
 
     Ok(())
-}
-
-/// Logs the operation with the duration in nanoseconds within a certain iteration of certain run identified by identifier.
-/// The format is: "sumo-tdcch-preprocessor; <identifier>; <iteration>; <operation>; <duration_in_nanos>"
-fn log(identifier: &str, operation: &str, duration_in_nanos: u128) {
-    println!("sumo-tdcch-preprocessor; {}; -1; {}; {}", identifier, operation, duration_in_nanos);
 }

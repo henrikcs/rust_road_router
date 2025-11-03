@@ -686,40 +686,41 @@ def main(args=None):
 
     generateEdgedataAddFile(EDGEDATA_ADD, options)
 
-    # do a preprocessing step if CCH is used
-    # note that the rust libraries only support a single demand file as an input.
-    if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
-        tik = datetime.now()
-        print("> Preprocessing network for CCH")
-        print(">> Begin time: %s" % tik)
-        ret = call_binary(CCH_PREPROCESS_BINARY,
-                          cch_preprocessing_args + ["--trips-file", input_demands[0]])
-        tok = datetime.now()
-        if ret != 0:
-            sys.exit("Error: CCH preprocessing failed.")
+    # do a preprocessing if one of the new routing algorithms is selected
 
-    if ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
-        tik = datetime.now()
-        print("> Preprocessing network for Dijkstra Rust")
-        print(">> Begin time: %s" % tik)
-        ret = call_binary(DIJKSTRA_PREPROCESS_BINARY,
-                          dijkstra_preprocessing_args + ["--trips-file", input_demands[0]])
-        tok = datetime.now()
-        if ret != 0:
-            sys.exit("Error: Dijkstra preprocessing failed.")
+    if ROUTING_ALGORITHM_CCH in options.routing_algorithm or \
+        ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm or \
+            ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
 
-    if ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
+        # note that the rust libraries only support a single demand file as an input.
         tik = datetime.now()
-        print("> Preprocessing network for FastDTA")
-        print(">> Begin time: %s" % tik)
-        ret = call_binary(FASTDTA_PREPROCESS_BINARY,
-                          fastdta_preprocessing_args + ["--trips-file", input_demands[0]])
-        tok = datetime.now()
-        if ret != 0:
-            sys.exit("Error: Dijkstra preprocessing failed.")
+        if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
+            print("> Preprocessing network for CCH")
+            print(">> Begin time: %s" % tik)
+            ret = call_binary(CCH_PREPROCESS_BINARY,
+                              cch_preprocessing_args + ["--trips-file", input_demands[0]])
+            if ret != 0:
+                sys.exit("Error: CCH preprocessing failed.")
 
-    print(">> End time: %s" % tok)
-    print(">> Duration: %s" % (tok - tik))
+        if ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
+            print("> Preprocessing network for Dijkstra Rust")
+            print(">> Begin time: %s" % tik)
+            ret = call_binary(DIJKSTRA_PREPROCESS_BINARY,
+                              dijkstra_preprocessing_args + ["--trips-file", input_demands[0]])
+            if ret != 0:
+                sys.exit("Error: Dijkstra preprocessing failed.")
+
+        if ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
+            print("> Preprocessing network for FastDTA")
+            print(">> Begin time: %s" % tik)
+            ret = call_binary(FASTDTA_PREPROCESS_BINARY,
+                              fastdta_preprocessing_args + ["--trips-file", input_demands[0]])
+            if ret != 0:
+                sys.exit("Error: Dijkstra preprocessing failed.")
+
+        tok = datetime.now()
+        print(">> End time: %s" % tok)
+        print(">> Duration: %s" % (tok - tik))
 
     avgTT = sumolib.miscutils.Statistics()
     ret = 0

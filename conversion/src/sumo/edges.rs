@@ -62,6 +62,17 @@ impl Edge {
             return 0.0;
         }
 
+        // if there is a param with key "capacity" use that value
+        for param in &self.params {
+            if param.key == "capacity" {
+                if let Some(value) = &param.value {
+                    if let Ok(capacity) = value.parse::<f64>() {
+                        return capacity;
+                    }
+                }
+            }
+        }
+
         // Convert priority to road class (negative priority in SUMO)
         let road_class = if let Some(prio) = self.priority { -prio } else { -1 };
         let speed = if let Some(speed) = self.speed { speed } else { 13.9 }; // default speed is 13.9 m/s (50 km/h)

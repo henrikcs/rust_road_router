@@ -2,7 +2,7 @@ use rayon::prelude::*;
 
 /// two travel times are considered equal if they differ at most by this number
 /// Time is given in seconds
-pub const EPSILON_TRAVEL_TIME: f64 = 0.000_001;
+pub const EPSILON_TRAVEL_TIME: f64 = 0.001;
 
 pub fn get_relative_gap(best_tts: &Vec<f64>, simulated_tts: &Vec<f64>) -> f64 {
     assert_eq!(best_tts.len(), simulated_tts.len());

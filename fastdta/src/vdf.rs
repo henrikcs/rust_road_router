@@ -1,9 +1,33 @@
+pub enum VDFType {
+    Ptv,
+    Bpr,
+}
+
 /// Trait for Volume Delay Functions (VDF)
 /// A VDF models the relationship between traffic flow and travel time on a road segment.
 pub trait VDF {
     fn travel_time(&self, flow: f64, capacity: f64, free_flow_time: f64) -> f64;
-}
 
+    fn travel_time_estimation(&self, _previous_flow: f64, _previous_tt: f64, flow: f64, capacity: f64, free_flow_time: f64) -> f64 {
+        if capacity == 0.0 {
+            return f64::INFINITY;
+        }
+
+        let estimated_tt = self.travel_time(flow, capacity, free_flow_time);
+
+        // println!(
+        //     "Estimating travel time: flow = {}, capacity = {}, free_flow_time = {}, tt = {}",
+        //     flow, capacity, free_flow_time, estimated_tt
+        // );
+
+        // println!(
+        //     "Previous travel time: flow = {}, capacity = {}, free_flow_time = {}, tt = {}",
+        //     previous_flow, capacity, free_flow_time, previous_tt
+        // );
+
+        estimated_tt
+    }
+}
 /// BPR (Bureau of Public Roads) VDF implementation
 ///
 /// Default Values for alpha and beta:
@@ -16,7 +40,7 @@ pub struct Bpr {
 }
 
 impl Bpr {
-    pub fn new(alpha: f64, beta: f64) -> Self {
+    pub fn create(alpha: f64, beta: f64) -> Self {
         Self { alpha, beta }
     }
 
@@ -36,12 +60,12 @@ impl VDF for Bpr {
 
 // based on the definitions in PTV-Validate and in the VISUM-Cologne network
 pub struct Ptv {
-    edge_priority: u32,
+    edge_priority: i32,
     edge_speedlimit: f64,
 }
 
 impl Ptv {
-    pub fn new(edge_priority: u32, edge_speedlimit: f64) -> Self {
+    pub fn create(edge_priority: i32, edge_speedlimit: f64) -> Self {
         Self {
             edge_priority,
             edge_speedlimit,
@@ -51,7 +75,7 @@ impl Ptv {
 
 impl VDF for Ptv {
     fn travel_time(&self, flow: f64, capacity: f64, free_flow_time: f64) -> f64 {
-        let road_class = -(self.edge_priority as i32);
+        let road_class = -self.edge_priority;
         let speed = self.edge_speedlimit;
 
         // Calculate the delay factor based on road class and speed
