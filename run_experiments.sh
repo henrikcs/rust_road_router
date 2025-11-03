@@ -202,11 +202,12 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 1.0
                 duarouter--weights.interpolate
                 duarouter--seed $seed
-                duarouter--precision 6
+                duarouter--precision 9
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
                 sumo--seed $seed
-                sumo--precision 6
+                sumo--precision 9
+                sumo--threads $(nproc)
             )
 
             # Add preprocessor args only for CCH
