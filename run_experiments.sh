@@ -193,7 +193,6 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -l $last_iter
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
-                --relative-gap "$convergence_relgap"
                 --logit
                 --logitbeta
                 1.0
@@ -203,13 +202,11 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 1.0
                 duarouter--weights.interpolate
                 duarouter--seed $seed
-                duarouter--precision 6
+                duarouter--precision 9
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
                 sumo--seed $seed
-                sumo--precision 6
-                relative-gap--net-prefix "$prefix"
-                relative-gap--net-dir "$in_dir"
+                sumo--precision 9
             )
 
             # Add preprocessor args only for CCH
