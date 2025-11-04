@@ -402,7 +402,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
                 from_node_index,
                 to_node_index,
                 FlattenedSumoEdge::get_edge_id_for_connection(&edge.id, &con.to),
-                0.01,
+                0.001,
                 0.0,
                 f64::MAX, // infinite capacity for internal edges
             ));
