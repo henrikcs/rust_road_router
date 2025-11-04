@@ -208,6 +208,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 sumo--aggregate-warnings 5
                 sumo--seed $seed
                 sumo--precision 9
+                sumo--step-length 0.1
                 sumo--threads $(nproc)
                 relative-gap--net-prefix "$prefix"
                 relative-gap--net-dir "$in_dir"
