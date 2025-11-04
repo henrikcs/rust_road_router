@@ -161,7 +161,6 @@ impl Shortcut {
                     self.upper_bound
                 );
                 if cfg!(feature = "tdcch-approx") && linked_ipps.num_points() > APPROX_THRESHOLD {
-                    dbg!("tdcch-approx: in merge 1()");
                     let old = linked_ipps.num_points();
                     if cfg!(feature = "detailed-stats") {
                         CONSIDERED_FOR_APPROX.fetch_add(old, Relaxed);
@@ -202,7 +201,6 @@ impl Shortcut {
                 PartialPiecewiseLinearFunction::new(self_ipps).merge(&PartialPiecewiseLinearFunction::new(other_ipps), start, end, &mut buffers.buffer)
             });
             if cfg!(feature = "tdcch-approx") && merged.num_points() > APPROX_THRESHOLD {
-                dbg!("tdcch-approx: in merge 2()");
                 let old = merged.num_points();
                 if cfg!(feature = "detailed-stats") {
                     CONSIDERED_FOR_APPROX.fetch_add(old, Relaxed);
