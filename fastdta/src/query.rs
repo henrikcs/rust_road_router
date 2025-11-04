@@ -50,10 +50,22 @@ pub fn get_paths_with_cch_queries(
             });
 
             if let Some(mut result) = result.found() {
-                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, result.edge_path(), result.distance());
+                let edge_path = result.edge_path();
+
+                let mut path = Vec::with_capacity(edge_path.len() + 2);
+                path.push(from_edge);
+                path.extend(edge_path.iter().map(|edge| edge.0));
+                path.push(to_edge);
+
+                let mut distance = from_edge_tt + result.distance();
+                distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
 
                 Some((path, distance))
             } else {
+                println!(
+                    "No path found from {} to {} at {departure:?}",
+                    queries_original_from_edges[from as usize], queries_original_to_edges[to as usize]
+                );
                 None
             }
         },
@@ -110,10 +122,22 @@ pub fn get_paths_with_dijkstra_queries(
             });
 
             if let Some(mut result) = result.found() {
-                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, result.edge_path(), result.distance());
+                let edge_path = result.edge_path();
+
+                let mut path = Vec::with_capacity(edge_path.len() + 2);
+                path.push(from_edge);
+                path.extend(edge_path.iter().map(|edge| edge.0));
+                path.push(to_edge);
+
+                let mut distance = from_edge_tt + result.distance();
+                distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
 
                 Some((path, distance))
             } else {
+                println!(
+                    "No path found from {} to {} at {departure:?}",
+                    queries_original_from_edges[from as usize], queries_original_to_edges[to as usize]
+                );
                 None
             }
         },

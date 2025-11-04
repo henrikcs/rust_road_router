@@ -31,6 +31,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &input_dir, &graph));
     logger.log("cch routing", duration.as_nanos());
 
+    for shortest_path in &shortest_paths {
+        if shortest_path.is_empty() {
+            println!("Found an empty path!");
+        }
+    }
+
     let write_sumo_alternatives =
         args.no_write_sumo_alternatives == "false" || args.no_write_sumo_alternatives == "0" || args.no_write_sumo_alternatives == "False";
 

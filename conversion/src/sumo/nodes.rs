@@ -30,7 +30,7 @@ impl Node {
         parts[0].to_string()
     }
 
-    /// an internal node id is of the form "<node_id>\n<edge_id>" where edge_id is the incidental edge
+    /// an internal node id is of the form '<node_id>\"<edge_id>' where edge_id is the incidental edge
     /// returns '<node_id>"<edge_id>'
     pub fn get_node_id_for_internal_node(node_id: &str, edge_id: &str) -> String {
         format!("{}\"{}", node_id, edge_id)

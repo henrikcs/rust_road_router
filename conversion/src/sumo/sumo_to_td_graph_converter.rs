@@ -85,10 +85,10 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     output_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (nodes, edges, connections, trips) = read_nodes_edges_connections_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
-    let (g, expanded_nodes, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+    let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
     let (trip_ids, from, to, departure, original_trip_from_edges, original_trip_to_edges) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
-    let (lat, lon) = get_lan_lon_from_nodes(&expanded_nodes);
+    let (lat, lon) = get_lan_lon_from_nodes(&nodes.nodes);
 
     // create output_dir, if not exists:
     std::fs::create_dir_all(output_dir)?;
@@ -212,7 +212,7 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
     connections_document_root: &'a ConnectionsDocumentRoot,
-) -> (RoutingKitTDGraph, Vec<Node>, HashMap<String, (usize, FlattenedSumoEdge)>, Vec<String>) {
+) -> (RoutingKitTDGraph, HashMap<String, (usize, FlattenedSumoEdge)>, Vec<String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
     // interpolation points should be initialized with only one timespan (from 0 to end-of-day in seconds)
@@ -222,10 +222,10 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     let nodes = &node_document_root.nodes;
     let edges = &edges_document_root.edges;
     let connections = &connections_document_root.connections;
-    let (expanded_nodes, edges_sorted_by_node_index) = initialize_edges_for_td_graph(&nodes, &edges, &connections);
+    let edges_sorted_by_node_index = initialize_edges_for_td_graph(&nodes, &edges);
 
     let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
-        create_implicit_td_graph(2 * edges.len(), edges_sorted_by_node_index.len(), &edges_sorted_by_node_index);
+        create_implicit_td_graph(nodes.len(), edges_sorted_by_node_index.len(), &edges_sorted_by_node_index);
 
     // with the edge_ids we can write a file containing the edge ids in the order of the edges_sorted_by_node_index
     // this will be used for reconstructing the edges in the TDGraph
@@ -239,7 +239,6 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
 
     (
         (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time),
-        expanded_nodes,
         edge_id_to_index,
         edge_index_to_edge_id,
     )
@@ -335,35 +334,16 @@ fn assert_correct_number_of_vec_items(
     );
 }
 
-fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connections: &Vec<Connection>) -> (Vec<Node>, Vec<FlattenedSumoEdge>) {
-    // create a map from node id to node index
-    // this is used to find the node index of the from and to nodes of each edge
-    let expanded_nodes = expand_nodes(nodes, edges);
+fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<FlattenedSumoEdge> {
+    let node_id_to_index: HashMap<&String, usize> = nodes.iter().enumerate().map(|(index, node)| (&node.id, index)).collect();
 
-    let node_id_to_index: HashMap<&String, usize> = expanded_nodes.iter().enumerate().map(|(index, node)| (&node.id, index)).collect();
-
-    // map from edge id to connections, such that edge_id is the "from" edge of the connection
-    // connection is a hashset to avoid multiple connections from the same edge to the same edge
-    let edge_id_to_connections = {
-        let mut map: HashMap<&String, HashSet<&Connection>> = HashMap::new();
-        for connection in connections {
-            map.entry(&connection.from).or_default().insert(connection);
-        }
-        map
-    };
-
-    // edges should be sorted by node index of the tail of the edge
     let mut edges_sorted_by_node_index = Vec::with_capacity(edges.len());
     for edge in edges {
-        let &from_node_index = node_id_to_index
-            .get(&Node::get_node_id_for_internal_node(&edge.from, &edge.id))
-            .expect("From node not found in nodes document root");
-        let &to_node_index = node_id_to_index
-            .get(&Node::get_node_id_for_internal_node(&edge.to, &edge.id))
-            .expect("To node not found in nodes document root");
+        let &from_node_index = node_id_to_index.get(&edge.from).expect("From node not found in nodes document root");
+        let &to_node_index = node_id_to_index.get(&edge.to).expect("To node not found in nodes document root");
 
-        let from_node = &expanded_nodes[from_node_index];
-        let to_node = &expanded_nodes[to_node_index];
+        let from_node = &nodes[from_node_index];
+        let to_node = &nodes[to_node_index];
 
         let length = edge.get_length((from_node.x, from_node.y), (to_node.x, to_node.y));
 
@@ -380,38 +360,11 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
             length,
             edge.get_capacity(),
         ));
-
-        // add internal edges
-        for con in edge_id_to_connections.get(&edge.id).unwrap_or(&HashSet::new()) {
-            let node_id = Node::get_node_id_from_internal_node(&to_node.id);
-
-            let internal_from_node_id = Node::get_node_id_for_internal_node(&node_id, &edge.id);
-            let &from_node_index = node_id_to_index
-                .get(&to_node.id)
-                .expect(format!("Internal Node with id {} found in list of nodes", internal_from_node_id).as_ref());
-
-            let internal_to_node_id: String = Node::get_node_id_for_internal_node(&node_id, &con.to);
-            let &to_node_index = node_id_to_index
-                .get(&internal_to_node_id)
-                .expect(format!("Internal Node with id {} found in list of nodes", internal_to_node_id).as_ref());
-
-            let from_node_index = from_node_index as u32;
-            let to_node_index = to_node_index as u32;
-
-            edges_sorted_by_node_index.push(FlattenedSumoEdge::new(
-                from_node_index,
-                to_node_index,
-                FlattenedSumoEdge::get_edge_id_for_connection(&edge.id, &con.to),
-                0.0,
-                0.0,
-                f64::MAX, // infinite capacity for internal edges
-            ));
-        }
     }
 
     edges_sorted_by_node_index.sort_by_key(|e| (e.from_node_index, e.to_node_index));
 
-    (expanded_nodes, edges_sorted_by_node_index)
+    edges_sorted_by_node_index
 }
 
 /// For each edge, we create two nodes with the id "<node_id>\n<edge_id>" with weight 0.0.
@@ -493,7 +446,7 @@ mod tests {
 
         let connections = ConnectionsDocumentRoot { connections: vec![] };
 
-        let (td_graph, expanded_nodes, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+        let (td_graph, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
 
         assert_eq!(td_graph.0.len(), 5); // 2 edges = 4 nodes + 1 for the end
         assert_eq!(td_graph.1.len(), 2); // 2 edges
@@ -507,7 +460,7 @@ mod tests {
             Node::get_node_id_for_internal_node("n1", "e1"),
             Node::get_node_id_for_internal_node("n2", "e1"),
         ];
-        let actual_node_names: Vec<_> = expanded_nodes.iter().map(|n| n.id.as_str()).collect();
+        let actual_node_names: Vec<_> = nodes.nodes.iter().map(|n| n.id.as_str()).collect();
         let expected_node_names: Vec<_> = expected_node_names.iter().map(|s| s.as_str()).collect();
         assert_eq!(actual_node_names, expected_node_names);
     }
@@ -567,7 +520,7 @@ mod tests {
             }],
         };
 
-        let (td_graph, expanded_nodes, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
 
         // 2 original edges + 1 connection edge
         assert_eq!(td_graph.1.len(), 3);
@@ -584,7 +537,7 @@ mod tests {
             Node::get_node_id_for_internal_node("n1", "e1"),
             Node::get_node_id_for_internal_node("n2", "e1"),
         ];
-        let actual_node_names: Vec<_> = expanded_nodes.iter().map(|n| n.id.as_str()).collect();
+        let actual_node_names: Vec<_> = nodes.nodes.iter().map(|n| n.id.as_str()).collect();
         let expected_node_names: Vec<_> = expected_node_names.iter().map(|s| s.as_str()).collect();
         assert_eq!(actual_node_names, expected_node_names);
     }
@@ -658,7 +611,7 @@ mod tests {
             ],
         };
 
-        let (td_graph, expanded_nodes, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
 
         // 2 original edges + 2 connection edges (2 from each edge to both edges)
         assert_eq!(td_graph.1.len(), 4);
@@ -680,7 +633,7 @@ mod tests {
             Node::get_node_id_for_internal_node("n1", "e1"),
             Node::get_node_id_for_internal_node("n2", "e1"),
         ];
-        let actual_node_names: Vec<_> = expanded_nodes.iter().map(|n| n.id.as_str()).collect();
+        let actual_node_names: Vec<_> = nodes.nodes.iter().map(|n| n.id.as_str()).collect();
         let expected_node_names: Vec<_> = expected_node_names.iter().map(|s| s.as_str()).collect();
         assert_eq!(actual_node_names, expected_node_names);
     }

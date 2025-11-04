@@ -206,6 +206,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 duarouter--precision 9
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
+                sumo--time-to-teleport.disconnected 0
                 sumo--seed $seed
                 sumo--precision 9
                 sumo--threads $(nproc)
