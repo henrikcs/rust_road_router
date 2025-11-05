@@ -15,7 +15,7 @@ use fastdta::{
     query::get_paths_with_cch,
 };
 
-use rust_road_router::{algo::catchup::Server, datastr::graph::floating_time_dependent::TDGraph, io::Reconstruct};
+use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::Reconstruct};
 /// Given an xml file containing sumo edges <edges>, converts a matsim csv file <trips> to a SUMO trip file with the name <output>
 /// <trips> should contain the following headers:
 /// tripId, legId, tripBeginTime, locationFrom, locationTo
@@ -87,7 +87,7 @@ fn main() {
     let customized_graph = customize(&cch, &graph);
 
     println!("Calculating paths...");
-    let (shortest_paths, _, _) = get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
+    let (shortest_paths, _, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
 
     // filter trips which can be routed on the graph
     println!("Filter trips according to paths...");

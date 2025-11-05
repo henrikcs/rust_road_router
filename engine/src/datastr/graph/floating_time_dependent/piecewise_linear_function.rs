@@ -142,7 +142,7 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
         debug_assert!(ipps.len() == 1 || ipps.last().unwrap().at == period(), "{:?}", ipps);
 
         for points in ipps.windows(2) {
-            debug_assert!(points[0].at.fuzzy_lt(points[1].at), "{:?}", ipps);
+            debug_assert!(points[0].at.fuzzy_lt(points[1].at), "ipps ({}): {:?}", ipps.len(), ipps);
             assert!(
                 !(points[1].val - points[0].val).fuzzy_lt(points[0].at - points[1].at),
                 "FiFo broken {:#?}",

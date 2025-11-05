@@ -10,11 +10,7 @@ use conversion::{
         sumo_to_new_graph_weights::{extract_interpolation_points_from_meandata, get_graph_with_travel_times_from_previous_iteration},
     },
 };
-use rust_road_router::{
-    algo::catchup::{Server, customize},
-    datastr::graph::floating_time_dependent::Timestamp,
-    io::Reconstruct,
-};
+use rust_road_router::{algo::catchup::customize, datastr::graph::floating_time_dependent::Timestamp, io::Reconstruct};
 use rust_road_router::{
     algo::customizable_contraction_hierarchy::CCH,
     datastr::graph::floating_time_dependent::{FlWeight, TDGraph},
@@ -129,7 +125,8 @@ pub fn get_paths_by_samples(
 
         let ((sampled_shortest_paths, sampled_travel_times, sampled_departures), duration) = measure(|| {
             get_paths_with_cch_queries(
-                &mut Server::new(&cch, &customized_graph),
+                &cch,
+                &customized_graph,
                 &sample.iter().map(|&i| query_data.0[i]).collect(),
                 &sample.iter().map(|&i| query_data.1[i]).collect(),
                 &sample.iter().map(|&i| query_data.2[i]).collect(),

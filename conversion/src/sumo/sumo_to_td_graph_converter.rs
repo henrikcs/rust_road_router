@@ -1,21 +1,16 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-};
+use std::{collections::HashMap, path::Path};
 
 use rust_road_router::io::{write_strings_to_file, Store};
 
 use crate::{
     sumo::{
-        connections::{Connection, ConnectionsDocumentRoot},
-        connections_reader::SumoConnectionsReader,
         edges::{Edge, EdgesDocumentRoot},
         edges_reader::SumoEdgesReader,
         nodes::{Node, NodesDocumentRoot},
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        FileReader, RoutingKitTDGraph, SumoTravelTime, CON_XML, EDG_XML, NOD_XML, VEH_LENGTH,
+        FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML, VEH_LENGTH,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
     FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE,
@@ -49,6 +44,9 @@ impl FlattenedSumoEdge {
         format!("{}$${}", from_connection, to_connection)
     }
 }
+
+/// lowest possible travel time for an edge in seconds
+pub const MIN_EDGE_WEIGHT: f64 = 0.5;
 
 impl Clone for FlattenedSumoEdge {
     fn clone(&self) -> Self {
@@ -84,8 +82,8 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     trips_file: &Path,
     output_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (nodes, edges, connections, trips) = read_nodes_edges_connections_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
-    let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+    let (nodes, edges, trips) = read_nodes_edges_connections_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
+    let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
     let (trip_ids, from, to, departure, original_trip_from_edges, original_trip_to_edges) = get_queries_from_trips(&trips, &edge_ids_to_index);
 
     let (lat, lon) = get_lan_lon_from_nodes(&nodes.nodes);
@@ -131,10 +129,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     Ok(())
 }
 
-pub fn read_nodes_edges_and_connections_from_plain_xml(
-    input_dir: &Path,
-    files_prefix: &String,
-) -> (NodesDocumentRoot, EdgesDocumentRoot, ConnectionsDocumentRoot) {
+pub fn read_nodes_edges_and_connections_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot) {
     let Ok(edges) = SumoEdgesReader::read(input_dir.join(files_prefix.clone() + EDG_XML).as_path()) else {
         panic!("Edges could not be read form {}.", &input_dir.display());
     };
@@ -143,24 +138,20 @@ pub fn read_nodes_edges_and_connections_from_plain_xml(
         panic!("Edges could not be read from {}.", input_dir.display());
     };
 
-    let Ok(connections) = SumoConnectionsReader::read(input_dir.join(files_prefix.clone() + CON_XML).as_path()) else {
-        panic!("Connections could not be read from {}.", input_dir.display());
-    };
-
-    (nodes, edges, connections)
+    (nodes, edges)
 }
 
 pub fn read_nodes_edges_connections_and_trips_from_plain_xml(
     input_dir: &Path,
     files_prefix: &String,
     trips_file: &Path,
-) -> (NodesDocumentRoot, EdgesDocumentRoot, ConnectionsDocumentRoot, TripsDocumentRoot) {
-    let (nodes, edges, connections) = read_nodes_edges_and_connections_from_plain_xml(input_dir, files_prefix);
+) -> (NodesDocumentRoot, EdgesDocumentRoot, TripsDocumentRoot) {
+    let (nodes, edges) = read_nodes_edges_and_connections_from_plain_xml(input_dir, files_prefix);
     let Ok(trips) = SumoTripsReader::read(trips_file) else {
         panic!("Trips could not be read from {}.", trips_file.display());
     };
 
-    (nodes, edges, connections, trips)
+    (nodes, edges, trips)
 }
 
 /// Extract queries from the trips document root.
@@ -211,7 +202,6 @@ pub fn get_queries_from_trips<'a>(
 pub fn get_routing_kit_td_graph_from_sumo<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
-    connections_document_root: &'a ConnectionsDocumentRoot,
 ) -> (RoutingKitTDGraph, HashMap<String, (usize, FlattenedSumoEdge)>, Vec<String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
@@ -221,7 +211,6 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
 
     let nodes = &node_document_root.nodes;
     let edges = &edges_document_root.edges;
-    let connections = &connections_document_root.connections;
     let edges_sorted_by_node_index = initialize_edges_for_td_graph(&nodes, &edges);
 
     let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
@@ -347,7 +336,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Fl
 
         let length = edge.get_length((from_node.x, from_node.y), (to_node.x, to_node.y));
 
-        let weight = f64::max(length - 2.0 * VEH_LENGTH, 0.0) / edge.get_speed();
+        let weight = f64::max(f64::max(length - 1.0 * VEH_LENGTH, 0.0) / edge.get_speed(), MIN_EDGE_WEIGHT);
 
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
@@ -367,10 +356,10 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Fl
     edges_sorted_by_node_index
 }
 
-/// For each edge, we create two nodes with the id "<node_id>\n<edge_id>" with weight 0.0.
+/// For each edge, we create two nodes with the id "<node_id>\n<edge_id>" with weight MIN_EDGE_WEIGHT.
 /// The position should be the same as the original node.
 /// This is necessary to model turn restrictions and turn costs.
-fn expand_nodes(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Node> {
+fn _expand_nodes(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Node> {
     // create a temporaray map from node id to node
     let node_id_to_node: HashMap<&String, &Node> = nodes.iter().map(|node| (&node.id, node)).collect();
 
@@ -444,9 +433,7 @@ mod tests {
             ],
         };
 
-        let connections = ConnectionsDocumentRoot { connections: vec![] };
-
-        let (td_graph, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+        let (td_graph, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
 
         assert_eq!(td_graph.0.len(), 5); // 2 edges = 4 nodes + 1 for the end
         assert_eq!(td_graph.1.len(), 2); // 2 edges
@@ -511,16 +498,7 @@ mod tests {
             ],
         };
 
-        let connections = ConnectionsDocumentRoot {
-            connections: vec![Connection {
-                from: String::from("e1"),
-                to: String::from("e2"),
-                from_lane: None,
-                to_lane: None,
-            }],
-        };
-
-        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
 
         // 2 original edges + 1 connection edge
         assert_eq!(td_graph.1.len(), 3);
@@ -588,30 +566,7 @@ mod tests {
             ],
         };
 
-        let connections = ConnectionsDocumentRoot {
-            connections: vec![
-                Connection {
-                    from: String::from("e1"),
-                    to: String::from("e2"),
-                    from_lane: None,
-                    to_lane: None,
-                },
-                Connection {
-                    from: String::from("e2"),
-                    to: String::from("e1"),
-                    from_lane: Some(String::from("0")),
-                    to_lane: Some(String::from("0")),
-                },
-                Connection {
-                    from: String::from("e2"),
-                    to: String::from("e1"),
-                    from_lane: Some(String::from("1")),
-                    to_lane: Some(String::from("1")),
-                },
-            ],
-        };
-
-        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
 
         // 2 original edges + 2 connection edges (2 from each edge to both edges)
         assert_eq!(td_graph.1.len(), 4);

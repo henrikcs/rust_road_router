@@ -6,7 +6,6 @@ use fastdta::cli::Parser;
 use fastdta::logger::Logger;
 use fastdta::query::get_paths_with_dijkstra;
 use fastdta::route::get_graph_data_for_dijkstra;
-use rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server;
 use rust_road_router::report::measure;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::RouterArgs::parse();
@@ -24,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ((edge_ids, graph), duration) = measure(|| get_graph_data_for_dijkstra(input_dir, iteration));
     logger.log("preprocessing", duration.as_nanos());
 
-    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_dijkstra(&mut Server::new(graph.clone()), input_dir, &graph));
+    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_dijkstra(input_dir, &graph));
     logger.log("dijkstra routing", duration.as_nanos());
 
     let write_sumo_alternatives =

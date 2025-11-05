@@ -12,6 +12,7 @@ use crate::{
         meandata::{Edge, MeandataDocumentRoot},
         meandata_reader::SumoMeandataReader,
         sumo_find_file::get_meandata_file,
+        sumo_to_td_graph_converter::MIN_EDGE_WEIGHT,
         FileReader,
     },
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
@@ -139,25 +140,28 @@ fn preprocess_tt<'a>(
 
                         if interval_duration + next_tt < tt {
                             // If the next travel time is less than the current, we adjust the current travel time
-
-                            // print only if current interval start is 86100s
-                            if next_interval.begin == 86100.0 {
-                                println!(
-                                    "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
-                                    edge_id,
-                                    timestamp,
-                                    next_timestamp,
-                                    tt,
-                                    interval_duration,
-                                    next_tt,
-                                    interval_duration + next_tt
-                                );
-                            }
+                            println!(
+                                "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                                edge_id,
+                                timestamp,
+                                next_timestamp,
+                                tt,
+                                interval_duration,
+                                next_tt,
+                                interval_duration + next_tt
+                            );
                             tt = interval_duration + next_tt;
                         }
                     }
                 }
 
+                if tt < (MIN_EDGE_WEIGHT * 1000.0) as SerializedTravelTime {
+                    println!(
+                        "Min Edge Weight Warning: Travel time for edge {} in interval starting at {} is less than MIN_EDGE_WEIGHT ({}ms). Adjusting to {}ms.",
+                        edge_id, timestamp, tt, MIN_EDGE_WEIGHT
+                    );
+                    tt = (MIN_EDGE_WEIGHT * 1000.0) as SerializedTravelTime;
+                }
                 adapted_tt.insert(timestamp, tt as SerializedTravelTime);
             }
 

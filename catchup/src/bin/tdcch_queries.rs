@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     setup(Path::new(&env::args().skip(1).next().unwrap()), |g, rng, cch, td_cch_graph| {
         let mut algo_runs_ctxt = push_collection_context("algo_runs");
-        let mut td_dijk_server = DijkServer::new(g.clone());
+        let mut td_dijk_server = DijkServer::new(g);
         let mut server = Server::new(&cch, &td_cch_graph);
 
         let mut rank_times = vec![Vec::new(); 64];

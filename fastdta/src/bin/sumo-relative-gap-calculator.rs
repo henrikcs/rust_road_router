@@ -15,7 +15,6 @@ use fastdta::{
 };
 use rayon::prelude::*;
 use rust_road_router::{
-    algo::catchup::Server,
     datastr::graph::floating_time_dependent::{FlWeight, Timestamp},
     io::Reconstruct,
 };
@@ -66,10 +65,10 @@ fn main() {
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
         let cch = get_cch(&temp_cch_dir, &graph);
         let customized_graph = customize(&cch, &graph);
-        let (best_paths, best_travel_times, _) = get_paths_with_cch(&mut Server::new(&cch, &customized_graph), &temp_cch_dir, &graph);
+        let (best_paths, best_travel_times, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
-        println!("Reading routes from file {}", routes_path.display());
+        dbg!("Reading routes from file {}", routes_path.display());
         let routes_document_root = SumoRoutesReader::read(&routes_path).unwrap();
         let vehicle_id_to_vehicle: HashMap<&String, &Vehicle> = routes_document_root.vehicles.iter().map(|v| (&v.id, v)).collect();
 
