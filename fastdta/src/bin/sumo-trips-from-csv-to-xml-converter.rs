@@ -15,7 +15,7 @@ use fastdta::{
     query::get_paths_with_cch,
 };
 
-use rust_road_router::{algo::catchup::Server, datastr::graph::floating_time_dependent::TDGraph, io::Reconstruct};
+use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::Reconstruct};
 /// Given an xml file containing sumo edges <edges>, converts a matsim csv file <trips> to a SUMO trip file with the name <output>
 /// <trips> should contain the following headers:
 /// tripId, legId, tripBeginTime, locationFrom, locationTo

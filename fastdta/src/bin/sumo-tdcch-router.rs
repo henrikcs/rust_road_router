@@ -5,7 +5,6 @@ use fastdta::customize::customize;
 use fastdta::logger::Logger;
 use fastdta::query::get_paths_with_cch;
 use fastdta::route::get_graph_data_for_cch;
-use rust_road_router::algo::catchup::Server;
 use rust_road_router::report::measure;
 use std::path::Path;
 

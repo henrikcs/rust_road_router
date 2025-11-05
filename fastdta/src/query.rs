@@ -193,7 +193,7 @@ fn get_paths_from_queries_par<
     (paths, distances, departures)
 }
 
-fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
+fn _get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
     mut path_collector: F,
     queries_from: &Vec<u32>,
     queries_to: &Vec<u32>,

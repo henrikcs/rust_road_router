@@ -6,7 +6,6 @@ use fastdta::cli::Parser;
 use fastdta::logger::Logger;
 use fastdta::query::get_paths_with_dijkstra;
 use fastdta::route::get_graph_data_for_dijkstra;
-use rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server;
 use rust_road_router::report::measure;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::RouterArgs::parse();

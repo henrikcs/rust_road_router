@@ -15,7 +15,6 @@ use fastdta::{
 };
 use rayon::prelude::*;
 use rust_road_router::{
-    algo::catchup::Server,
     datastr::graph::floating_time_dependent::{FlWeight, Timestamp},
     io::Reconstruct,
 };
