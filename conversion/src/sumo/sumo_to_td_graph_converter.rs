@@ -50,6 +50,8 @@ impl FlattenedSumoEdge {
     }
 }
 
+pub const CONNECTION_EDGE_WEIGHT: f64 = 0.1;
+
 impl Clone for FlattenedSumoEdge {
     fn clone(&self) -> Self {
         FlattenedSumoEdge::new(
@@ -402,7 +404,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
                 from_node_index,
                 to_node_index,
                 FlattenedSumoEdge::get_edge_id_for_connection(&edge.id, &con.to),
-                0.1,
+                CONNECTION_EDGE_WEIGHT,
                 0.0,
                 f64::MAX, // infinite capacity for internal edges
             ));
