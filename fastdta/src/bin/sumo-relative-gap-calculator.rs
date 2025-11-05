@@ -1,8 +1,14 @@
 use clap::Parser;
 use conversion::{
+    FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS,
     sumo::{
-        routes::Vehicle, routes_reader::SumoRoutesReader, sumo_find_file::get_routes_file_name_in_iteration, sumo_to_new_graph_weights::extract_travel_times_from_iteration_directory, sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries, FileReader, SumoTravelTime
-    }, FILE_EDGE_INDICES_TO_ID, FILE_QUERY_IDS
+        FileReader, SumoTravelTime,
+        routes::{RoutesDocumentRoot, Vehicle},
+        routes_reader::SumoRoutesReader,
+        sumo_find_file::get_routes_file_name_in_iteration,
+        sumo_to_new_graph_weights::extract_travel_times_from_iteration_directory,
+        sumo_to_td_graph_converter::convert_sumo_to_routing_kit_and_queries,
+    },
 };
 use std::{collections::HashMap, env, fs::OpenOptions, path::Path};
 use std::{fs::remove_dir_all, io::Write};
@@ -14,11 +20,8 @@ use fastdta::{
     relative_gap::{EPSILON_TRAVEL_TIME, get_relative_gap},
 };
 use rayon::prelude::*;
-use rust_road_router::{
-    datastr::graph::floating_time_dependent::{FlWeight, Timestamp},
-    io::Reconstruct,
-};
 use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::read_strings_from_file};
+use rust_road_router::{datastr::graph::floating_time_dependent::Timestamp, io::Reconstruct};
 
 fn main() {
     let args = Args::parse();
@@ -70,59 +73,13 @@ fn main() {
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
         dbg!("Reading routes from file {}", routes_path.display());
         let routes_document_root = SumoRoutesReader::read(&routes_path).unwrap();
-        let vehicle_id_to_vehicle: HashMap<&String, &Vehicle> = routes_document_root.vehicles.iter().map(|v| (&v.id, v)).collect();
 
-        let experienced_tt: Vec<SumoTravelTime> = query_ids
-            .par_iter()
-            .enumerate()
-            .map(|(i, id)| {
-                if let Some(v) = vehicle_id_to_vehicle.get(id) {
-                    let experienced_path: Vec<u32> = if let Some(route) = &v.route {
-                        route
-                            .edges
-                            .split_ascii_whitespace()
-                            .map(|edge_id| {
-                                if let Some(&index) = edge_id_to_index.get(&edge_id.to_string()) {
-                                    index as u32
-                                } else {
-                                    panic!("Edge id {} not found in edge_id_to_index map", edge_id);
-                                }
-                            })
-                            .collect()
-                    } else {
-                        panic!("No route found for vehicle id {}", id);
-                    };
-
-                    let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &experienced_path);
-                    let experienced_time_f64: f64 = <FlWeight as Into<f64>>::into(experienced_time);
-                    let best_time_f64: f64 = <FlWeight as Into<f64>>::into(best_travel_times[i]);
-
-                    
-                    if (experienced_time_f64 - best_time_f64) < -EPSILON_TRAVEL_TIME {
-                        // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
-                        eprintln!(
-                            "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nExperienced path: {:?}, \nbest path:        {:?},\ndeparture time: {}",
-                            id,
-                            experienced_time_f64,
-                            best_time_f64,
-                            get_path_ids_from_indices(&edge_ids, &experienced_path),
-                            get_path_ids_from_indices(&edge_ids, &best_paths[i]),
-                            v.depart
-                        );
-                    }
-
-                    experienced_time.into()
-                } else {
-                    // negative number will be ignored in the relative gap calculation.
-                    panic!("No route found for query id {}", id);
-                }
-            })
-            .collect();
+        let experienced_tt = get_experienced_travel_times_from_routes(&routes_document_root, &query_ids, &graph, &edge_id_to_index);
 
         let best_tt: Vec<SumoTravelTime> = best_travel_times.par_iter().map(|&tt| tt.into()).collect();
 
         print_network_travel_time(&experienced_tt);
-        print_highest_differences(&best_tt, &experienced_tt, &best_paths, &routes_document_root.vehicles, &query_ids,&edge_ids);
+        print_highest_differences(&best_tt, &experienced_tt, &best_paths, &routes_document_root.vehicles, &query_ids, &edge_ids);
 
         let rel_gap = get_relative_gap(&best_tt, &experienced_tt);
 
@@ -179,13 +136,8 @@ pub struct Args {
 }
 
 /// prints the experienced total network travel time
-fn print_network_travel_time(
-    experienced_tts: &Vec<SumoTravelTime>
-) {
-    let total_experienced_tt: f64 = experienced_tts
-        .par_iter()
-        .map(|&tt| <f64 as From<SumoTravelTime>>::from(tt))
-        .sum();
+fn print_network_travel_time(experienced_tts: &Vec<SumoTravelTime>) {
+    let total_experienced_tt: f64 = experienced_tts.par_iter().map(|&tt| <f64 as From<SumoTravelTime>>::from(tt)).sum();
 
     println!("Total experienced travel time: {:.6} seconds", total_experienced_tt);
 }
@@ -193,10 +145,10 @@ fn print_network_travel_time(
 fn print_highest_differences(
     best_tts: &Vec<SumoTravelTime>,
     experienced_tts: &Vec<SumoTravelTime>,
-    best_paths: &Vec<Vec<u32>>, 
+    best_paths: &Vec<Vec<u32>>,
     vehicles: &Vec<Vehicle>,
     query_ids: &Vec<String>,
-    edge_ids: &Vec<String>
+    edge_ids: &Vec<String>,
 ) {
     let mut differences: Vec<(usize, f64)> = best_tts
         .par_iter()
@@ -226,4 +178,43 @@ fn print_highest_differences(
             );
         }
     }
+}
+
+pub fn get_experienced_travel_times_from_routes(
+    routes_document_root: &RoutesDocumentRoot,
+    query_ids: &Vec<String>,
+    graph: &TDGraph,
+    edge_id_to_index: &HashMap<&String, usize>,
+) -> Vec<SumoTravelTime> {
+    let vehicle_id_to_vehicle: HashMap<&String, &Vehicle> = routes_document_root.vehicles.iter().map(|v| (&v.id, v)).collect();
+
+    query_ids
+        .par_iter()
+        .enumerate()
+        .map(|(_i, id)| {
+            if let Some(v) = vehicle_id_to_vehicle.get(id) {
+                let experienced_path: Vec<u32> = if let Some(route) = &v.route {
+                    route
+                        .edges
+                        .split_ascii_whitespace()
+                        .map(|edge_id| {
+                            if let Some(&index) = edge_id_to_index.get(&edge_id.to_string()) {
+                                index as u32
+                            } else {
+                                panic!("Edge id {} not found in edge_id_to_index map", edge_id);
+                            }
+                        })
+                        .collect()
+                } else {
+                    panic!("No route found for vehicle id {}", id);
+                };
+
+                let experienced_time = graph.get_travel_time_along_path(Timestamp::new(v.depart), &experienced_path);
+                experienced_time.into()
+            } else {
+                // negative number will be ignored in the relative gap calculation.
+                panic!("No route found for query id {}", id);
+            }
+        })
+        .collect()
 }
