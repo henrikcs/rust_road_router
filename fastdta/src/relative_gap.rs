@@ -1,3 +1,7 @@
+use std::io::Write;
+use std::{fs::OpenOptions, path::Path};
+
+use conversion::FILE_RELATIVE_GAPS;
 use rayon::prelude::*;
 
 /// two travel times are considered equal if they differ at most by this number
@@ -27,4 +31,11 @@ pub fn get_relative_gap(best_tts: &Vec<f64>, simulated_tts: &Vec<f64>) -> f64 {
         })
         .sum::<f64>()
         / best_tts.par_iter().sum::<f64>()
+}
+
+// append a gap to a file (should be: "rel_gaps.txt") in the dta_dir
+pub fn append_relative_gap_to_file(relative_gap: f64, output_dir: &Path) {
+    let mut file = OpenOptions::new().create(true).append(true).open(output_dir.join(FILE_RELATIVE_GAPS)).unwrap();
+
+    writeln!(file, "{:.9}", relative_gap).unwrap();
 }

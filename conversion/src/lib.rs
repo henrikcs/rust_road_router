@@ -54,6 +54,8 @@ pub const FILE_EDGE_DEFAULT_TRAVEL_TIMES: &str = "edge_default_travel_times";
 // contains the capacities of the edges calculated during the preprocessing step
 pub const FILE_EDGE_CAPACITIES: &str = "edge_capacities";
 
+pub const FILE_RELATIVE_GAPS: &str = "rel_gaps.txt";
+
 /// in milliseconds
 pub type SerializedTravelTime = u32;
 /// in milliseconds
