@@ -2,13 +2,13 @@ use super::*;
 use crate::algo::dijkstra::generic_dijkstra::*;
 use crate::datastr::graph::floating_time_dependent::*;
 
-pub struct Server {
-    graph: TDGraph,
+pub struct Server<'a> {
+    graph: &'a TDGraph,
     data: DijkstraData<Timestamp, ()>,
 }
 
-impl Server {
-    pub fn new(graph: TDGraph) -> Server {
+impl<'a> Server<'a> {
+    pub fn new(graph: &TDGraph) -> Server {
         Server {
             data: DijkstraData::new(graph.num_nodes()),
             graph,
@@ -21,7 +21,7 @@ impl Server {
     {
         let mut ops = FlTDDijkstraOps();
         let mut dijkstra = DijkstraRun::query(
-            &self.graph,
+            self.graph,
             &mut self.data,
             &mut ops,
             DijkstraInit {
@@ -43,7 +43,7 @@ impl Server {
     fn distance(&mut self, query: TDQuery<Timestamp>) -> Option<FlWeight> {
         report!("algo", "Floating TD-Dijkstra");
         let mut ops = FlTDDijkstraOps();
-        let mut dijkstra = DijkstraRun::query(&self.graph, &mut self.data, &mut ops, DijkstraInit::from_query(&query));
+        let mut dijkstra = DijkstraRun::query(self.graph, &mut self.data, &mut ops, DijkstraInit::from_query(&query));
 
         while let Some(node) = dijkstra.next() {
             if node == query.to {
@@ -85,7 +85,7 @@ impl Server {
     }
 }
 
-pub struct PathServerWrapper<'s>(&'s Server, TDQuery<Timestamp>);
+pub struct PathServerWrapper<'s>(&'s Server<'s>, TDQuery<Timestamp>);
 
 impl<'s> PathServer for PathServerWrapper<'s> {
     type NodeInfo = (NodeId, Timestamp);
@@ -99,8 +99,11 @@ impl<'s> PathServer for PathServerWrapper<'s> {
     }
 }
 
-impl TDQueryServer<Timestamp, FlWeight> for Server {
-    type P<'s> = PathServerWrapper<'s>;
+impl TDQueryServer<Timestamp, FlWeight> for Server<'_> {
+    type P<'s>
+        = PathServerWrapper<'s>
+    where
+        Self: 's;
 
     fn td_query(&mut self, query: TDQuery<Timestamp>) -> QueryResult<Self::P<'_>, FlWeight> {
         QueryResult::new(self.distance(query), PathServerWrapper(self, query))

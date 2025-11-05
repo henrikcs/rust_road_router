@@ -129,7 +129,8 @@ pub fn get_paths_by_samples(
 
         let ((sampled_shortest_paths, sampled_travel_times, sampled_departures), duration) = measure(|| {
             get_paths_with_cch_queries(
-                &mut Server::new(&cch, &customized_graph),
+                &cch,
+                &customized_graph,
                 &sample.iter().map(|&i| query_data.0[i]).collect(),
                 &sample.iter().map(|&i| query_data.1[i]).collect(),
                 &sample.iter().map(|&i| query_data.2[i]).collect(),
