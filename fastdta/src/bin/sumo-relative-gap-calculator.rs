@@ -101,7 +101,7 @@ fn main() {
                     
                     if (experienced_time_f64 - best_time_f64) < -EPSILON_TRAVEL_TIME {
                         // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
-                        dbg!(
+                        eprintln!(
                             "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nExperienced path: {:?}, \nbest path:        {:?},\ndeparture time: {}",
                             id,
                             experienced_time_f64,
