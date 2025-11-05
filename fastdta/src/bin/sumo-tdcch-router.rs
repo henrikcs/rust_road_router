@@ -1,4 +1,4 @@
-use fastdta::alternative_path_assembler::assemble_alternative_paths;
+use fastdta::alternative_path_assembler::prepare_next_iteration;
 use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::customize::customize;
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.no_write_sumo_alternatives == "false" || args.no_write_sumo_alternatives == "0" || args.no_write_sumo_alternatives == "False";
 
     let (_, duration) = measure(|| {
-        assemble_alternative_paths(
+        prepare_next_iteration(
             &input_dir,
             &input_prefix,
             iteration,

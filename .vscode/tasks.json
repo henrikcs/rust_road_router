@@ -348,7 +348,7 @@
         "CCH",
         "--mesosim",
         "--aggregation",
-        "300",
+        "60",
         "--begin",
         "0",
         "--end",
@@ -374,10 +374,6 @@
         "cch-preprocessor--input-prefix",
         "random",
         "cch-preprocessor--input-dir",
-        "${workspaceFolder}/import/sumo/random",
-        "relative-gap--net-prefix",
-        "random",
-        "relative-gap--net-dir",
         "${workspaceFolder}/import/sumo/random"
       ]
     },
