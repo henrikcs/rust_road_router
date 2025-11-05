@@ -1,7 +1,6 @@
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 
-use conversion::sumo::sumo_to_td_graph_converter::CONNECTION_EDGE_WEIGHT;
+use conversion::sumo::sumo_to_td_graph_converter::MIN_EDGE_WEIGHT;
 use conversion::{
     FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES, SerializedTimestamp,
 };
@@ -259,7 +258,7 @@ fn construct_path_and_time(
     distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
 
     // remaining_path starts and ends with connection edges, which we do not want to count towards the total distance
-    distance = distance - FlWeight::new(CONNECTION_EDGE_WEIGHT * ((remaining_path.len() + 1) / 2) as f64); // subtract connection edge weights
+    distance = distance - FlWeight::new(MIN_EDGE_WEIGHT * ((remaining_path.len() + 1) / 2) as f64); // subtract connection edge weights
 
     (path, distance)
 }

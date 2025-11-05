@@ -50,7 +50,8 @@ impl FlattenedSumoEdge {
     }
 }
 
-pub const CONNECTION_EDGE_WEIGHT: f64 = 1.0;
+/// lowest possible travel time for an edge in seconds
+pub const MIN_EDGE_WEIGHT: f64 = 0.1;
 
 impl Clone for FlattenedSumoEdge {
     fn clone(&self) -> Self {
@@ -369,7 +370,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
 
         let length = edge.get_length((from_node.x, from_node.y), (to_node.x, to_node.y));
 
-        let weight = f64::max(length - 2.0 * VEH_LENGTH, 0.0) / edge.get_speed();
+        let weight = f64::max(f64::max(length - 1.0 * VEH_LENGTH, 0.0) / edge.get_speed(), MIN_EDGE_WEIGHT);
 
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
@@ -404,7 +405,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
                 from_node_index,
                 to_node_index,
                 FlattenedSumoEdge::get_edge_id_for_connection(&edge.id, &con.to),
-                CONNECTION_EDGE_WEIGHT,
+                MIN_EDGE_WEIGHT,
                 0.0,
                 f64::MAX, // infinite capacity for internal edges
             ));
@@ -416,7 +417,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>, connectio
     (expanded_nodes, edges_sorted_by_node_index)
 }
 
-/// For each edge, we create two nodes with the id "<node_id>\n<edge_id>" with weight 0.0.
+/// For each edge, we create two nodes with the id "<node_id>\n<edge_id>" with weight MIN_EDGE_WEIGHT.
 /// The position should be the same as the original node.
 /// This is necessary to model turn restrictions and turn costs.
 fn expand_nodes(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Node> {
