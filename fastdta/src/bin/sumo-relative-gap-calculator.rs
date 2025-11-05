@@ -69,7 +69,7 @@ fn main() {
         let (best_paths, best_travel_times, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
-        println!("Reading routes from file {}", routes_path.display());
+        dbg!("Reading routes from file {}", routes_path.display());
         let routes_document_root = SumoRoutesReader::read(&routes_path).unwrap();
         let vehicle_id_to_vehicle: HashMap<&String, &Vehicle> = routes_document_root.vehicles.iter().map(|v| (&v.id, v)).collect();
 
@@ -101,7 +101,7 @@ fn main() {
                     
                     if (experienced_time_f64 - best_time_f64) < -EPSILON_TRAVEL_TIME {
                         // print a debug message containing vehicle id, experienced time, best time, and both paths + departure time
-                        eprintln!(
+                        dbg!(
                             "Warning: Experienced travel time for vehicle id {} is less than best travel time: \n{} < {}.\nExperienced path: {:?}, \nbest path:        {:?},\ndeparture time: {}",
                             id,
                             experienced_time_f64,

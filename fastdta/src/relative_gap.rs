@@ -12,9 +12,11 @@ pub fn get_relative_gap(best_tts: &Vec<f64>, simulated_tts: &Vec<f64>) -> f64 {
         .enumerate()
         .map(|(i, &best_tt)| {
             if simulated_tts[i] - best_tt < -EPSILON_TRAVEL_TIME {
-                eprintln!(
+                dbg!(
                     "Simulated travel time for trip {} is less than best travel time: {} < {}",
-                    i, simulated_tts[i], best_tt
+                    i,
+                    simulated_tts[i],
+                    best_tt
                 );
                 return 0.0;
             }
