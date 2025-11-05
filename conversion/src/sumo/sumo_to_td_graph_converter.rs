@@ -50,7 +50,7 @@ impl FlattenedSumoEdge {
     }
 }
 
-pub const CONNECTION_EDGE_WEIGHT: f64 = 0.1;
+pub const CONNECTION_EDGE_WEIGHT: f64 = 1.0;
 
 impl Clone for FlattenedSumoEdge {
     fn clone(&self) -> Self {
