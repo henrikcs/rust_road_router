@@ -117,7 +117,7 @@ fn preprocess_tt<'a>(
 
                     if interval_duration + default_travel_time < tt {
                         // If the next travel time is less than the current, we adjust the current travel time
-                        println!(
+                        dbg!(
                             "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
                             edge_id,
                             timestamp,
@@ -140,19 +140,16 @@ fn preprocess_tt<'a>(
                         if interval_duration + next_tt < tt {
                             // If the next travel time is less than the current, we adjust the current travel time
 
-                            // print only if current interval start is 86100s
-                            if next_interval.begin == 86100.0 {
-                                println!(
-                                    "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
-                                    edge_id,
-                                    timestamp,
-                                    next_timestamp,
-                                    tt,
-                                    interval_duration,
-                                    next_tt,
-                                    interval_duration + next_tt
-                                );
-                            }
+                            dbg!(
+                                "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                                edge_id,
+                                timestamp,
+                                next_timestamp,
+                                tt,
+                                interval_duration,
+                                next_tt,
+                                interval_duration + next_tt
+                            );
                             tt = interval_duration + next_tt;
                         }
                     }
