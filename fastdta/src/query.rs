@@ -258,7 +258,7 @@ fn _get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGrap
     (paths, distances, departures)
 }
 
-fn construct_path_and_time(
+fn _construct_path_and_time(
     graph: &TDGraph,
     from_edge: EdgeId,
     from_edge_tt: FlWeight,
