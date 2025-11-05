@@ -793,6 +793,19 @@ def main(args=None):
             if ret != 0:
                 break
 
+        if options.relGap > 0 and step > 0:
+            if len(relative_gap_args) > 0:
+                # run the relative-gap-calculator
+                call_binary(RELATIVE_GAP_BINARY, [
+                            "--iteration", str(step), "--trips-file", input_demands[0]] + relative_gap_args)
+            # check whether we have converged
+            with open("rel_gaps.txt", "r") as f:
+                last_gap = float(f.readlines()[-1])
+                print("< relative gap in iteration %s: %.09f" %
+                      (step, last_gap))
+                if last_gap <= options.relGap:
+                    converged = True
+
         # simulation
         print(">> Running simulation")
         btime = datetime.now()
@@ -858,18 +871,6 @@ def main(args=None):
                 min(avgTT.count(), options.convIt), relStdDev))
             if avgTT.count() >= options.convIt and relStdDev < options.convDev:
                 converged = True
-        if options.relGap > 0 and step > 0:
-            if len(relative_gap_args) > 0:
-                # run the relative-gap-calculator
-                call_binary(RELATIVE_GAP_BINARY, [
-                            "--iteration", str(step), "--trips-file", input_demands[0]] + relative_gap_args)
-            # check whether we have converged
-            with open("rel_gaps.txt", "r") as f:
-                last_gap = float(f.readlines()[-1])
-                print("< relative gap in iteration %s: %.09f" %
-                      (step, last_gap))
-                if last_gap <= options.relGap:
-                    converged = True
 
         print("< Step %s ended (duration: %s)" %
               (step, datetime.now() - btimeA))
