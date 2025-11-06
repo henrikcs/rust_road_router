@@ -55,7 +55,7 @@ fn main() {
     let unchecked_sumo_trips: Vec<Trip> = trips
         .iter()
         .map(|trip| trip.to_sumo_trip())
-        .filter(|trip| edge_ids.contains(&trip.from) && edge_ids.contains(&trip.to))
+        .filter(|trip| edge_ids.contains(&trip.from) && edge_ids.contains(&trip.to) && trip.depart >= args.from as f64 && trip.depart < args.to as f64)
         .collect();
 
     let unchecked_sumo_trips_document_root = TripsDocumentRoot {
@@ -133,4 +133,10 @@ pub struct Args {
     // path where <prefix>.trips.xml will be written
     #[arg(long = "output")]
     pub output: String,
+
+    #[arg(long = "from", default_value_t = 0)]
+    pub from: u32,
+
+    #[arg(long = "to", default_value_t = 86_400)]
+    pub to: u32,
 }
