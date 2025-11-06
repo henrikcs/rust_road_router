@@ -167,6 +167,7 @@ fn get_paths_from_queries_par<
         .enumerate()
         .for_each_with(path_collector, |path_collector, (i, (path, tt, dep))| {
             let departure = queries_departure[i];
+            departure.clone_into(dep);
 
             if let Some((shortest_path, shortest_travel_time)) = path_collector(
                 queries_original_from_edges[i],
@@ -178,13 +179,11 @@ fn get_paths_from_queries_par<
             ) {
                 shortest_path.clone_into(path);
                 shortest_travel_time.clone_into(tt);
-                departure.clone_into(dep);
             } else {
                 println!(
                     "No path found from {} to {} at {dep:?} in query {}",
                     queries_original_from_edges[i], queries_original_to_edges[i], i
                 );
-                departure.clone_into(dep);
             }
         });
 
