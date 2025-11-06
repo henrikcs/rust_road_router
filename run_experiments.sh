@@ -140,6 +140,7 @@ cp "$experiment" "$base_output_dir/"
 EOF
 )
 
+# declare release_type="release"
 # declare spack_env="fast-dta"
 declare pwd=$(pwd)
 P=$(basename $(find ~/.user_spack/environments/fast-dta/.spack-env/._view -mindepth 1 -maxdepth 1 -type d))
