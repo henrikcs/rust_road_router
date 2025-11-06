@@ -802,7 +802,7 @@ def main(args=None):
             with open("rel_gaps.txt", "r") as f:
                 last_gap = float(f.readlines()[-1])
                 print("< relative gap in iteration %s: %.09f" %
-                      (step, last_gap))
+                      (step - 1, last_gap))
                 if last_gap <= options.relGap:
                     converged = True
 
