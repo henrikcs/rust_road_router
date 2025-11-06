@@ -42,7 +42,7 @@ pub fn get_paths_with_cch_queries(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    get_paths_from_queries_par(
+    _get_paths_from_queries(
         |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
