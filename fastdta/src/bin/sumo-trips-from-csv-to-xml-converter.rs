@@ -12,7 +12,7 @@ use conversion::sumo::{
 use fastdta::{
     customize::customize,
     preprocess::{get_cch, preprocess, run_inertial_flow_cutter},
-    query::get_paths_with_cch,
+    query::{get_paths_with_cch, get_paths_with_dijkstra},
 };
 
 use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::Reconstruct};
@@ -82,11 +82,11 @@ fn main() {
     preprocess(&temp_cch_dir).unwrap();
 
     let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
-    let cch = get_cch(&temp_cch_dir, &graph);
-    let customized_graph = customize(&cch, &graph);
+    // let cch = get_cch(&temp_cch_dir, &graph);
+    // let customized_graph = customize(&cch, &graph);
 
     println!("Calculating paths...");
-    let (shortest_paths, _, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
+    let (shortest_paths, _, _) = get_paths_with_dijkstra(&temp_cch_dir, &graph);
 
     // filter trips which can be routed on the graph
     println!("Filter trips according to paths...");
