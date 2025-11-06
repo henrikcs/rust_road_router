@@ -60,6 +60,7 @@ fn main() {
 
     let mut rel_gaps: Vec<f64> = Vec::new();
 
+    let single_iteration = args.iteration.is_some();
     let mut iteration: u32 = if let Some(it) = args.iteration { it } else { 0 };
     let mut dta_iteration_dir = dta_dir.join(format!("{:0>3}", iteration));
 
@@ -71,7 +72,7 @@ fn main() {
         let (best_paths, best_travel_times, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
-        dbg!("Reading routes from file {}", routes_path.display());
+        println!("Reading routes from file {}", routes_path.display());
         let routes_document_root = SumoRoutesReader::read(&routes_path).unwrap();
 
         let experienced_tt = get_experienced_travel_times_from_routes(&routes_document_root, &query_ids, &graph, &edge_id_to_index);
@@ -85,6 +86,10 @@ fn main() {
 
         rel_gaps.push(rel_gap);
 
+        if single_iteration {
+            break;
+        }
+
         iteration += 1;
         dta_iteration_dir = dta_dir.join(format!("{:0>3}", iteration));
     }
@@ -93,7 +98,7 @@ fn main() {
     let mut file = OpenOptions::new().create(true).append(true).open(Path::new(&args.output_file)).unwrap();
     for gap in rel_gaps {
         // write at the end of the file:
-        writeln!(file, "{:.6}", gap).unwrap();
+        writeln!(file, "{:.9}", gap).unwrap();
     }
 
     // remove the temporary CCH directory
