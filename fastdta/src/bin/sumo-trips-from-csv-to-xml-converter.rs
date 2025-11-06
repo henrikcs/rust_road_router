@@ -12,7 +12,7 @@ use conversion::sumo::{
 use fastdta::{
     customize::customize,
     preprocess::{get_cch, preprocess, run_inertial_flow_cutter},
-    query::get_paths_with_cch,
+    query::{get_paths_with_cch, get_paths_with_dijkstra},
 };
 
 use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::Reconstruct};
@@ -76,17 +76,17 @@ fn main() {
     convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &temp_trips_file, &temp_cch_dir).unwrap();
 
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
-    run_inertial_flow_cutter(&temp_cch_dir, 42, std::thread::available_parallelism().unwrap().get() as i32).unwrap();
+    // run_inertial_flow_cutter(&temp_cch_dir, 42, std::thread::available_parallelism().unwrap().get() as i32).unwrap();
 
     // run catchup preprocessing
     preprocess(&temp_cch_dir).unwrap();
 
     let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
-    let cch = get_cch(&temp_cch_dir, &graph);
-    let customized_graph = customize(&cch, &graph);
+    // let cch = get_cch(&temp_cch_dir, &graph);
+    // let customized_graph = customize(&cch, &graph);
 
     println!("Calculating paths...");
-    let (shortest_paths, _, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
+    let (shortest_paths, _, _) = get_paths_with_dijkstra(&temp_cch_dir, &graph);
 
     // filter trips which can be routed on the graph
     println!("Filter trips according to paths...");
