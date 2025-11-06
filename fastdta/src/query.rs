@@ -187,8 +187,16 @@ fn get_paths_from_queries_par<
             }
         });
 
-    let (paths, dd): (Vec<Vec<EdgeId>>, Vec<(FlWeight, SerializedTimestamp)>) = pdds.into_iter().map(|(path, tt, dep)| (path, (tt, dep))).unzip();
-    let (distances, departures): (Vec<FlWeight>, Vec<SerializedTimestamp>) = dd.into_iter().unzip();
+    let mut paths = Vec::with_capacity(queries_from.len());
+    let mut distances = Vec::with_capacity(queries_from.len());
+    let mut departures = Vec::with_capacity(queries_from.len());
+
+    pdds.into_iter().for_each(|(path, distance, departure)| {
+        paths.push(path);
+        distances.push(distance);
+        departures.push(departure);
+    });
+
     (paths, distances, departures)
 }
 
