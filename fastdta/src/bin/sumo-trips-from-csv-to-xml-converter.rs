@@ -33,7 +33,6 @@ fn main() {
     let edges_path = input_dir.join(format!("{}{}", &input_prefix, EDG_XML));
     let trips_path = Path::new(&args.trips);
     let output_path = Path::new(&args.output);
-    let output_trips_file = output_path.join(format!("{}{}", &input_prefix, TRIPS_XML));
 
     println!("Reading edges from: {}", edges_path.display());
     let edges = SumoEdgesReader::read(&edges_path).expect("Failed to read edges");
@@ -110,6 +109,12 @@ fn main() {
     let trips = conversion::sumo::trips::TripsDocumentRoot { trips: filtered_trips };
 
     // output the results as a trips file
+    let output_trips_file = if args.output_name.is_some() {
+        output_path.join(format!("{}{}", args.output_name.as_ref().unwrap(), TRIPS_XML))
+    } else {
+        output_path.join(format!("{}{}", &input_prefix, TRIPS_XML))
+    };
+
     SumoTripsWriter::write(&output_trips_file, &trips).expect("Failed to write trips");
     println!("Wrote filtered trips to: {}", output_trips_file.display());
 }
@@ -130,7 +135,10 @@ pub struct Args {
     #[arg(long = "trips")]
     pub trips: String,
 
-    // path where <prefix>.trips.xml will be written
+    #[arg(long = "trips-name")]
+    pub output_name: Option<String>,
+
+    // path where <prefix|output-name>.trips.xml will be written
     #[arg(long = "output")]
     pub output: String,
 
