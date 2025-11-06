@@ -140,6 +140,7 @@ cp "$experiment" "$base_output_dir/"
 EOF
 )
 
+# spack env activate fast-dta
 # declare release_type="release"
 # declare spack_env="fast-dta"
 declare pwd=$(pwd)
