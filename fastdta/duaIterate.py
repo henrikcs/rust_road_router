@@ -797,7 +797,7 @@ def main(args=None):
             if len(relative_gap_args) > 0:
                 # run the relative-gap-calculator
                 call_binary(RELATIVE_GAP_BINARY, [
-                            "--iteration", str(step), "--trips-file", input_demands[0]] + relative_gap_args)
+                            "--iteration", str(step - 1), "--trips-file", input_demands[0]] + relative_gap_args)
             # check whether we have converged
             with open("rel_gaps.txt", "r") as f:
                 last_gap = float(f.readlines()[-1])
