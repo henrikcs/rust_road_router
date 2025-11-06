@@ -11,6 +11,7 @@ default = [
     "tdcch-postcustomization",
     "tdcch-triangle-sorting",
     "tdcch-query-astar",
+    "tdcch-query-lazy",
 ]
 tdcch-disable-par = ["cch-disable-par"]
 cch-disable-par = []
@@ -23,7 +24,7 @@ tdcch-postcustomization = []
 tdcch-triangle-sorting = []
 tdcch-query-lazy = []
 tdcch-query-corridor = []
-tdcch-query-astar = []
+tdcch-query-astar = ["tdcch-query-corridor"]
 tdcch-profiles-with-holes = []
 tdcch-profiles-iterative-reconstruction = ["tdcch-profiles-with-holes"]
 tdcch-prevent-colinear = []
