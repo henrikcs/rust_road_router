@@ -20,7 +20,7 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>\n]"
+    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<begin>;<end>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>\n]"
     echo ""
     echo "Routing algorithm options (at least one is required):"
     echo "  --cch                  Run all experiments with CCH routing."
@@ -165,7 +165,7 @@ cp ~/rust_road_router/fastdta/duaIterate.py "$SUMO_HOME"/tools/assign
 
 # --- Run experiments ---
 line_index=0
-while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_deviation convergence_relgap last_iter seed || [[ -n "$in_dir" ]]; do
+while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation convergence_deviation convergence_relgap last_iter seed || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
 
@@ -190,7 +190,7 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
             declare -a dua_args=(
                 -n "$net_file"
                 -t "$trips_file"
-                --mesosim --aggregation "$aggregation" --begin 0 --end 86400 -l $last_iter
+                --mesosim --aggregation "$aggregation" --begin $begin --end $end -l $last_iter
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
                 --relative-gap "$convergence_relgap"
@@ -208,8 +208,6 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                 sumo--seed $seed
                 sumo--step-length 0.1
                 sumo--threads $(nproc)
-                relative-gap--net-prefix "$prefix"
-                relative-gap--net-dir "$in_dir"
             )
 
             # Add preprocessor args only for CCH
@@ -239,6 +237,14 @@ while IFS=';' read -r in_dir prefix trip_file_name aggregation convergence_devia
                     fastdta-router--samples 0.2
                     fastdta-router--samples 0.3
                     fastdta-router--samples 0.4
+                )
+            fi
+
+            # any other algorithm uses relative-gap-calculator: 
+            if [ "$algorithm" != "fastdta" || "$algorithm" != "CCH" || "$algorithm" != "fastdta" ]; then
+                dua_args+=(
+                    relative-gap--net-prefix "$prefix"
+                    relative-gap--net-dir "$in_dir"
                 )
             fi
 
