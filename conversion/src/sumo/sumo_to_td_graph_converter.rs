@@ -51,7 +51,7 @@ impl FlattenedSumoEdge {
 }
 
 /// lowest possible travel time for an edge in seconds
-pub const MIN_EDGE_WEIGHT: f64 = 0.5;
+pub const MIN_EDGE_WEIGHT: f64 = 0.125;
 
 impl Clone for FlattenedSumoEdge {
     fn clone(&self) -> Self {
