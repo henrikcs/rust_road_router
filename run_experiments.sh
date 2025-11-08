@@ -12,6 +12,7 @@ declare timestamp
 timestamp=$(date +'%Y-%m-%d-%H-%M')
 declare start_time
 start_time=$(date '+%Y-%m-%d %H:%M:%S')
+declare message=""
 
 # --- Function to display usage ---
 usage() {
@@ -32,6 +33,7 @@ usage() {
     echo ""
     echo "Other options:"
     echo "  --output <path>        Specify the base output directory (default: current directory)."
+    echo "  --message, -m <text>   Add a custom message to the experiment README.md file."
     echo "  --debug                Build and use the debug target instead of release."
     exit 1
 }
@@ -50,6 +52,10 @@ while [[ $# -gt 0 ]]; do
         ;;
         --output)
         output_dir="$2"
+        shift 2
+        ;;
+        --message|-m)
+        message="$2"
         shift 2
         ;;
         --debug)
@@ -137,6 +143,10 @@ cp "$experiment" "$base_output_dir/"
 **RAM:** ${ram_info:-unknown}
 
 **Algorithms run:** $algos
+
+${message:+**Message:**
+$message
+}
 EOF
 )
 
