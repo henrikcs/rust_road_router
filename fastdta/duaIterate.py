@@ -56,13 +56,13 @@ make sure the the binary is in PATH
 CCH_ROUTER_BINARY = "sumo-tdcch-router"
 """ Binary used for CCH customization and querying.
 
-make sure the the binary is in PATH 
+make sure the the binary is in PATH
 """
 
 DIJKSTRA_ROUTER_BINARY = "sumo-tddijkstra-router"
 """ Binary used for querying using a time-dependent version of dijkstra.
 
-make sure the the binary is in PATH 
+make sure the the binary is in PATH
 """
 DIJKSTRA_PREPROCESS_BINARY = "sumo-tddijkstra-preprocessor"
 """Binary used for conversion from Sumo input to CCH Preprocessing
@@ -79,7 +79,7 @@ make sure the the binary is in PATH
 FASTDTA_ROUTER_BINARY = "sumo-fastdta-router"
 """ Binary used for querying using the fastdta router.
 
-make sure the the binary is in PATH 
+make sure the the binary is in PATH
 """
 
 RELATIVE_GAP_BINARY = "sumo-relative-gap-calculator"
@@ -795,6 +795,8 @@ def main(args=None):
 
         if options.relGap > 0 and step > 0:
             if len(relative_gap_args) > 0:
+                print(">> Running relative-gap-calculator with additional arguments: %s" %
+                      " ".join(relative_gap_args))
                 # run the relative-gap-calculator
                 call_binary(RELATIVE_GAP_BINARY, [
                             "--iteration", str(step - 1), "--trips-file", input_demands[0]] + relative_gap_args)
