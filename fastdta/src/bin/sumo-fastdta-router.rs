@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     });
 
-    logger.log("assembling alternative paths", duration.as_nanos());
+    logger.log("postprocessing", duration.as_nanos());
 
     Ok(())
 }
