@@ -7,7 +7,6 @@ build = "build.rs"
 
 [features]
 default = [
-    "tdcch-approx",
     "tdcch-precustomization",
     "tdcch-postcustomization",
     "tdcch-triangle-sorting",
