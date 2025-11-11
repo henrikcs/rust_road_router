@@ -1,4 +1,3 @@
-pub mod alternative_path_assembler;
 pub mod alternative_paths;
 pub mod choice;
 pub mod cli;
@@ -7,6 +6,7 @@ pub mod edge_occupancy;
 pub mod gawron;
 pub mod logger;
 pub mod logit;
+pub mod postprocess;
 pub mod preprocess;
 pub mod query;
 pub mod relative_gap;

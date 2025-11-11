@@ -1,8 +1,11 @@
-use rust_road_router::datastr::graph::floating_time_dependent::TDGraph;
+use conversion::sumo::meandata::Interval;
+use rust_road_router::datastr::graph::floating_time_dependent::{TDGraph, TTFPoint};
 use rust_road_router::datastr::graph::{
     Graph,
     floating_time_dependent::{FlWeight, Timestamp},
 };
+
+use crate::vdf::VDF;
 
 /// given a graph, a set of old paths, a set of new paths, and their respective departure times,
 /// compute the edge occupancy deltas for each edge in the graph over time
@@ -14,30 +17,51 @@ use rust_road_router::datastr::graph::{
 /// returns a vector of vectors, where the outer vector is indexed by period
 /// and the inner vector is indexed by edge id
 pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
-    graph: &G,
-    old_paths: &Vec<Vec<u32>>,
+    graph: &mut G,
+    old_paths: &Vec<&Vec<u32>>,
     new_paths: &Vec<Vec<u32>>,
     departures: &Vec<Timestamp>,
-    periods: &Vec<(f64, f64)>,
+    intervals: &mut Vec<Interval>,
+    edge_ids: &Vec<String>,
+    edge_lengths: &Vec<f64>,
+    edge_free_flow_tts: &Vec<f64>,
 ) -> Vec<Vec<f64>> {
     // Debug assertion: verify periods have no holes (consecutive periods are continuous)
-    debug_assert!(periods.windows(2).all(|w| w[0].1 == w[1].0), "Periods must be continuous with no gaps");
+    debug_assert!(intervals.windows(2).all(|w| w[0].end == w[1].begin), "Periods must be continuous with no gaps");
+
+    // dbg!(&graph.ipps());
 
     let num_edges = graph.num_arcs();
-    let mut edge_occupancy_deltas = vec![vec![0.0; num_edges]; periods.len()];
+    let mut edge_occupancy_deltas = vec![vec![0.0; num_edges]; intervals.len()];
 
     // Process old paths (subtract travel times)
     for (path_idx, path) in old_paths.iter().enumerate() {
-        if path_idx < departures.len() {
-            process_path(graph, path, departures[path_idx], -1.0, periods, &mut edge_occupancy_deltas);
-        }
+        process_path(
+            graph,
+            path,
+            departures[path_idx],
+            -1.0,
+            intervals,
+            &mut edge_occupancy_deltas,
+            edge_ids,
+            edge_lengths,
+            edge_free_flow_tts,
+        );
     }
 
     // Process new paths (add travel times)
     for (path_idx, path) in new_paths.iter().enumerate() {
-        if path_idx < departures.len() {
-            process_path(graph, path, departures[path_idx], 1.0, periods, &mut edge_occupancy_deltas);
-        }
+        process_path(
+            graph,
+            path,
+            departures[path_idx],
+            1.0,
+            intervals,
+            &mut edge_occupancy_deltas,
+            edge_ids,
+            edge_lengths,
+            edge_free_flow_tts,
+        );
     }
 
     edge_occupancy_deltas
@@ -48,6 +72,8 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
 pub trait TravelTimeGraph {
     fn num_arcs(&self) -> usize;
     fn get_travel_time_along_path(&self, departure_time: Timestamp, path: &[u32]) -> FlWeight;
+    fn set_weight_for_edge_at_time(&mut self, edge_id: u32, at: Timestamp, new_weight: FlWeight);
+    fn ipps(&self) -> &Vec<TTFPoint>;
 }
 
 /// Implementation of TravelTimeGraph for TDGraph
@@ -59,16 +85,28 @@ impl TravelTimeGraph for TDGraph {
     fn get_travel_time_along_path(&self, departure_time: Timestamp, path: &[u32]) -> FlWeight {
         TDGraph::get_travel_time_along_path(&self, departure_time, path)
     }
+
+    fn set_weight_for_edge_at_time(&mut self, edge_id: u32, at: Timestamp, new_weight: FlWeight) {
+        TDGraph::set_weight_for_edge_at_time(self, edge_id, at, new_weight);
+    }
+
+    fn ipps(&self) -> &Vec<TTFPoint> {
+        &self.ipps
+    }
 }
 
 /// Process a single path and update edge occupancy deltas
 fn process_path<G: TravelTimeGraph>(
-    graph: &G,
+    graph: &mut G,
     path: &Vec<u32>,
     departure_time: Timestamp,
     sign: f64,
-    periods: &Vec<(f64, f64)>,
+    intervals: &mut Vec<Interval>,
     edge_occupancy_deltas: &mut Vec<Vec<f64>>,
+    edge_ids: &Vec<String>,
+    edge_lengths: &Vec<f64>,
+    edge_free_flow_tts: &Vec<f64>,
+    vdf: Box<dyn VDF>,
 ) {
     let mut current_time = departure_time;
     for &edge_id in path {
@@ -77,11 +115,11 @@ fn process_path<G: TravelTimeGraph>(
         // println!("Edge ID: {}, Travel Time: {:?}", edge_id, travel_time);
         let arrival_time = current_time + travel_time;
         // dbg!(arrival_time);
-        let bin_search_res = match periods.binary_search_by(|(start, end)| {
+        let bin_search_res = match intervals.binary_search_by(|interval| {
             // if current time is between start and end: return equal:
-            if *start <= f64::from(current_time) && f64::from(current_time) < *end {
+            if interval.begin <= f64::from(current_time) && f64::from(current_time) < interval.end {
                 std::cmp::Ordering::Equal
-            } else if f64::from(current_time) < *start {
+            } else if f64::from(current_time) < interval.begin {
                 std::cmp::Ordering::Greater
             } else {
                 std::cmp::Ordering::Less
@@ -95,40 +133,51 @@ fn process_path<G: TravelTimeGraph>(
             }
         };
 
-        for (period_idx, &(period_start, period_end)) in periods.iter().skip(bin_search_res).enumerate() {
+        for (interval_idx, interval) in intervals.iter_mut().skip(bin_search_res).enumerate() {
             if current_time >= arrival_time {
                 break; // No more travel time to distribute
             }
 
-            // Skip periods that end before our current time
-            if period_end <= f64::from(current_time) {
+            // Skip periods that end before or at our current time
+            if interval.end <= f64::from(current_time) {
                 continue;
             }
 
-            // Skip periods that start after our travel ends
-            if period_start >= f64::from(arrival_time) {
+            // Skip periods that start after or at our travel ends
+            if interval.begin >= f64::from(arrival_time) {
                 break;
             }
 
             // Calculate the overlap between travel time and this period
-            let overlap_start = f64::from(current_time).max(period_start);
-            let overlap_end = f64::from(arrival_time).min(period_end);
+            let overlap_start = f64::from(current_time).max(interval.begin);
+            let overlap_end = f64::from(arrival_time).min(interval.end);
             let overlap_duration = overlap_end - overlap_start;
 
             if overlap_duration > 0.0 {
-                edge_occupancy_deltas[bin_search_res + period_idx][edge_id as usize] += sign * overlap_duration;
+                edge_occupancy_deltas[bin_search_res + interval_idx][edge_id as usize] += sign * overlap_duration;
 
-                // if period_start == 300.0 && (edge_id == 6 || edge_id == 8) {
-                //     println!(
-                //         "Edge ID: {}, Period: {}-{}, Overlap: {}, Sign: {}, Updated Delta: {}",
-                //         edge_id,
-                //         period_start,
-                //         period_end,
-                //         overlap_duration,
-                //         sign,
-                //         edge_occupancy_deltas[bin_search_res + period_idx][edge_id as usize]
-                //     );
-                // }
+                let interval_duration = interval.end - interval.begin;
+                let interval_begin = interval.begin;
+                interval.get_edge(edge_ids[edge_id as usize].as_str()).map(|edge| {
+                    let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
+                    let previous_tt = edge.traveltime.unwrap_or(0.0);
+                    edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
+                    let estimated_tt = edge.get_estimated_travel_time(interval_duration, edge_lengths[edge_id as usize], edge_free_flow_tts[edge_id as usize]);
+
+                    println!(
+                        "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}",
+                        edge_ids[edge_id as usize],
+                        edge_lengths[edge_id as usize],
+                        interval_begin,
+                        previous_sampled,
+                        edge.sampled_seconds,
+                        previous_tt,
+                        estimated_tt
+                    );
+
+                    graph.set_weight_for_edge_at_time(edge_id, Timestamp::new(interval_begin), FlWeight::new(estimated_tt));
+                    edge.traveltime = Some(estimated_tt);
+                });
             }
             // Move to the next period boundary for the next iteration
             current_time = Timestamp::new(overlap_end);
@@ -175,6 +224,14 @@ mod tests {
                 FlWeight::ZERO
             }
         }
+
+        fn set_weight_for_edge_at_time(&mut self, _edge_id: u32, _at: Timestamp, _new_weight: FlWeight) {
+            // No-op for mock
+        }
+
+        fn ipps(&self) -> &Vec<TTFPoint> {
+            panic!();
+        }
     }
 
     #[test]
@@ -185,12 +242,29 @@ mod tests {
         mock_graph.set_travel_time(1, FlWeight::new(3.0));
         mock_graph.set_travel_time(2, FlWeight::new(7.0));
 
-        let old_paths = vec![vec![0], vec![1], vec![2]];
+        let old_paths_owned = vec![vec![0], vec![1], vec![2]];
+        let old_paths: Vec<&Vec<u32>> = old_paths_owned.iter().collect();
         let new_paths = vec![vec![0], vec![1], vec![2]]; // Same as old_paths
         let departures = vec![Timestamp::new(0.0), Timestamp::new(10.0), Timestamp::new(20.0)];
-        let periods = vec![(0.0, 10.0), (10.0, 20.0), (20.0, 30.0)];
+        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let mut intervals = vec![
+            Interval::create("0".to_string(), 0.0, 10.0, vec![]),
+            Interval::create("1".to_string(), 10.0, 20.0, vec![]),
+            Interval::create("2".to_string(), 20.0, 30.0, vec![]),
+        ];
+        let edge_ids = vec!["edge0".to_string(), "edge1".to_string(), "edge2".to_string()];
+        let edge_lengths = vec![100.0, 150.0, 200.0];
 
-        let result = get_edge_occupancy_deltas(&mock_graph, &old_paths, &new_paths, &departures, &periods);
+        let result = get_edge_occupancy_deltas(
+            &mut mock_graph,
+            &old_paths,
+            &new_paths,
+            &departures,
+            &mut intervals,
+            &edge_ids,
+            &edge_lengths,
+            &free_flow_tts,
+        );
 
         // All deltas should be zero since we subtract and add the same values
         for period_deltas in result {
@@ -208,12 +282,51 @@ mod tests {
         mock_graph.set_travel_time(1, FlWeight::new(3.0));
         mock_graph.set_travel_time(2, FlWeight::new(7.0));
 
-        let old_paths = vec![vec![0]]; // Single path using edge 0
+        let old_paths_owned = vec![vec![0]]; // Single path using edge 0
+        let old_paths: Vec<&Vec<u32>> = old_paths_owned.iter().collect();
         let new_paths = vec![vec![1]]; // Single path using edge 1
         let departures = vec![Timestamp::new(0.0)];
-        let periods = vec![(0.0, 10.0)];
 
-        let result = get_edge_occupancy_deltas(&mock_graph, &old_paths, &new_paths, &departures, &periods);
+        // Create edges for the interval
+        use conversion::sumo::meandata::Edge;
+        let edges = vec![
+            Edge {
+                id: "edge0".to_string(),
+                traveltime: None,
+                density: None,
+                speed: None,
+                sampled_seconds: Some(0.0),
+            },
+            Edge {
+                id: "edge1".to_string(),
+                traveltime: None,
+                density: None,
+                speed: None,
+                sampled_seconds: Some(0.0),
+            },
+            Edge {
+                id: "edge2".to_string(),
+                traveltime: None,
+                density: None,
+                speed: None,
+                sampled_seconds: Some(0.0),
+            },
+        ];
+        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let mut intervals = vec![Interval::create("0".to_string(), 0.0, 10.0, edges)];
+        let edge_ids = vec!["edge0".to_string(), "edge1".to_string(), "edge2".to_string()];
+        let edge_lengths = vec![100.0, 150.0, 200.0];
+
+        let result = get_edge_occupancy_deltas(
+            &mut mock_graph,
+            &old_paths,
+            &new_paths,
+            &departures,
+            &mut intervals,
+            &edge_ids,
+            &edge_lengths,
+            &free_flow_tts,
+        );
 
         // Edge 0 should have negative delta (old path removed)
         assert!(result[0][0] < 0.0, "Edge 0 should have negative delta");
@@ -227,16 +340,32 @@ mod tests {
     #[should_panic(expected = "Periods must be continuous with no gaps")]
     fn test_periods_with_holes_panic() {
         // Test case 3: periods contain holes -> expect an assertion failure
-        let mock_graph = MockTravelTimeGraph::new(1);
-        let old_paths = vec![vec![0]];
+        let mut mock_graph = MockTravelTimeGraph::new(1);
+        let old_paths_owned = vec![vec![0]];
+        let old_paths: Vec<&Vec<u32>> = old_paths_owned.iter().collect();
         let new_paths = vec![vec![0]];
         let departures = vec![Timestamp::new(0.0)];
 
+        let free_flow_tts = vec![0.0, 0.0, 0.0];
         // Periods with a gap between them
-        let periods = vec![(0.0, 10.0), (15.0, 25.0)]; // Gap from 10.0 to 15.0
+        let mut intervals = vec![
+            Interval::create("0".to_string(), 0.0, 10.0, vec![]),
+            Interval::create("1".to_string(), 15.0, 25.0, vec![]), // Gap from 10.0 to 15.0
+        ];
+        let edge_ids = vec!["edge0".to_string()];
+        let edge_lengths = vec![100.0];
 
         // This should panic due to the assertion
-        get_edge_occupancy_deltas(&mock_graph, &old_paths, &new_paths, &departures, &periods);
+        get_edge_occupancy_deltas(
+            &mut mock_graph,
+            &old_paths,
+            &new_paths,
+            &departures,
+            &mut intervals,
+            &edge_ids,
+            &edge_lengths,
+            &free_flow_tts,
+        );
     }
 
     #[test]
@@ -245,12 +374,54 @@ mod tests {
         let mut mock_graph = MockTravelTimeGraph::new(1);
         mock_graph.set_travel_time(0, FlWeight::new(15.0)); // Travel time spans multiple periods
 
-        let old_paths = vec![];
+        let old_paths_owned = vec![];
+        let old_paths: Vec<&Vec<u32>> = old_paths_owned.iter().collect();
         let new_paths = vec![vec![0]];
         let departures = vec![Timestamp::new(5.0)]; // Depart at t=5, arrive at t=20
-        let periods = vec![(0.0, 10.0), (10.0, 20.0), (20.0, 30.0)];
 
-        let result = get_edge_occupancy_deltas(&mock_graph, &old_paths, &new_paths, &departures, &periods);
+        // Create edges for each interval
+        use conversion::sumo::meandata::Edge;
+        let edges0 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+        let edges1 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+        let edges2 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+
+        let mut intervals = vec![
+            Interval::create("0".to_string(), 0.0, 10.0, edges0),
+            Interval::create("1".to_string(), 10.0, 20.0, edges1),
+            Interval::create("2".to_string(), 20.0, 30.0, edges2),
+        ];
+        let edge_ids = vec!["edge0".to_string()];
+        let edge_lengths = vec![100.0];
+        let free_flow_tts = vec![0.0, 0.0, 0.0];
+
+        let result = get_edge_occupancy_deltas(
+            &mut mock_graph,
+            &old_paths,
+            &new_paths,
+            &departures,
+            &mut intervals,
+            &edge_ids,
+            &edge_lengths,
+            &free_flow_tts,
+        );
 
         // Edge 0 should have positive deltas in first two periods due to overlap
         assert!(result[0][0] > 0.0, "Period 0 should have positive delta");
@@ -268,12 +439,54 @@ mod tests {
         let mut mock_graph = MockTravelTimeGraph::new(1);
         mock_graph.set_travel_time(0, FlWeight::new(6.0)); // Travel time: 6 seconds
 
-        let old_paths = vec![];
+        let old_paths_owned = vec![];
+        let old_paths: Vec<&Vec<u32>> = old_paths_owned.iter().collect();
         let new_paths = vec![vec![0]];
         let departures = vec![Timestamp::new(7.0)]; // Depart at t=7, arrive at t=13
-        let periods = vec![(0.0, 10.0), (10.0, 20.0), (20.0, 30.0)];
 
-        let result = get_edge_occupancy_deltas(&mock_graph, &old_paths, &new_paths, &departures, &periods);
+        // Create edges for each interval
+        use conversion::sumo::meandata::Edge;
+        let edges0 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+        let edges1 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+        let edges2 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+
+        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let mut intervals = vec![
+            Interval::create("0".to_string(), 0.0, 10.0, edges0),
+            Interval::create("1".to_string(), 10.0, 20.0, edges1),
+            Interval::create("2".to_string(), 20.0, 30.0, edges2),
+        ];
+        let edge_ids = vec!["edge0".to_string()];
+        let edge_lengths = vec![100.0];
+
+        let result = get_edge_occupancy_deltas(
+            &mut mock_graph,
+            &old_paths,
+            &new_paths,
+            &departures,
+            &mut intervals,
+            &edge_ids,
+            &edge_lengths,
+            &free_flow_tts,
+        );
 
         // Expected distribution:
         // Period 0 (0-10): overlap from t=7 to t=10 = 3 seconds
@@ -299,12 +512,62 @@ mod tests {
         let mut mock_graph = MockTravelTimeGraph::new(1);
         mock_graph.set_travel_time(0, FlWeight::new(18.0)); // Travel time: 18 seconds
 
-        let old_paths = vec![];
+        let old_paths_owned = vec![];
+        let old_paths: Vec<&Vec<u32>> = old_paths_owned.iter().collect();
         let new_paths = vec![vec![0]];
         let departures = vec![Timestamp::new(4.0)]; // Depart at t=4, arrive at t=22
-        let periods = vec![(0.0, 10.0), (10.0, 15.0), (15.0, 25.0), (25.0, 35.0)];
 
-        let result = get_edge_occupancy_deltas(&mock_graph, &old_paths, &new_paths, &departures, &periods);
+        // Create edges for each interval
+        use conversion::sumo::meandata::Edge;
+        let edges0 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+        let edges1 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+        let edges2 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+        let edges3 = vec![Edge {
+            id: "edge0".to_string(),
+            traveltime: None,
+            density: None,
+            speed: None,
+            sampled_seconds: Some(0.0),
+        }];
+
+        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let mut intervals = vec![
+            Interval::create("0".to_string(), 0.0, 10.0, edges0),
+            Interval::create("1".to_string(), 10.0, 15.0, edges1),
+            Interval::create("2".to_string(), 15.0, 25.0, edges2),
+            Interval::create("3".to_string(), 25.0, 35.0, edges3),
+        ];
+        let edge_ids = vec!["edge0".to_string()];
+        let edge_lengths = vec![100.0];
+
+        let result = get_edge_occupancy_deltas(
+            &mut mock_graph,
+            &old_paths,
+            &new_paths,
+            &departures,
+            &mut intervals,
+            &edge_ids,
+            &edge_lengths,
+            &free_flow_tts,
+        );
 
         // Expected distribution:
         // Period 0 (0-10): overlap from t=4 to t=10 = 6 seconds

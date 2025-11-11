@@ -13,8 +13,8 @@ use crate::{
         FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML, VEH_LENGTH,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
-    FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE,
-    FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
+    FILE_EDGE_LENGTHS, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE, FILE_LONGITUDE,
+    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
 };
 
 pub struct FlattenedSumoEdge {
@@ -102,18 +102,21 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
     // extract default weights of all edges and write them to a file
-    let (edge_default_travel_times, capas): (Vec<u32>, Vec<f64>) = edge_indices_to_id
+    let (edge_default_travel_times, capas, lengths): (Vec<u32>, Vec<f64>, Vec<f64>) = edge_indices_to_id
         .iter()
         .map(|edge| {
             // weight is calculated in method `initialize_edges_for_td_graph`
             let e = &edge_ids_to_index.get(edge).unwrap().1;
             let default_tt = (e.weight * 1000.0) as u32; // convert seconds to milliseconds
             let capa = e.capacity;
-            (default_tt, capa)
+            let length = e.length;
+
+            (default_tt, capa, length)
         })
         .collect();
 
     edge_default_travel_times.write_to(&output_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES))?;
+    lengths.write_to(&output_dir.join(FILE_EDGE_LENGTHS))?;
     capas.write_to(&output_dir.join(FILE_EDGE_CAPACITIES))?;
 
     write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id.iter().collect())?;

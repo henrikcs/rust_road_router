@@ -11,10 +11,10 @@ pub type IPPIndex = u32;
 /// All data is owned.
 #[derive(Debug, Clone)]
 pub struct Graph {
-    first_out: Vec<EdgeId>,
-    head: Vec<NodeId>,
-    first_ipp_of_arc: Vec<IPPIndex>,
-    ipps: Vec<TTFPoint>,
+    pub first_out: Vec<EdgeId>,
+    pub head: Vec<NodeId>,
+    pub first_ipp_of_arc: Vec<IPPIndex>,
+    pub ipps: Vec<TTFPoint>,
 }
 
 impl Graph {
@@ -202,6 +202,31 @@ impl Graph {
             "total_relative_delay": total_relative_dekay,
             "median_relative_delay": rel_delays[rel_delays.len() / 2],
         });
+    }
+
+    pub fn set_weight_for_edge_at_time(&mut self, edge_id: EdgeId, at: Timestamp, new_weight: FlWeight) {
+        let edge_id = edge_id as usize;
+        let range = self.first_ipp_of_arc[edge_id] as usize..self.first_ipp_of_arc[edge_id + 1] as usize;
+
+        // binary search for the right place to insert
+        let pos = match self.ipps[range.clone()].binary_search_by(|p| p.at.partial_cmp(&at).unwrap()) {
+            Ok(pos) => pos,
+            Err(pos) => pos,
+        };
+
+        // set weight at position in ipps
+        // dbg!(&range.start, &range.end, &pos, self.ipps[range.start + pos], &self.ipps[range.clone()]);
+        if pos < range.end - range.start && self.ipps[range.start + pos].at.fuzzy_eq(at) {
+            println!("Updating existing weight point at time {:?} for edge {}", at, edge_id);
+            self.ipps[range.start + pos].val = new_weight;
+        } else {
+            println!("Inserting new weight point at time {:?} for edge {}", at, edge_id);
+            self.ipps.insert(range.start + pos, TTFPoint { at, val: new_weight });
+            // update first_ipp_of_arc for all subsequent edges
+            for i in (edge_id + 1)..self.first_ipp_of_arc.len() {
+                self.first_ipp_of_arc[i] += 1;
+            }
+        }
     }
 }
 

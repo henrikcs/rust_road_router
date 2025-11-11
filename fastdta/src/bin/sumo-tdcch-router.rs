@@ -1,8 +1,8 @@
-use fastdta::alternative_path_assembler::prepare_next_iteration;
 use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::customize::customize;
 use fastdta::logger::Logger;
+use fastdta::postprocess::prepare_next_iteration;
 use fastdta::query::get_paths_with_cch;
 use fastdta::route::get_graph_data_for_cch;
 use rust_road_router::report::measure;
@@ -53,6 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             write_sumo_alternatives,
             args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
+            false,
         )
     });
 

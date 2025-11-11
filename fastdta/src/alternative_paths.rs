@@ -208,6 +208,18 @@ impl AlternativePathsForDTA {
 
         merged_alternative_paths
     }
+
+    pub fn get_chosen_paths<'a>(&'a self) -> Vec<&'a Vec<EdgeId>> {
+        let mut chosen_paths = vec![];
+
+        for alternatives in self.alternatives_in_query.iter() {
+            let choice_index = alternatives.choice;
+            let chosen_path = &alternatives.paths[choice_index];
+            chosen_paths.push(&chosen_path.edges);
+        }
+
+        chosen_paths
+    }
 }
 
 impl AlternativePathsForDTAFlattened {

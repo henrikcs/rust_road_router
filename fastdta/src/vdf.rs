@@ -1,5 +1,6 @@
 pub enum VDFType {
     Ptv,
+
     Bpr,
 }
 
@@ -8,12 +9,26 @@ pub enum VDFType {
 pub trait VDF {
     fn travel_time(&self, flow: f64, capacity: f64, free_flow_time: f64) -> f64;
 
-    fn travel_time_estimation(&self, _previous_flow: f64, _previous_tt: f64, flow: f64, capacity: f64, free_flow_time: f64) -> f64 {
+    fn travel_time_estimation(
+        &self,
+        previous_flow: f64,
+        previous_density: f64,
+        previous_tt: f64,
+        flow: f64,
+        density: f64,
+        capacity: f64,
+        length: f64,
+        free_flow_time: f64,
+    ) -> f64 {
         if capacity == 0.0 {
             return f64::INFINITY;
         }
 
-        let estimated_tt = self.travel_time(flow, capacity, free_flow_time);
+        // let estimated_tt = self.travel_time(flow, capacity, free_flow_time);
+
+        let velocity = (flow / density) / 3.6; // in m/s
+
+        let estimated_tt = length / velocity; // in seconds
 
         // println!(
         //     "Estimating travel time: flow = {}, capacity = {}, free_flow_time = {}, tt = {}",

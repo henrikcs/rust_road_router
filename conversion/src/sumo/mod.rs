@@ -11,6 +11,7 @@ pub mod edges;
 pub mod edges_reader;
 pub mod meandata;
 pub mod meandata_reader;
+pub mod meandata_writer;
 pub mod nodes;
 pub mod nodes_reader;
 pub mod paths_to_sumo_routes_converter;

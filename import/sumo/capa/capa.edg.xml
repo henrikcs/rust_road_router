@@ -37,9 +37,14 @@ xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xs
 <edges version="1.20" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
 
-    <edge id="s1" from="s1" to="sab" priority="-1" numLanes="2" speed="13.89" />
-    <edge id="s2" from="s2" to="sab" priority="-1" numLanes="2" speed="13.89" />
-    <edge id="a" from="sab" to="abt" priority="-1" numLanes="1" speed="13.89" />
-    <edge id="b" from="sab" to="abt" priority="-1" numLanes="1" speed="13.89" />
-    <edge id="t" from="abt" to="t" priority="-1" numLanes="2" speed="13.89" />
+    <edge id="s" from="os" to="sab" priority="-1" numLanes="2" speed="13.89" />
+    <edge id="a1" from="sab" to="sa" priority="-1" numLanes="1" speed="13.89" />
+    <edge id="a2" from="sa" to="abt" priority="-1" numLanes="1" speed="13.89" />
+    <edge id="b1" from="sab" to="sb" priority="-1" numLanes="1" speed="13.89" />
+    <edge id="b2" from="sb" to="abt" priority="-1" numLanes="1" speed="13.89" />
+
+    <edge id="sa" from="osa" to="sa" priority="1" numLanes="2" speed="13.89" />
+    <edge id="sb" from="osb" to="sb" priority="1" numLanes="2" speed="13.89" />
+
+    <edge id="t" from="abt" to="to" priority="-1" numLanes="2" speed="13.89" />
 </edges>

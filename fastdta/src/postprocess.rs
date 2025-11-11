@@ -33,6 +33,7 @@ pub fn prepare_next_iteration(
     write_sumo_alternatives: bool,
     seed: i32,
     edge_indices_to_id: &Vec<String>,
+    skip_relative_gap: bool,
 ) {
     let current_iteration_dir = input_dir.join(format!("{:0>3}", iteration));
 
@@ -42,17 +43,10 @@ pub fn prepare_next_iteration(
         let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
         let old_alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
 
-        // get choices from old_alternative_paths to calculate relative gap
-        let previous_choices = get_paths_from_choices(&old_alternative_paths);
-        let simulated_tts: Vec<f64> = previous_choices
-            .iter()
-            .enumerate()
-            .map(|(i, path)| f64::from(graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path)))
-            .collect();
-
-        let rel_gap = get_relative_gap(&travel_times.iter().map(|tt| f64::from(*tt)).collect(), &simulated_tts);
-
-        append_relative_gap_to_file(rel_gap, &input_dir);
+        if !skip_relative_gap {
+            // get choices from old_alternative_paths to calculate relative gap
+            set_relative_gap_with_previous_alternative_paths(&old_alternative_paths, graph, &input_dir, travel_times, departures);
+        }
 
         // merge previous alternatives with current shortest paths
         let mut new_alternative_paths = old_alternative_paths.update_alternatives_with_new_paths(&shortest_paths, &travel_times, &departures, &graph);
@@ -61,8 +55,10 @@ pub fn prepare_next_iteration(
 
         new_alternative_paths
     } else {
-        // initialize with alternatives consisting of the shortest paths
-        append_relative_gap_to_file(0.0, &input_dir);
+        if !skip_relative_gap {
+            // initialize relative gap file with 0.0 for the first iteration
+            append_relative_gap_to_file(0.0, &input_dir);
+        }
         AlternativePathsForDTA::init(shortest_paths, travel_times)
     };
 
@@ -107,14 +103,21 @@ fn transform_alternative_paths_for_dta_to_vectors(
     (path_sets, costs, probabilities, choices)
 }
 
-fn get_paths_from_choices<'a>(alternative_paths: &'a AlternativePathsForDTA) -> Vec<&'a Vec<EdgeId>> {
-    let mut chosen_paths = vec![];
+pub fn set_relative_gap_with_previous_alternative_paths(
+    previous_alternative_paths: &AlternativePathsForDTA,
+    graph: &TDGraph,
+    input_dir: &Path,
+    travel_times: &Vec<FlWeight>,
+    departures: &Vec<SerializedTimestamp>,
+) {
+    let previous_choices = previous_alternative_paths.get_chosen_paths();
+    let simulated_tts: Vec<f64> = previous_choices
+        .iter()
+        .enumerate()
+        .map(|(i, path)| f64::from(graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path)))
+        .collect();
 
-    for alternatives in alternative_paths.alternatives_in_query.iter() {
-        let choice_index = alternatives.choice;
-        let chosen_path = &alternatives.paths[choice_index];
-        chosen_paths.push(&chosen_path.edges);
-    }
+    let rel_gap = get_relative_gap(&travel_times.iter().map(|tt| f64::from(*tt)).collect(), &simulated_tts);
 
-    chosen_paths
+    append_relative_gap_to_file(rel_gap, &input_dir);
 }

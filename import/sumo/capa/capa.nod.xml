@@ -39,10 +39,15 @@ xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xs
     <location netOffset="0.00,0.00" convBoundary="0.00,0.00,3600.00,3600.00"
         origBoundary="0.00,0.00,3600.00,3600.00" projParameter="!" />
 
-    <node id="s1" x="0" y="0" type="priority" />
-    <node id="s2" x="500" y="500" type="priority" />
+    <node id="os" x="0" y="0" type="priority" />
+    <node id="osa" x="500" y="1000" type="priority" />
+    <node id="sa" x="500" y="500" type="priority" />
     <node id="sab" x="500" y="0" type="priority" />
+
+    <node id="osb" x="500" y="-1000" type="priority" />
+    <node id="sb" x="500" y="-500" type="priority" />
+
     <node id="abt" x="1000" y="0" type="priority" />
-    <node id="t" x="1500" y="0" type="priority" />
+    <node id="to" x="1500" y="0" type="priority" />
 
 </nodes>

@@ -410,7 +410,7 @@ impl RouterArgs {
         }
     }
 
-    pub fn get_write_some_alternatives(&self) -> bool {
+    pub fn get_write_sumo_alternatives(&self) -> bool {
         self.no_write_sumo_alternatives == "false" || self.no_write_sumo_alternatives == "0" || self.no_write_sumo_alternatives == "False"
     }
 }
