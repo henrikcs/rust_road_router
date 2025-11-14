@@ -1,7 +1,8 @@
 use std::{default, path::Path};
 
 use conversion::{
-    DIR_DTA, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LENGTHS, SerializedTimestamp, SerializedTravelTime,
+    DIR_DTA, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, SerializedTimestamp,
+    SerializedTravelTime,
     sumo::{
         FileReader, FileWriter,
         meandata::{Interval, MeandataDocumentRoot},
@@ -117,6 +118,7 @@ pub fn get_paths_by_samples(
     let free_flow_tts: Vec<f64> = free_flow_tts_ms.iter().map(|&tt| tt as f64 / 1000.0).collect();
     let edge_capas = &Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_CAPACITIES)).unwrap();
     let edge_lengths = &Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_LENGTHS)).unwrap();
+    let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
 
     let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
 
@@ -173,6 +175,7 @@ pub fn get_paths_by_samples(
             edge_ids,
             edge_lengths,
             &free_flow_tts,
+            edge_lanes,
         );
 
         println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);

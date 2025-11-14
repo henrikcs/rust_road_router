@@ -12,10 +12,10 @@ use crate::{
         meandata::{Edge, MeandataDocumentRoot},
         meandata_reader::SumoMeandataReader,
         sumo_find_file::get_meandata_file,
-        sumo_to_td_graph_converter::MIN_EDGE_WEIGHT,
         FileReader,
     },
     SerializedTimestamp, SerializedTravelTime, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_FIRST_IPP_OF_ARC, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
+    MIN_EDGE_WEIGHT,
 };
 
 pub fn get_graph_with_travel_times_from_previous_iteration(input_dir: &Path, iteration: u32, edge_ids: &Vec<String>) -> TDGraph {

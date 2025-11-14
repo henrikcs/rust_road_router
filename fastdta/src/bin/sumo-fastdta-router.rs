@@ -21,6 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vdf = args.get_vdf();
     let samples = args.get_samples();
 
+    // calibrate traffic model and vdf for each edge using the data from previous iterations and the current values of meandata
+
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
     let logger = Logger::new("sumo-fastdta-router", &input_dir.display().to_string(), iteration as i32);

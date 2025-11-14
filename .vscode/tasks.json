@@ -282,9 +282,9 @@
         "--aggregation",
         "300",
         "--begin",
-        "0",
+        "50",
         "--end",
-        "3600",
+        "3650",
         "--relative-gap",
         "0.0001",
         "--max-convergence-deviation",
@@ -319,7 +319,7 @@
         "fastdta-router--samples",
         "10",
         "fastdta-router--samples",
-        "7000",
+        "6300",
         "fastdta-router--seed",
         "42"
       ]

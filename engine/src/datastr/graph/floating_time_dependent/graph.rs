@@ -205,8 +205,8 @@ impl Graph {
     }
 
     pub fn set_weight_for_edge_at_time(&mut self, edge_id: EdgeId, at: Timestamp, new_weight: FlWeight) {
-        let edge_id = edge_id as usize;
-        let range = self.first_ipp_of_arc[edge_id] as usize..self.first_ipp_of_arc[edge_id + 1] as usize;
+        let edge_id_usize = edge_id as usize;
+        let range = self.first_ipp_of_arc[edge_id_usize] as usize..self.first_ipp_of_arc[edge_id_usize + 1] as usize;
 
         // binary search for the right place to insert
         let pos = match self.ipps[range.clone()].binary_search_by(|p| p.at.partial_cmp(&at).unwrap()) {
@@ -217,16 +217,45 @@ impl Graph {
         // set weight at position in ipps
         // dbg!(&range.start, &range.end, &pos, self.ipps[range.start + pos], &self.ipps[range.clone()]);
         if pos < range.end - range.start && self.ipps[range.start + pos].at.fuzzy_eq(at) {
-            println!("Updating existing weight point at time {:?} for edge {}", at, edge_id);
+            // println!(
+            //     "Updating existing weight point at time {:?} for edge {} with ipps {:?}",
+            //     at,
+            //     edge_id_usize,
+            //     &self.ipps[range.clone()]
+            // );
+
             self.ipps[range.start + pos].val = new_weight;
+            self.adjust_ipps(edge_id);
         } else {
-            println!("Inserting new weight point at time {:?} for edge {}", at, edge_id);
-            self.ipps.insert(range.start + pos, TTFPoint { at, val: new_weight });
-            // update first_ipp_of_arc for all subsequent edges
-            for i in (edge_id + 1)..self.first_ipp_of_arc.len() {
-                self.first_ipp_of_arc[i] += 1;
-            }
+            panic!(
+                "No existing weight point at time {:?} for edge {} with ipps {:?}",
+                at,
+                edge_id_usize,
+                &self.ipps[range.clone()]
+            );
         }
+    }
+
+    fn adjust_ipps(&mut self, edge_id: EdgeId) {
+        let edge_id_usize = edge_id as usize;
+        let range = self.first_ipp_of_arc[edge_id_usize] as usize..self.first_ipp_of_arc[edge_id_usize + 1] as usize;
+
+        // If the range has only one element, nothing needs to be done
+        if range.end - range.start <= 1 {
+            return;
+        }
+
+        // Iterate from second to last element down to first element to ensure FIFO property
+        for i in (range.start..range.end - 1).rev() {
+            let interval_duration = self.ipps[i + 1].at - self.ipps[i].at;
+            let next_val = self.ipps[i + 1].val;
+
+            // Enforce FIFO: current travel time should not exceed interval_duration + next_val
+            self.ipps[i].val = FlWeight::min(self.ipps[i].val, interval_duration + next_val);
+        }
+
+        // Ensure periodicity property: last value should equal first value
+        self.ipps[range.end - 1].val = self.ipps[range.start].val;
     }
 }
 

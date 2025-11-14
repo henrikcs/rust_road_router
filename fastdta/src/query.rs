@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use conversion::sumo::sumo_to_td_graph_converter::MIN_EDGE_WEIGHT;
 use conversion::{
-    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES, SerializedTimestamp,
+    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES, MIN_EDGE_WEIGHT,
+    SerializedTimestamp,
 };
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};

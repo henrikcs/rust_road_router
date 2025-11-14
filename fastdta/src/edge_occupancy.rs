@@ -25,6 +25,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
+    lanes: &Vec<u32>,
 ) -> Vec<Vec<f64>> {
     // Debug assertion: verify periods have no holes (consecutive periods are continuous)
     debug_assert!(intervals.windows(2).all(|w| w[0].end == w[1].begin), "Periods must be continuous with no gaps");
@@ -46,6 +47,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
+            lanes,
         );
     }
 
@@ -61,6 +63,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
+            lanes,
         );
     }
 
@@ -106,7 +109,7 @@ fn process_path<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
-    vdf: Box<dyn VDF>,
+    lanes: &Vec<u32>,
 ) {
     let mut current_time = departure_time;
     for &edge_id in path {
@@ -161,18 +164,23 @@ fn process_path<G: TravelTimeGraph>(
                 interval.get_edge(edge_ids[edge_id as usize].as_str()).map(|edge| {
                     let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
                     let previous_tt = edge.traveltime.unwrap_or(0.0);
+                    let previous_density = edge.get_density(interval_duration, edge_lengths[edge_id as usize]);
                     edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
-                    let estimated_tt = edge.get_estimated_travel_time(interval_duration, edge_lengths[edge_id as usize], edge_free_flow_tts[edge_id as usize]);
+                    let estimated_tt =
+                        edge.get_estimated_travel_time(interval_duration, edge_lengths[edge_id as usize], 1, edge_free_flow_tts[edge_id as usize]);
+                    let estimated_density = edge.get_density(interval_duration, edge_lengths[edge_id as usize]);
 
                     println!(
-                        "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}",
+                        "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} -> {}",
                         edge_ids[edge_id as usize],
                         edge_lengths[edge_id as usize],
                         interval_begin,
                         previous_sampled,
                         edge.sampled_seconds,
                         previous_tt,
-                        estimated_tt
+                        estimated_tt,
+                        previous_density,
+                        estimated_density
                     );
 
                     graph.set_weight_for_edge_at_time(edge_id, Timestamp::new(interval_begin), FlWeight::new(estimated_tt));
@@ -247,6 +255,7 @@ mod tests {
         let new_paths = vec![vec![0], vec![1], vec![2]]; // Same as old_paths
         let departures = vec![Timestamp::new(0.0), Timestamp::new(10.0), Timestamp::new(20.0)];
         let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let edge_lanes = vec![1, 1, 1];
         let mut intervals = vec![
             Interval::create("0".to_string(), 0.0, 10.0, vec![]),
             Interval::create("1".to_string(), 10.0, 20.0, vec![]),
@@ -264,6 +273,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &edge_lanes,
         );
 
         // All deltas should be zero since we subtract and add the same values
@@ -296,6 +306,7 @@ mod tests {
                 density: None,
                 speed: None,
                 sampled_seconds: Some(0.0),
+                lanedensity: None,
             },
             Edge {
                 id: "edge1".to_string(),
@@ -303,6 +314,7 @@ mod tests {
                 density: None,
                 speed: None,
                 sampled_seconds: Some(0.0),
+                lanedensity: None,
             },
             Edge {
                 id: "edge2".to_string(),
@@ -310,12 +322,14 @@ mod tests {
                 density: None,
                 speed: None,
                 sampled_seconds: Some(0.0),
+                lanedensity: None,
             },
         ];
         let free_flow_tts = vec![0.0, 0.0, 0.0];
         let mut intervals = vec![Interval::create("0".to_string(), 0.0, 10.0, edges)];
         let edge_ids = vec!["edge0".to_string(), "edge1".to_string(), "edge2".to_string()];
         let edge_lengths = vec![100.0, 150.0, 200.0];
+        let edge_lanes = vec![1, 1, 1];
 
         let result = get_edge_occupancy_deltas(
             &mut mock_graph,
@@ -326,6 +340,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &edge_lanes,
         );
 
         // Edge 0 should have negative delta (old path removed)
@@ -354,6 +369,7 @@ mod tests {
         ];
         let edge_ids = vec!["edge0".to_string()];
         let edge_lengths = vec![100.0];
+        let edge_lanes = vec![1];
 
         // This should panic due to the assertion
         get_edge_occupancy_deltas(
@@ -365,6 +381,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &edge_lanes,
         );
     }
 
@@ -387,6 +404,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
         let edges1 = vec![Edge {
             id: "edge0".to_string(),
@@ -394,6 +412,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
         let edges2 = vec![Edge {
             id: "edge0".to_string(),
@@ -401,6 +420,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
 
         let mut intervals = vec![
@@ -412,6 +432,8 @@ mod tests {
         let edge_lengths = vec![100.0];
         let free_flow_tts = vec![0.0, 0.0, 0.0];
 
+        let edge_lanes = vec![1];
+
         let result = get_edge_occupancy_deltas(
             &mut mock_graph,
             &old_paths,
@@ -421,6 +443,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &edge_lanes,
         );
 
         // Edge 0 should have positive deltas in first two periods due to overlap
@@ -452,6 +475,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
         let edges1 = vec![Edge {
             id: "edge0".to_string(),
@@ -459,6 +483,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
         let edges2 = vec![Edge {
             id: "edge0".to_string(),
@@ -466,6 +491,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
 
         let free_flow_tts = vec![0.0, 0.0, 0.0];
@@ -476,6 +502,7 @@ mod tests {
         ];
         let edge_ids = vec!["edge0".to_string()];
         let edge_lengths = vec![100.0];
+        let edge_lanes = vec![1];
 
         let result = get_edge_occupancy_deltas(
             &mut mock_graph,
@@ -486,6 +513,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &edge_lanes,
         );
 
         // Expected distribution:
@@ -525,6 +553,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
         let edges1 = vec![Edge {
             id: "edge0".to_string(),
@@ -532,6 +561,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
         let edges2 = vec![Edge {
             id: "edge0".to_string(),
@@ -539,6 +569,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
         let edges3 = vec![Edge {
             id: "edge0".to_string(),
@@ -546,6 +577,7 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
+            lanedensity: None,
         }];
 
         let free_flow_tts = vec![0.0, 0.0, 0.0];
@@ -557,6 +589,7 @@ mod tests {
         ];
         let edge_ids = vec!["edge0".to_string()];
         let edge_lengths = vec![100.0];
+        let edge_lanes = vec![1];
 
         let result = get_edge_occupancy_deltas(
             &mut mock_graph,
@@ -567,6 +600,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &edge_lanes,
         );
 
         // Expected distribution:

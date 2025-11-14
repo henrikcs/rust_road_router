@@ -57,6 +57,9 @@ pub const FILE_EDGE_CAPACITIES: &str = "edge_capacities";
 // contains the lengths of the edges
 pub const FILE_EDGE_LENGTHS: &str = "edge_lengths";
 
+// contains the number of lanes of the edges
+pub const FILE_EDGE_LANES: &str = "edge_lanes";
+
 pub const FILE_RELATIVE_GAPS: &str = "rel_gaps.txt";
 
 /// in milliseconds
@@ -65,6 +68,12 @@ pub type SerializedTravelTime = u32;
 pub type SerializedTimestamp = u32;
 /// in meters
 pub type SerializedPosition = f32;
+
+/// lowest possible travel time for an edge in seconds
+pub const MIN_EDGE_WEIGHT: f64 = 1.0;
+
+pub const MAX_EDGE_WEIGHT: f64 = 86_400.0; // 24 hours in seconds
+pub const SUMO_MAX_TRAVEL_TIME: f64 = 100_000.0; // 100k seconds
 
 pub fn speed_profile_to_tt_profile(speeds: &[(Timestamp, u32)], edge_len: u32) -> Vec<(Timestamp, Weight)> {
     let t_wrap = speeds.last().unwrap().0;
