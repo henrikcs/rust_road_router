@@ -1,11 +1,10 @@
-use std::{default, path::Path};
+use std::{collections::HashMap, path::Path};
 
 use conversion::{
-    DIR_DTA, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, SerializedTimestamp,
-    SerializedTravelTime,
+    DIR_DTA, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, SerializedTimestamp, SerializedTravelTime,
     sumo::{
         FileReader, FileWriter,
-        meandata::{Interval, MeandataDocumentRoot},
+        meandata::MeandataDocumentRoot,
         meandata_reader::SumoMeandataReader,
         meandata_writer::SumoMeandataWriter,
         sumo_find_file::get_meandata_file,
@@ -14,11 +13,8 @@ use conversion::{
 };
 
 use rust_road_router::{
-    algo::{
-        catchup::customize,
-        customizable_contraction_hierarchy::{CCH, CCHT},
-    },
-    datastr::graph::floating_time_dependent::{EPSILON, FlWeight, Shortcut, ShortcutGraphTrt, ShortcutId, TDGraph, TDGraphTrait},
+    algo::{catchup::customize, customizable_contraction_hierarchy::CCH},
+    datastr::graph::floating_time_dependent::{FlWeight, TDGraph},
     io::{Load, read_strings_from_file},
     report::measure,
 };
@@ -29,8 +25,8 @@ use crate::{
     edge_occupancy::get_edge_occupancy_deltas,
     logger::Logger,
     preprocess::get_cch,
-    query::{get_paths_with_cch_queries, get_paths_with_dijkstra_queries, read_queries},
-    vdf::{Bpr, Ptv, VDF, VDFType},
+    query::{get_paths_with_cch_queries, read_queries},
+    traffic_model::TrafficModel,
 };
 
 pub fn get_graph_data_for_fast_dta(
@@ -100,7 +96,7 @@ pub fn get_paths_by_samples(
     logger: &Logger,
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     samples: &Vec<Vec<usize>>,
-    vdf: VDFType,
+    traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
     alternative_paths_from_dta: &AlternativePathsForDTA,
     meandata: &mut MeandataDocumentRoot,
     edge_ids: &Vec<String>,
@@ -116,9 +112,9 @@ pub fn get_paths_by_samples(
     let mut departures = vec![0; query_data.0.len()];
     let free_flow_tts_ms = &Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
     let free_flow_tts: Vec<f64> = free_flow_tts_ms.iter().map(|&tt| tt as f64 / 1000.0).collect();
-    let edge_capas = &Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_CAPACITIES)).unwrap();
+
     let edge_lengths = &Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_LENGTHS)).unwrap();
-    let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
+    // let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
 
     let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
 
@@ -137,7 +133,7 @@ pub fn get_paths_by_samples(
         let cch = get_cch(input_dir, &graph);
         let (customized_graph, duration) = measure(|| customize(&cch, &graph));
 
-        // logger.log(format!("cch customization (sample {i})").as_str(), duration.as_nanos());
+        logger.log(format!("cch customization (sample {i})").as_str(), duration.as_nanos());
 
         let ((sampled_shortest_paths, sampled_travel_times, sampled_departures), duration) = measure(|| {
             get_paths_with_cch_queries(
@@ -175,7 +171,7 @@ pub fn get_paths_by_samples(
             edge_ids,
             edge_lengths,
             &free_flow_tts,
-            edge_lanes,
+            &traffic_model,
         );
 
         println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);

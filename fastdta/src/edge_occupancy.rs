@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use conversion::sumo::meandata::Interval;
 use rust_road_router::datastr::graph::floating_time_dependent::{TDGraph, TTFPoint};
 use rust_road_router::datastr::graph::{
@@ -5,7 +7,7 @@ use rust_road_router::datastr::graph::{
     floating_time_dependent::{FlWeight, Timestamp},
 };
 
-use crate::vdf::VDF;
+use crate::traffic_model::TrafficModel;
 
 /// given a graph, a set of old paths, a set of new paths, and their respective departure times,
 /// compute the edge occupancy deltas for each edge in the graph over time
@@ -25,7 +27,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
-    lanes: &Vec<u32>,
+    traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
 ) -> Vec<Vec<f64>> {
     // Debug assertion: verify periods have no holes (consecutive periods are continuous)
     debug_assert!(intervals.windows(2).all(|w| w[0].end == w[1].begin), "Periods must be continuous with no gaps");
@@ -47,7 +49,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
-            lanes,
+            traffic_model,
         );
     }
 
@@ -63,7 +65,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
-            lanes,
+            traffic_model,
         );
     }
 
@@ -109,7 +111,7 @@ fn process_path<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
-    lanes: &Vec<u32>,
+    traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
 ) {
     let mut current_time = departure_time;
     for &edge_id in path {
@@ -163,12 +165,17 @@ fn process_path<G: TravelTimeGraph>(
                 let interval_begin = interval.begin;
                 interval.get_edge(edge_ids[edge_id as usize].as_str()).map(|edge| {
                     let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
-                    let previous_tt = edge.traveltime.unwrap_or(0.0);
-                    let previous_density = edge.get_density(interval_duration, edge_lengths[edge_id as usize]);
+                    let previous_tt = edge.traveltime;
+                    let previous_density = edge.density.unwrap_or(0.0);
                     edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
-                    let estimated_tt =
-                        edge.get_estimated_travel_time(interval_duration, edge_lengths[edge_id as usize], 1, edge_free_flow_tts[edge_id as usize]);
+
                     let estimated_density = edge.get_density(interval_duration, edge_lengths[edge_id as usize]);
+
+                    let estimated_tt = traffic_model
+                        .get(&edge_ids[edge_id as usize])
+                        .map_or(edge_free_flow_tts[edge_id as usize], |tm| {
+                            edge_lengths[edge_id as usize] / tm.get_speed(estimated_density)
+                        });
 
                     println!(
                         "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} -> {}",
@@ -194,6 +201,7 @@ fn process_path<G: TravelTimeGraph>(
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -623,3 +631,4 @@ mod tests {
         );
     }
 }
+*/

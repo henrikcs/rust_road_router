@@ -1,4 +1,5 @@
 pub mod alternative_paths;
+pub mod calibrate_traffic_model;
 pub mod choice;
 pub mod cli;
 pub mod customize;
@@ -12,4 +13,5 @@ pub mod query;
 pub mod relative_gap;
 pub mod route;
 pub mod sampler;
+pub mod traffic_model;
 pub mod vdf;

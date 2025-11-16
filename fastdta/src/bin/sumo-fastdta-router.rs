@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use conversion::{FILE_EDGE_DEFAULT_TRAVEL_TIMES, SerializedTravelTime};
+use fastdta::calibrate_traffic_model::calibrate_modified_lee;
 use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::logger::Logger;
@@ -8,6 +10,8 @@ use fastdta::query::get_paths_with_dijkstra;
 use fastdta::relative_gap::append_relative_gap_to_file;
 use fastdta::route::{get_graph_data_for_dijkstra, get_graph_data_for_fast_dta, get_paths_by_samples};
 use fastdta::sampler::sample;
+use rust_road_router::datastr::graph::floating_time_dependent::Timestamp;
+use rust_road_router::io::Load;
 use rust_road_router::report::measure;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,14 +25,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vdf = args.get_vdf();
     let samples = args.get_samples();
 
-    // calibrate traffic model and vdf for each edge using the data from previous iterations and the current values of meandata
-
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
     let logger = Logger::new("sumo-fastdta-router", &input_dir.display().to_string(), iteration as i32);
 
-    let ((edge_ids, query_data, mut meandata, alternative_paths_for_dta), duration) = measure(|| get_graph_data_for_fast_dta(input_dir, iteration));
+    let ((edge_ids, query_data, mut meandata, alternative_paths_for_dta, default_tts_sec), duration) = measure(|| {
+        let (e, q, m, a) = get_graph_data_for_fast_dta(input_dir, iteration);
+
+        let t = Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
+
+        (e, q, m, a, t.iter().map(|stt| *stt as f64 / 1000.0).collect::<Vec<f64>>())
+    });
     logger.log("preprocessing", duration.as_nanos());
+
+    let (traffic_model, duration) = measure(|| {
+        // for each edge, go into each interval and extract lane_density and speed as data points
+        // then use these data points to calibrate the traffic model parameters of ModifiedLee
+        calibrate_modified_lee(&meandata, &edge_ids, &default_tts_sec)
+    });
+
+    logger.log("calibration", duration.as_nanos());
 
     let (samples, duration) = measure(|| sample(&samples, query_data.0.len(), args.router_args.seed.unwrap_or(rand::random::<i32>())));
     logger.log("sample", duration.as_nanos());
@@ -40,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &logger,
             &query_data,
             &samples,
-            vdf,
+            &traffic_model,
             &alternative_paths_for_dta,
             &mut meandata,
             &edge_ids,
