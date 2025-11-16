@@ -114,7 +114,7 @@ pub fn get_paths_by_samples(
     let free_flow_tts: Vec<f64> = free_flow_tts_ms.iter().map(|&tt| tt as f64 / 1000.0).collect();
 
     let edge_lengths = &Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_LENGTHS)).unwrap();
-    // let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
+    let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
 
     let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
 
@@ -172,6 +172,7 @@ pub fn get_paths_by_samples(
             edge_lengths,
             &free_flow_tts,
             &traffic_model,
+            &edge_lanes,
         );
 
         println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);

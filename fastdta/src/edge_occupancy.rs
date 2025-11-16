@@ -28,6 +28,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
     traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
+    lanes: &Vec<u32>,
 ) -> Vec<Vec<f64>> {
     // Debug assertion: verify periods have no holes (consecutive periods are continuous)
     debug_assert!(intervals.windows(2).all(|w| w[0].end == w[1].begin), "Periods must be continuous with no gaps");
@@ -50,6 +51,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_lengths,
             edge_free_flow_tts,
             traffic_model,
+            lanes,
         );
     }
 
@@ -66,6 +68,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_lengths,
             edge_free_flow_tts,
             traffic_model,
+            lanes,
         );
     }
 
@@ -112,6 +115,7 @@ fn process_path<G: TravelTimeGraph>(
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
     traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
+    lanes: &Vec<u32>,
 ) {
     let mut current_time = departure_time;
     for &edge_id in path {
@@ -169,7 +173,7 @@ fn process_path<G: TravelTimeGraph>(
                     let previous_density = edge.density.unwrap_or(0.0);
                     edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
 
-                    let estimated_density = edge.get_density(interval_duration, edge_lengths[edge_id as usize]);
+                    let estimated_density = edge.get_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
 
                     let estimated_tt = traffic_model
                         .get(&edge_ids[edge_id as usize])
