@@ -170,10 +170,10 @@ fn process_path<G: TravelTimeGraph>(
                 interval.get_edge(edge_ids[edge_id as usize].as_str()).map(|edge| {
                     let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
                     let previous_tt = edge.traveltime;
-                    let previous_density = edge.density.unwrap_or(0.0);
+                    let previous_density = edge.lane_density.unwrap_or(edge.density.unwrap_or(0.0));
                     edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
 
-                    let estimated_density = edge.get_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
+                    let estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
 
                     let estimated_tt = traffic_model
                         .get(&edge_ids[edge_id as usize])

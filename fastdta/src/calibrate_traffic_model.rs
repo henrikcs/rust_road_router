@@ -17,7 +17,7 @@ pub fn calibrate_modified_lee<'a>(
         let mut max_density = 0.0;
         for interval in &meandata.intervals {
             if let Some(edge) = interval.edges.iter().find(|e| &e.id == edge_id) {
-                if let (Some(density), Some(speed)) = (edge.lanedensity, edge.speed) {
+                if let (Some(density), Some(speed)) = (edge.lane_density, edge.speed) {
                     observed_density.push(density);
                     observed_speed.push(speed);
                     if density > max_density {

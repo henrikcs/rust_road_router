@@ -43,8 +43,8 @@ pub struct Edge {
     pub speed: Option<f64>,
     #[serde(rename = "@sampledSeconds")]
     pub sampled_seconds: Option<f64>,
-    #[serde(rename = "@lanedensity")]
-    pub lanedensity: Option<f64>,
+    #[serde(rename = "@laneDensity")]
+    pub lane_density: Option<f64>,
 }
 
 impl Edge {
@@ -59,14 +59,18 @@ impl Edge {
     //     3600.0 * self.sampled_seconds.unwrap() / (period * self.traveltime.unwrap())
     // }
 
-    pub fn get_density(&self, period: f64, length: f64, lanes: u32) -> f64 {
+    pub fn get_density(&self, period: f64, length: f64) -> f64 {
         if self.sampled_seconds.is_none() || self.traveltime.is_none() {
             return 0.0;
         }
         if self.sampled_seconds == Some(0.0) || length == 0.0 {
             return 0.0;
         }
-        1000.0 * self.sampled_seconds.unwrap() / (period * length) / lanes as f64
+        1000.0 * self.sampled_seconds.unwrap() / (period * length) as f64
+    }
+
+    pub fn get_lane_density(&self, period: f64, length: f64, lanes: u32) -> f64 {
+        self.get_density(period, length) / lanes as f64
     }
 
     // pub fn get_estimated_travel_time(&self, period: f64, length: f64, lanes: u32, free_flow_tt: f64) -> f64 {
