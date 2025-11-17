@@ -27,7 +27,10 @@ pub fn calibrate_modified_lee<'a>(
             }
         }
         let mut modified_lee = ModifiedLee::new(free_flow_travel_times[edge_index], max_density);
-        modified_lee.calibrate(&observed_speed, &observed_density);
+
+        if !observed_density.is_empty() {
+            modified_lee.calibrate(&observed_speed, &observed_density);
+        }
         calibrated_models.insert(edge_id, Box::new(modified_lee) as Box<dyn TrafficModel>);
     }
 
