@@ -8,6 +8,10 @@ pub trait TrafficModel {
     fn debug(&self);
 }
 
+pub enum TrafficModelType {
+    ModifiedLee,
+}
+
 pub mod modified_lee {
 
     use crate::traffic_model::TrafficModel;

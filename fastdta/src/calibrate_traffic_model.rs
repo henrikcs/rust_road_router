@@ -2,9 +2,20 @@ use std::collections::HashMap;
 
 use conversion::sumo::meandata::MeandataDocumentRoot;
 
-use crate::traffic_model::{TrafficModel, modified_lee::ModifiedLee};
+use crate::traffic_model::{TrafficModel, TrafficModelType, modified_lee::ModifiedLee};
 
-pub fn calibrate_modified_lee<'a>(
+pub fn calibrate_traffic_model<'a>(
+    meandata: &MeandataDocumentRoot,
+    edge_ids: &'a [String],
+    free_flow_travel_times: &[f64],
+    traffic_model_type: &TrafficModelType,
+) -> HashMap<&'a String, Box<dyn TrafficModel>> {
+    match traffic_model_type {
+        TrafficModelType::ModifiedLee => calibrate_modified_lee(meandata, edge_ids, free_flow_travel_times),
+    }
+}
+
+fn calibrate_modified_lee<'a>(
     meandata: &MeandataDocumentRoot,
     edge_ids: &'a [String],
     free_flow_travel_times: &[f64],

@@ -2,7 +2,7 @@ use std::env;
 
 pub use clap::Parser;
 
-use crate::{choice, vdf::VDFType};
+use crate::{choice, traffic_model::TrafficModelType};
 
 /// Command-line arguments for preprocessing
 #[derive(Parser, Debug)]
@@ -431,22 +431,18 @@ pub struct FastDtaArgs {
     pub samples: Option<Vec<f64>>,
 
     /// sets the VDF
-    #[arg(long = "vdf", default_value = "ptv")]
-    pub vdf: String,
+    #[arg(long = "traffic-model", default_value = "modified-lee")]
+    pub traffic_model: String,
 }
 
 impl FastDtaArgs {
-    pub fn get_vdf(&self) -> VDFType {
-        match self.vdf.as_str() {
-            "ptv" => {
-                println!("Using PTV as VDF");
-                VDFType::Ptv
+    pub fn get_traffic_model(&self) -> TrafficModelType {
+        match self.traffic_model.as_str() {
+            "modified-lee" => {
+                println!("Using modified-lee as traffic model");
+                TrafficModelType::ModifiedLee
             }
-            "bpr" => {
-                println!("Using BPR as VDF");
-                VDFType::Bpr
-            }
-            _ => panic!("Unknown VDF type: {}", self.vdf),
+            _ => panic!("Unknown VDF type: {}", self.traffic_model),
         }
     }
 

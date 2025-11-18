@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use conversion::{FILE_EDGE_DEFAULT_TRAVEL_TIMES, SerializedTravelTime};
-use fastdta::calibrate_traffic_model::calibrate_modified_lee;
+use fastdta::calibrate_traffic_model::calibrate_traffic_model;
 use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::logger::Logger;
@@ -10,7 +10,6 @@ use fastdta::query::get_paths_with_dijkstra;
 use fastdta::relative_gap::append_relative_gap_to_file;
 use fastdta::route::{get_graph_data_for_dijkstra, get_graph_data_for_fast_dta, get_paths_by_samples};
 use fastdta::sampler::sample;
-use rust_road_router::datastr::graph::floating_time_dependent::Timestamp;
 use rust_road_router::io::Load;
 use rust_road_router::report::measure;
 
@@ -22,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let iteration = args.router_args.iteration;
 
     let choice_algorithm = args.router_args.get_choice_algorithm();
-    let vdf = args.get_vdf();
+    let traffic_model_type = args.get_traffic_model();
     let samples = args.get_samples();
 
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
@@ -41,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (traffic_model, duration) = measure(|| {
         // for each edge, go into each interval and extract lane_density and speed as data points
         // then use these data points to calibrate the traffic model parameters of ModifiedLee
-        calibrate_modified_lee(&meandata, &edge_ids, &default_tts_sec)
+        calibrate_traffic_model(&meandata, &edge_ids, &default_tts_sec, &traffic_model_type)
     });
 
     logger.log("calibration", duration.as_nanos());
