@@ -350,7 +350,7 @@
         "CCH",
         "--mesosim",
         "--aggregation",
-        "900",
+        "60",
         "--begin",
         "0",
         "--end",
@@ -438,11 +438,9 @@
         "fastdta-router--samples",
         "1",
         "fastdta-router--samples",
-        "1",
-        "fastdta-router--samples",
         "2",
         "fastdta-router--samples",
-        "2",
+        "3",
         "fastdta-router--samples",
         "4"
       ]
