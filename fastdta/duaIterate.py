@@ -793,6 +793,7 @@ def main(args=None):
             if ret != 0:
                 break
 
+        rel_gap_converged = False
         if options.relGap > 0 and step > 0:
             if len(relative_gap_args) > 0:
                 print(">> Running relative-gap-calculator with additional arguments: %s" %
@@ -806,7 +807,7 @@ def main(args=None):
                 print("< relative gap in iteration %s: %.09f" %
                       (step - 1, last_gap))
                 if last_gap <= options.relGap:
-                    converged = True
+                    rel_gap_converged = True
 
         # simulation
         print(">> Running simulation")
@@ -873,6 +874,8 @@ def main(args=None):
                 min(avgTT.count(), options.convIt), relStdDev))
             if avgTT.count() >= options.convIt and relStdDev < options.convDev:
                 converged = True
+        if rel_gap_converged:
+            converged = True
 
         print("< Step %s ended (duration: %s)" %
               (step, datetime.now() - btimeA))
