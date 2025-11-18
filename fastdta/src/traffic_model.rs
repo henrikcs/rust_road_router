@@ -1,4 +1,4 @@
-pub trait TrafficModel {
+pub trait TrafficModel: Send + Sync {
     /// speed in km/s for given density in vehicles per km per lane
     fn get_speed(&self, density: f64) -> f64;
 

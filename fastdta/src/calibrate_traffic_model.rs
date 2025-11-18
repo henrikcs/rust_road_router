@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use conversion::sumo::meandata::MeandataDocumentRoot;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::traffic_model::{TrafficModel, TrafficModelType, modified_lee::ModifiedLee};
 
@@ -20,30 +21,32 @@ fn calibrate_modified_lee<'a>(
     edge_ids: &'a [String],
     free_flow_travel_times: &[f64],
 ) -> HashMap<&'a String, Box<dyn TrafficModel>> {
-    let mut calibrated_models = HashMap::new();
-    // todo: parallelize
-    for (edge_index, edge_id) in edge_ids.iter().enumerate() {
-        let mut observed_density = Vec::new();
-        let mut observed_speed = Vec::new();
-        let mut max_density = 0.0;
-        for interval in &meandata.intervals {
-            if let Some(edge) = interval.edges.iter().find(|e| &e.id == edge_id) {
-                if let (Some(density), Some(speed)) = (edge.lane_density, edge.speed) {
-                    observed_density.push(density);
-                    observed_speed.push(speed);
-                    if density > max_density {
-                        max_density = density;
+    let calibrated_models: HashMap<&'a String, Box<dyn TrafficModel>> = edge_ids
+        .par_iter()
+        .enumerate()
+        .map(|(edge_index, edge_id)| {
+            let mut observed_density = Vec::new();
+            let mut observed_speed = Vec::new();
+            let mut max_density = 0.0;
+            for interval in &meandata.intervals {
+                if let Some(edge) = interval.edges.iter().find(|e| &e.id == edge_id) {
+                    if let (Some(density), Some(speed)) = (edge.lane_density, edge.speed) {
+                        observed_density.push(density);
+                        observed_speed.push(speed);
+                        if density > max_density {
+                            max_density = density;
+                        }
                     }
                 }
             }
-        }
-        let mut modified_lee = ModifiedLee::new(free_flow_travel_times[edge_index], max_density);
+            let mut modified_lee = ModifiedLee::new(free_flow_travel_times[edge_index], max_density);
 
-        if !observed_density.is_empty() {
-            modified_lee.calibrate(&observed_speed, &observed_density);
-        }
-        calibrated_models.insert(edge_id, Box::new(modified_lee) as Box<dyn TrafficModel>);
-    }
+            if !observed_density.is_empty() {
+                modified_lee.calibrate(&observed_speed, &observed_density);
+            }
+            (edge_id, Box::new(modified_lee) as Box<dyn TrafficModel>)
+        })
+        .collect();
 
     calibrated_models
 }

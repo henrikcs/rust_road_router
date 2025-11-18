@@ -4,11 +4,12 @@ use conversion::{FILE_EDGE_DEFAULT_TRAVEL_TIMES, SerializedTravelTime};
 use fastdta::calibrate_traffic_model::calibrate_traffic_model;
 use fastdta::cli;
 use fastdta::cli::Parser;
+use fastdta::customize::customize;
 use fastdta::logger::Logger;
 use fastdta::postprocess::{prepare_next_iteration, set_relative_gap_with_previous_alternative_paths};
-use fastdta::query::get_paths_with_dijkstra;
+use fastdta::query::{get_paths_with_cch, get_paths_with_dijkstra};
 use fastdta::relative_gap::append_relative_gap_to_file;
-use fastdta::route::{get_graph_data_for_dijkstra, get_graph_data_for_fast_dta, get_paths_by_samples};
+use fastdta::route::{get_graph_data_for_cch, get_graph_data_for_dijkstra, get_graph_data_for_fast_dta, get_paths_by_samples};
 use fastdta::sampler::sample;
 use rust_road_router::io::Load;
 use rust_road_router::report::measure;
@@ -86,9 +87,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             append_relative_gap_to_file(0.0, &input_dir);
         } else {
             // get graph from previous iteration
-            let (edge_ids, graph) = get_graph_data_for_dijkstra(input_dir, iteration);
+            let (edge_ids, graph, cch) = get_graph_data_for_cch(input_dir, iteration);
+            let customized_graph = customize(&cch, &graph);
 
-            let (shortest_paths, shortest_travel_times, departures) = get_paths_with_dijkstra(input_dir, &graph);
+            let (shortest_paths, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
 
             set_relative_gap_with_previous_alternative_paths(&alternative_paths_for_dta, &graph, &input_dir, &shortest_travel_times, &departures);
         }
