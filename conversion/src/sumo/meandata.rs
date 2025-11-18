@@ -100,7 +100,15 @@ impl Interval {
         }
     }
 
-    pub fn get_edge(&mut self, id: &str) -> Option<&mut Edge> {
+    pub fn get_edge(&mut self, id: &str) -> Option<&Edge> {
+        if self.edge_map.is_none() {
+            let map: HashMap<String, usize> = self.edges.iter().enumerate().map(|(i, e)| (e.id.clone(), i)).collect();
+            self.edge_map = Some(map);
+        }
+        self.edge_map.as_ref().unwrap().get(id).map(|&i| &self.edges[i])
+    }
+
+    pub fn get_edge_mut(&mut self, id: &str) -> Option<&mut Edge> {
         if self.edge_map.is_none() {
             let map: HashMap<String, usize> = self.edges.iter().enumerate().map(|(i, e)| (e.id.clone(), i)).collect();
             self.edge_map = Some(map);

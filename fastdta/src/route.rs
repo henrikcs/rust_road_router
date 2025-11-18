@@ -96,7 +96,7 @@ pub fn get_paths_by_samples(
     logger: &Logger,
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     samples: &Vec<Vec<usize>>,
-    traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
+    traffic_model: &HashMap<usize, Box<dyn TrafficModel>>,
     alternative_paths_from_dta: &AlternativePathsForDTA,
     meandata: &mut MeandataDocumentRoot,
     edge_ids: &Vec<String>,

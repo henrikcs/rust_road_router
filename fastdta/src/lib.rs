@@ -14,3 +14,4 @@ pub mod relative_gap;
 pub mod route;
 pub mod sampler;
 pub mod traffic_model;
+pub mod traffic_model_data;

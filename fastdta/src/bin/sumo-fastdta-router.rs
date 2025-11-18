@@ -29,12 +29,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let logger = Logger::new("sumo-fastdta-router", &input_dir.display().to_string(), iteration as i32);
 
-    let ((edge_ids, query_data, mut meandata, alternative_paths_for_dta, default_tts_sec), duration) = measure(|| {
+    let ((edge_ids, query_data, mut meandata, alternative_paths_for_dta, traffic_model_data), duration) = measure(|| {
         let (e, q, m, a) = get_graph_data_for_fast_dta(input_dir, iteration);
 
-        let t = Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
+        let ff_tts = Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES))
+            .unwrap()
+            .iter()
+            .map(|stt| *stt as f64 / 1000.0)
+            .collect::<Vec<f64>>();
 
-        (e, q, m, a, t.iter().map(|stt| *stt as f64 / 1000.0).collect::<Vec<f64>>())
+        // traffic model data might be empty if no calibration was done before
+        let traffic_model_data = TrafficModelData::reconstruct(&input_dir, traffic_model_type);
+
+        (e, q, m, a, ff_tts)
     });
     logger.log("preprocessing", duration.as_nanos());
 

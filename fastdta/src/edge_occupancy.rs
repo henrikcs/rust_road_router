@@ -28,7 +28,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
-    traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
+    traffic_model: &HashMap<usize, Box<dyn TrafficModel>>,
     lanes: &Vec<u32>,
 ) -> Vec<Vec<f64>> {
     // Debug assertion: verify periods have no holes (consecutive periods are continuous)
@@ -115,7 +115,7 @@ fn process_path<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
-    traffic_model: &HashMap<&String, Box<dyn TrafficModel>>,
+    traffic_model: &HashMap<usize, Box<dyn TrafficModel>>,
     lanes: &Vec<u32>,
 ) {
     let mut current_time = departure_time;
@@ -168,7 +168,7 @@ fn process_path<G: TravelTimeGraph>(
 
                 let interval_duration = interval.end - interval.begin;
                 let interval_begin = interval.begin;
-                interval.get_edge(edge_ids[edge_id as usize].as_str()).map(|edge| {
+                interval.get_edge_mut(edge_ids[edge_id as usize].as_str()).map(|edge| {
                     let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
                     let previous_tt = edge.traveltime;
                     let previous_density = edge.lane_density.unwrap_or(edge.density.unwrap_or(0.0));
@@ -177,15 +177,13 @@ fn process_path<G: TravelTimeGraph>(
 
                     let estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
 
-                    let estimated_tt = traffic_model
-                        .get(&edge_ids[edge_id as usize])
-                        .map_or(edge_free_flow_tts[edge_id as usize], |tm| {
-                            let tt = edge_lengths[edge_id as usize] / tm.get_speed(estimated_density) / 3.6;
-                            if tt < 0.0 {
-                                return SUMO_MAX_TRAVEL_TIME;
-                            }
-                            tt
-                        });
+                    let estimated_tt = traffic_model.get(&(edge_id as usize)).map_or(edge_free_flow_tts[edge_id as usize], |tm| {
+                        let tt = edge_lengths[edge_id as usize] / tm.get_speed(estimated_density) / 3.6;
+                        if tt < 0.0 {
+                            return SUMO_MAX_TRAVEL_TIME;
+                        }
+                        tt
+                    });
 
                     if edge_ids[edge_id as usize] == "a2" && interval_begin == 1550.0 {
                         println!(
@@ -202,7 +200,7 @@ fn process_path<G: TravelTimeGraph>(
                             estimated_density
                         );
                         if estimated_tt < 0.0 {
-                            let tm = traffic_model.get(&edge_ids[edge_id as usize]).unwrap();
+                            let tm = traffic_model.get(&(edge_id as usize)).unwrap();
                             tm.debug();
                             panic!("Estimated travel time for edge {} is negative: {}", edge_ids[edge_id as usize], estimated_tt);
                         }

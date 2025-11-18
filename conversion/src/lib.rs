@@ -60,6 +60,16 @@ pub const FILE_EDGE_LENGTHS: &str = "edge_lengths";
 // contains the number of lanes of the edges
 pub const FILE_EDGE_LANES: &str = "edge_lanes";
 
+/// contains the traffic model parameters for each edge
+/// the parameters are stored in the same order for each edge as f64 values
+pub const FILE_EDGE_TRAFFIC_MODEL_PARAMS: &str = "edge_traffic_model_params";
+
+/// contains lane density observations for edges (vehicles per km) as f64 values
+pub const FILE_EDGE_DENSITY_OBSERVATIONS: &str = "edge_density_observations";
+
+/// contains speed observations for edges (m/s) as f64 values
+pub const FILE_EDGE_SPEED_OBSERVATIONS: &str = "edge_speed_observations";
+
 pub const FILE_RELATIVE_GAPS: &str = "rel_gaps.txt";
 
 /// in milliseconds
