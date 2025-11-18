@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use conversion::SUMO_MAX_TRAVEL_TIME;
 use conversion::sumo::meandata::Interval;
 use rust_road_router::datastr::graph::floating_time_dependent::{TDGraph, TTFPoint};
 use rust_road_router::datastr::graph::{
@@ -171,6 +172,7 @@ fn process_path<G: TravelTimeGraph>(
                     let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
                     let previous_tt = edge.traveltime;
                     let previous_density = edge.lane_density.unwrap_or(edge.density.unwrap_or(0.0));
+                    let previous_estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
                     edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
 
                     let estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
@@ -178,21 +180,33 @@ fn process_path<G: TravelTimeGraph>(
                     let estimated_tt = traffic_model
                         .get(&edge_ids[edge_id as usize])
                         .map_or(edge_free_flow_tts[edge_id as usize], |tm| {
-                            edge_lengths[edge_id as usize] / tm.get_speed(estimated_density)
+                            let tt = edge_lengths[edge_id as usize] / tm.get_speed(estimated_density) / 3.6;
+                            if tt < 0.0 {
+                                return SUMO_MAX_TRAVEL_TIME;
+                            }
+                            tt
                         });
 
-                    println!(
-                        "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} -> {}",
-                        edge_ids[edge_id as usize],
-                        edge_lengths[edge_id as usize],
-                        interval_begin,
-                        previous_sampled,
-                        edge.sampled_seconds,
-                        previous_tt,
-                        estimated_tt,
-                        previous_density,
-                        estimated_density
-                    );
+                    if edge_ids[edge_id as usize] == "a2" && interval_begin == 1550.0 {
+                        println!(
+                            "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} (est.: {}) -> {}",
+                            edge_ids[edge_id as usize],
+                            edge_lengths[edge_id as usize],
+                            interval_begin,
+                            previous_sampled,
+                            edge.sampled_seconds,
+                            previous_tt,
+                            estimated_tt,
+                            previous_density,
+                            previous_estimated_density,
+                            estimated_density
+                        );
+                        if estimated_tt < 0.0 {
+                            let tm = traffic_model.get(&edge_ids[edge_id as usize]).unwrap();
+                            tm.debug();
+                            panic!("Estimated travel time for edge {} is negative: {}", edge_ids[edge_id as usize], estimated_tt);
+                        }
+                    }
 
                     graph.set_weight_for_edge_at_time(edge_id, Timestamp::new(interval_begin), FlWeight::new(estimated_tt));
                     edge.traveltime = Some(estimated_tt);

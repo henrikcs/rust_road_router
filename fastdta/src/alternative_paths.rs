@@ -95,7 +95,18 @@ impl AlternativePaths {
             return;
         }
 
-        let prob = WeightedIndex::new(&self.probabilities).expect("Failed to create weighted index");
+        let prob = match WeightedIndex::new(&self.probabilities) {
+            Ok(p) => p,
+            Err(err) => {
+                println!("Error creating WeightedIndex: {}", err);
+                println!("Probabilities: {:?}", self.probabilities);
+                println!("Costs: {:?}", self.costs);
+                println!("Paths: {:?}", self.paths);
+                println!("Choice: {:?}", self.choice);
+
+                panic!("Failed to create WeightedIndex for choosing alternative path.");
+            }
+        };
         self.choice = prob.sample(rng);
     }
 
@@ -188,6 +199,17 @@ impl AlternativePathsForDTA {
                     alternatives.costs[j] = graph
                         .get_travel_time_along_path(Timestamp::from_millis(departures[i]), &alternative_path.edges)
                         .into();
+
+                    if alternatives.costs[j] < 0.0 {
+                        println!(
+                            "Warning: Negative travel time encountered for alternative path in query {}. Setting cost to infinity.",
+                            i
+                        );
+
+                        dbg!(&alternative_path.edges);
+                        dbg!(&alternatives.costs[j]);
+                        alternatives.costs[j] = f64::INFINITY;
+                    }
                 }
             }
 

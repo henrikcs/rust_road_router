@@ -1,6 +1,11 @@
 pub trait TrafficModel {
+    /// speed in km/s for given density in vehicles per km per lane
     fn get_speed(&self, density: f64) -> f64;
+
     fn calibrate(&mut self, observed_speed: &[f64], observed_density: &[f64]);
+
+    // print debug information about the traffic model
+    fn debug(&self);
 }
 
 pub mod modified_lee {
@@ -269,6 +274,12 @@ pub mod modified_lee {
 
         fn get_speed(&self, density: f64) -> f64 {
             Self::f(density, self.free_flow_speed, self.a, self.e, self.theta, self.jam_density)
+        }
+        fn debug(&self) {
+            println!(
+                "Modified Lee Traffic Model Parameters: free_flow_speed = {}, a = {}, e = {}, theta = {}, jam_density = {}",
+                self.free_flow_speed, self.a, self.e, self.theta, self.jam_density
+            );
         }
     }
 
