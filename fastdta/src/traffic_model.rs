@@ -321,7 +321,7 @@ pub mod modified_lee {
 
     impl TrafficModel for ModifiedLee {
         fn calibrate(&mut self, observed_speed: &[f64], observed_density: &[f64]) {
-            self.calibrate_with_nlopt(observed_speed, observed_density);
+            self.calibrate_dividing_intervals(observed_speed, observed_density);
 
             // panic!(
             //     "Calibrated Modified Lee parameters: a = {}, e = {}, theta = {}, jam_density = {}",
