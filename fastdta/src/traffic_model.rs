@@ -22,10 +22,20 @@ pub enum TrafficModelType {
 
 pub mod modified_lee {
 
+    use nlopt::{Algorithm, Nlopt, Target};
+
     use crate::traffic_model::TrafficModel;
 
     const MIN_IMPROVEMENT_PERCENT: f64 = 0.01;
     const MAX_CALIBRATION_ITERATIONS: usize = 10;
+
+    const MIN_A: f64 = 0.000_1;
+    const MIN_E: f64 = 0.0;
+    const MIN_THETA: f64 = 0.000_1;
+
+    const MAX_A: f64 = 5.0;
+    const MAX_E: f64 = 10.0;
+    const MAX_THETA: f64 = 5.0;
     const MAX_JAM_DENSITY: f64 = 167.0; // vehicles per km per lane (= 6m per vehicle)
 
     #[derive(Debug, Clone)]
@@ -153,6 +163,64 @@ pub mod modified_lee {
             (2.0 * e * theta) / (e + 1.0) - a + 1.0
         }
 
+        fn calibrate_dividing_intervals(&mut self, observed_speed: &[f64], observed_density: &[f64]) {
+            // observerd_speed and observed_density are vectors of the same length
+            debug_assert!(observed_speed.len() == observed_density.len());
+            // iterate calibration until SSE reaches minimum
+
+            // adapt variables a, e, theta, jam_density to minimize SSE such that
+            // q_max = f(k_m) * k_m \in [0.75 * inititial_capacity, 1.25 * intial_capacity],
+            // where k_m is the optimal density, i.e. f_prime(k_m) = 0
+
+            let mut ranges: ModifiedLeeRanges = ModifiedLeeRanges::init(self.jam_density_min);
+            let mut original_ranges = ranges.clone();
+
+            let mut converged = false;
+
+            while converged == false {
+                self.calibrate_with_ranges(observed_speed, observed_density, &mut ranges);
+
+                // println!(
+                //     "Current Parameters after calibration: a = {}, e = {}, theta = {}, jam_density = {}",
+                //     self.a, self.e, self.theta, self.jam_density
+                // );
+
+                converged = true;
+
+                // if ranges are close to the upper bound (within 1% of the range), re-intialize ranges with shifted initial upper bound
+
+                if (original_ranges.a[1] - self.a) / original_ranges.get_a_diff() < 0.01 {
+                    ranges.a[0] = original_ranges.a[1];
+                    ranges.a[1] = original_ranges.get_a_diff() + original_ranges.a[1];
+                    converged = false;
+                }
+
+                if (original_ranges.e[1] - self.e) / original_ranges.get_e_diff() < 0.01 {
+                    ranges.e[0] = original_ranges.e[1];
+                    ranges.e[1] = original_ranges.get_e_diff() + original_ranges.e[1];
+                    converged = false;
+                }
+
+                if (original_ranges.theta[1] - self.theta) / original_ranges.get_theta_diff() < 0.01 {
+                    ranges.theta[0] = original_ranges.theta[1];
+                    ranges.theta[1] = original_ranges.get_theta_diff() + original_ranges.theta[1];
+                    converged = false;
+                }
+
+                if (original_ranges.jam_density[1] - self.jam_density) / original_ranges.get_jam_density_diff() < 0.01 {
+                    ranges.jam_density[0] = original_ranges.jam_density[1];
+                    ranges.jam_density[1] = original_ranges.get_jam_density_diff() + original_ranges.jam_density[1];
+                    converged = false;
+                }
+
+                if converged == false {
+                    original_ranges = ranges.clone();
+
+                    // println!("Re-initializing calibration ranges to {:?}", ranges);
+                }
+            }
+        }
+
         fn calibrate_with_ranges(&mut self, observed_speed: &[f64], observed_density: &[f64], initial_ranges: &mut ModifiedLeeRanges) {
             let cost_function = ModifiedLeeCostFunction::new(self.free_flow_speed, observed_speed, observed_density);
 
@@ -218,65 +286,42 @@ pub mod modified_lee {
                 iteration += 1;
             }
         }
+
+        pub fn calibrate_with_nlopt(&mut self, observed_speed: &[f64], observed_density: &[f64]) {
+            // use nloptr to calibrate the parameters
+
+            let objective_function = |x: &[f64], _grad: Option<&mut [f64]>, _params: &mut [f64; 0]| {
+                let mlf = ModifiedLeeCostFunction::new(self.free_flow_speed, &observed_speed, &observed_density);
+                mlf.sse(x[0], x[1], x[2], x[3])
+            };
+
+            let mut opt = Nlopt::new(Algorithm::Cobyla, 4, objective_function, Target::Minimize, []);
+
+            let lb = [MIN_A, MIN_E, MIN_THETA, self.jam_density_min]; // lower bounds
+            let ub = [MAX_A, MAX_E, MAX_THETA, MAX_JAM_DENSITY];
+            opt.set_lower_bounds(&lb).unwrap();
+            opt.set_upper_bounds(&ub).unwrap();
+
+            let stable_shockwave_property_constraint =
+                |x: &[f64], _grad: Option<&mut [f64]>, _data: &mut ()| Self::stable_shock_wave_property(x[0], x[1], x[2]);
+
+            opt.add_inequality_constraint(stable_shockwave_property_constraint, (), 1.0e-8).unwrap();
+
+            opt.set_xtol_rel(1.0e-4).unwrap();
+
+            let mut x = [self.a, self.e, self.theta, self.jam_density];
+            let res = opt.optimize(&mut x);
+
+            self.a = x[0];
+            self.e = x[1];
+            self.theta = x[2];
+            self.jam_density = x[3];
+        }
     }
 
     impl TrafficModel for ModifiedLee {
         fn calibrate(&mut self, observed_speed: &[f64], observed_density: &[f64]) {
-            // observerd_speed and observed_density are vectors of the same length
-            debug_assert!(observed_speed.len() == observed_density.len());
-            // iterate calibration until SSE reaches minimum
-
-            // adapt variables a, e, theta, jam_density to minimize SSE such that
-            // q_max = f(k_m) * k_m \in [0.75 * inititial_capacity, 1.25 * intial_capacity],
-            // where k_m is the optimal density, i.e. f_prime(k_m) = 0
-
-            let mut ranges: ModifiedLeeRanges = ModifiedLeeRanges::init(self.jam_density_min);
-            let mut original_ranges = ranges.clone();
-
-            let mut converged = false;
-
-            while converged == false {
-                self.calibrate_with_ranges(observed_speed, observed_density, &mut ranges);
-
-                // println!(
-                //     "Current Parameters after calibration: a = {}, e = {}, theta = {}, jam_density = {}",
-                //     self.a, self.e, self.theta, self.jam_density
-                // );
-
-                converged = true;
-
-                // if ranges are close to the upper bound (within 1% of the range), re-intialize ranges with shifted initial upper bound
-
-                if (original_ranges.a[1] - self.a) / original_ranges.get_a_diff() < 0.01 {
-                    ranges.a[0] = original_ranges.a[1];
-                    ranges.a[1] = original_ranges.get_a_diff() + original_ranges.a[1];
-                    converged = false;
-                }
-
-                if (original_ranges.e[1] - self.e) / original_ranges.get_e_diff() < 0.01 {
-                    ranges.e[0] = original_ranges.e[1];
-                    ranges.e[1] = original_ranges.get_e_diff() + original_ranges.e[1];
-                    converged = false;
-                }
-
-                if (original_ranges.theta[1] - self.theta) / original_ranges.get_theta_diff() < 0.01 {
-                    ranges.theta[0] = original_ranges.theta[1];
-                    ranges.theta[1] = original_ranges.get_theta_diff() + original_ranges.theta[1];
-                    converged = false;
-                }
-
-                if (original_ranges.jam_density[1] - self.jam_density) / original_ranges.get_jam_density_diff() < 0.01 {
-                    ranges.jam_density[0] = original_ranges.jam_density[1];
-                    ranges.jam_density[1] = original_ranges.get_jam_density_diff() + original_ranges.jam_density[1];
-                    converged = false;
-                }
-
-                if converged == false {
-                    original_ranges = ranges.clone();
-
-                    // println!("Re-initializing calibration ranges to {:?}", ranges);
-                }
-            }
+            self.calibrate_with_nlopt(observed_speed, observed_density);
 
             // panic!(
             //     "Calibrated Modified Lee parameters: a = {}, e = {}, theta = {}, jam_density = {}",
@@ -348,9 +393,9 @@ pub mod modified_lee {
         }
     }
 
+    #[cfg(test)]
     mod tests {
-
-        use super::*;
+        use crate::traffic_model::{TrafficModel, modified_lee::ModifiedLee};
 
         #[test]
         fn test_modified_lee_speed_positive() {

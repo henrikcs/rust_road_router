@@ -35,6 +35,10 @@ pub fn calibrate_traffic_models(traffic_model_data: &mut TrafficModelData, meand
             traffic_model_data.observed_densities[edge_index].extend_from_slice(&densities);
             traffic_model_data.observed_speeds[edge_index].extend_from_slice(&speeds);
 
+            if traffic_model_data.observed_densities[edge_index].is_empty() {
+                continue;
+            }
+
             traffic_model_data.calibrate_model(edge_index);
 
             if edge_id == "a2" {

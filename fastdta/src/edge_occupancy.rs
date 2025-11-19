@@ -176,27 +176,27 @@ fn process_path<G: TravelTimeGraph>(
                     let estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
 
                     let estimated_tt = traffic_models.get(edge_id as usize).map_or(edge_free_flow_tts[edge_id as usize], |tm| {
-                        let tt = edge_lengths[edge_id as usize] / tm.get_speed(estimated_density) / 3.6;
+                        let tt = edge_lengths[edge_id as usize] / (tm.get_speed(estimated_density) / 3.6);
                         if tt < 0.0 {
                             return SUMO_MAX_TRAVEL_TIME;
                         }
-                        tt
+                        f64::min(tt, SUMO_MAX_TRAVEL_TIME)
                     });
 
                     if edge_ids[edge_id as usize] == "a2" && interval_begin == 1550.0 {
-                        // println!(
-                        //     "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} (est.: {}) -> {}",
-                        //     edge_ids[edge_id as usize],
-                        //     edge_lengths[edge_id as usize],
-                        //     interval_begin,
-                        //     previous_sampled,
-                        //     edge.sampled_seconds,
-                        //     previous_tt,
-                        //     estimated_tt,
-                        //     previous_density,
-                        //     previous_estimated_density,
-                        //     estimated_density
-                        // );
+                        println!(
+                            "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} (est.: {}) -> {}",
+                            edge_ids[edge_id as usize],
+                            edge_lengths[edge_id as usize],
+                            interval_begin,
+                            previous_sampled,
+                            edge.sampled_seconds,
+                            previous_tt,
+                            estimated_tt,
+                            previous_density,
+                            previous_estimated_density,
+                            estimated_density
+                        );
                         if estimated_tt < 0.0 {
                             let tm = traffic_models.get(edge_id as usize).unwrap();
                             tm.debug();
