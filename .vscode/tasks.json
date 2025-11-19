@@ -60,6 +60,7 @@
     },
     {
       "label": "Run DTA (long-road)",
+      "hide": true,
       "type": "shell",
       "command": "python",
       "dependsOn": [
@@ -107,6 +108,7 @@
     },
     {
       "label": "Run FastDTA (long-road)",
+      "hide": true,
       "type": "shell",
       "command": "python",
       "dependsOn": [
@@ -309,17 +311,13 @@
         "fastdta-router--traffic-model",
         "modified-lee",
         "fastdta-router--samples",
-        "10",
+        "1",
         "fastdta-router--samples",
-        "10",
+        "2",
         "fastdta-router--samples",
-        "10",
+        "3",
         "fastdta-router--samples",
-        "10",
-        "fastdta-router--samples",
-        "10",
-        "fastdta-router--samples",
-        "6300",
+        "4",
         "fastdta-router--seed",
         "42"
       ]

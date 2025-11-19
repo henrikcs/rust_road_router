@@ -184,19 +184,19 @@ fn process_path<G: TravelTimeGraph>(
                     });
 
                     if edge_ids[edge_id as usize] == "a2" && interval_begin == 1550.0 {
-                        println!(
-                            "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} (est.: {}) -> {}",
-                            edge_ids[edge_id as usize],
-                            edge_lengths[edge_id as usize],
-                            interval_begin,
-                            previous_sampled,
-                            edge.sampled_seconds,
-                            previous_tt,
-                            estimated_tt,
-                            previous_density,
-                            previous_estimated_density,
-                            estimated_density
-                        );
+                        // println!(
+                        //     "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} (est.: {}) -> {}",
+                        //     edge_ids[edge_id as usize],
+                        //     edge_lengths[edge_id as usize],
+                        //     interval_begin,
+                        //     previous_sampled,
+                        //     edge.sampled_seconds,
+                        //     previous_tt,
+                        //     estimated_tt,
+                        //     previous_density,
+                        //     previous_estimated_density,
+                        //     estimated_density
+                        // );
                         if estimated_tt < 0.0 {
                             let tm = traffic_models.get(edge_id as usize).unwrap();
                             tm.debug();

@@ -76,9 +76,6 @@ pub fn get_graph_data_for_fast_dta(
     // traffic model data might be empty if no calibration was done before
     let traffic_model_data = TrafficModelData::reconstruct(&input_dir, traffic_model_type);
 
-    dbg!(traffic_model_data.observed_densities[0].len());
-    dbg!(traffic_model_data.traffic_models[0].debug());
-
     (edge_ids, query_data, meandata, alternative_paths, traffic_model_data)
 }
 
