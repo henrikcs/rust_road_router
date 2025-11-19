@@ -1,7 +1,8 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 use conversion::{
-    DIR_DTA, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, SerializedTimestamp, SerializedTravelTime,
+    DIR_DTA, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_EDGE_SPEEDS, SerializedTimestamp,
+    SerializedTravelTime,
     sumo::{
         FileReader, FileWriter,
         meandata::MeandataDocumentRoot,
@@ -26,17 +27,20 @@ use crate::{
     logger::Logger,
     preprocess::get_cch,
     query::{get_paths_with_cch_queries, read_queries},
-    traffic_model::TrafficModel,
+    traffic_model::{TrafficModel, TrafficModelType},
+    traffic_model_data::TrafficModelData,
 };
 
 pub fn get_graph_data_for_fast_dta(
     input_dir: &Path,
     iteration: u32,
+    traffic_model_type: TrafficModelType,
 ) -> (
     Vec<String>,
     (Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     MeandataDocumentRoot,
     AlternativePathsForDTA,
+    TrafficModelData,
 ) {
     let edge_ids = get_edge_ids(input_dir);
     let query_data = read_queries(input_dir);
@@ -51,19 +55,31 @@ pub fn get_graph_data_for_fast_dta(
     };
 
     if iteration == 0 {
+        let free_flow_speeds: Vec<f64> = Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_SPEEDS))
+            .unwrap()
+            .iter()
+            .map(|ffs| *ffs * 3.6)
+            .collect();
+
         return (
             edge_ids,
             query_data,
             MeandataDocumentRoot::empty(),
             AlternativePathsForDTA::init(&vec![], &vec![]),
+            TrafficModelData::init(&free_flow_speeds, TrafficModelType::ModifiedLee),
         );
     }
 
     let iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
 
     let alternative_paths = AlternativePathsForDTA::reconstruct(&iteration_dir.join(DIR_DTA));
+    // traffic model data might be empty if no calibration was done before
+    let traffic_model_data = TrafficModelData::reconstruct(&input_dir, traffic_model_type);
 
-    (edge_ids, query_data, meandata, alternative_paths)
+    dbg!(traffic_model_data.observed_densities[0].len());
+    dbg!(traffic_model_data.traffic_models[0].debug());
+
+    (edge_ids, query_data, meandata, alternative_paths, traffic_model_data)
 }
 
 pub fn get_graph_data_for_cch(input_dir: &Path, iteration: u32) -> (Vec<String>, TDGraph, CCH) {
@@ -96,7 +112,7 @@ pub fn get_paths_by_samples(
     logger: &Logger,
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     samples: &Vec<Vec<usize>>,
-    traffic_model: &HashMap<usize, Box<dyn TrafficModel>>,
+    traffic_models: &Vec<Box<dyn TrafficModel>>,
     alternative_paths_from_dta: &AlternativePathsForDTA,
     meandata: &mut MeandataDocumentRoot,
     edge_ids: &Vec<String>,
@@ -162,7 +178,7 @@ pub fn get_paths_by_samples(
             sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
         });
 
-        let deltas = get_edge_occupancy_deltas(
+        get_edge_occupancy_deltas(
             &mut graph,
             &sampled_old_paths,
             &sampled_shortest_paths,
@@ -171,93 +187,16 @@ pub fn get_paths_by_samples(
             edge_ids,
             edge_lengths,
             &free_flow_tts,
-            &traffic_model,
+            &traffic_models,
             &edge_lanes,
         );
 
-        println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);
+        // println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);
 
         debug(&meandata, &input_dir, iteration as u32, i as u32);
-        // iterate over itervals in meandata, then apply deltas to the edges
-        // from sampled_shortest_paths in the interval using edge_map
-
-        // for (i, interval) in meandata.intervals.iter_mut().enumerate() {
-        //     for (edge_id, delta) in deltas[i].iter().enumerate() {
-        //         if delta.abs() < EPSILON {
-        //             continue;
-        //         }
-        //         let interval_begin = interval.begin;
-        //         let interval_end = interval.end;
-        //         let period = interval_end - interval_begin;
-        //         let edge_name = &edge_ids[edge_id];
-        //         if let Some(edge) = interval.get_edge(edge_name) {
-        //             let previous_flow: f64 = edge.get_traffic_volume(period);
-        //             let free_flow_tt = default_travel_times[edge_id] as f64 / 1000.0;
-        //             let previous_tt = edge.traveltime.unwrap_or(free_flow_tt);
-        //             let previous_density = edge.density.unwrap_or(0.0);
-
-        //             edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + *delta, 0.0));
-
-        //             let vdf: Box<dyn VDF> = match &vdf {
-        //                 VDFType::Ptv => Box::from(Ptv::create(-1, edge.speed.unwrap_or(0.0) as f64)),
-        //                 VDFType::Bpr => Box::from(Bpr::create(0.15, 4.0)),
-        //             };
-
-        //             let new_flow = edge.get_traffic_volume(period);
-
-        //             // set capacity of edge
-        //             let capacity = if previous_flow > 0.0 {
-        //                 estimate_capacity_bpr(previous_tt, previous_flow, free_flow_tt)
-        //             } else {
-        //                 edge_capas[edge_id]
-        //             };
-
-        //             let length = edge_lengths[edge_id];
-        //             // esitmate new density
-        //             let new_density = edge.sampled_seconds.unwrap_or(0.0) / (period * length) * 1000.0;
-
-        //             edge.traveltime = Some(vdf.travel_time_estimation(
-        //                 previous_flow,
-        //                 previous_density,
-        //                 previous_tt,
-        //                 new_flow,
-        //                 new_density,
-        //                 capacity,
-        //                 length,
-        //                 free_flow_tt,
-        //             ));
-
-        //             edge.density = Some(new_density);
-
-        //             // if (edge_name == "a" || edge_name == "b") && i == 0 {
-        //             //     println!(
-        //             //         "Edge {} (capa: {}): tt updated from {:?} to {:?} (freeflow: {}) in interval {}-{}",
-        //             //         edge_name, capacity, previous_tt, edge.traveltime, free_flow_tt, interval_begin, interval_end
-        //             //     );
-        //             //     println!(
-        //             //         "Edge {} (capa: {}): flow updated from {:?} to {:?} in interval {}-{}",
-        //             //         edge_name, capacity, previous_flow, new_flow, interval_begin, interval_end
-        //             //     );
-        //             // }
-        //         }
-        //     }
-        // }
     }
 
     (graph, shortest_paths, travel_times, departures)
-}
-
-fn estimate_capacity_bpr(previous_tt: f64, previous_flow: f64, free_flow_tt: f64) -> f64 {
-    if previous_tt <= free_flow_tt {
-        return f64::INFINITY;
-    }
-
-    let alpha = 0.15;
-    let beta = 4.0;
-
-    let capacity = previous_flow * (free_flow_tt / ((previous_tt - free_flow_tt) * alpha)).powf(-1.0 / beta);
-
-    capacity
 }
 
 fn debug(meandata: &MeandataDocumentRoot, path: &Path, iteration: u32, sample: u32) {

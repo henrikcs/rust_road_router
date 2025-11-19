@@ -1,48 +1,32 @@
-use std::collections::HashMap;
+use conversion::sumo::meandata::MeandataDocumentRoot;
 
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use crate::traffic_model_data::TrafficModelData;
 
-use crate::traffic_model::{TrafficModel, TrafficModelType, modified_lee::ModifiedLee};
+pub fn calibrate_traffic_models(traffic_model_data: &mut TrafficModelData, meandata: &mut MeandataDocumentRoot, edge_ids: &Vec<String>, threshold: usize) {
+    // for each edge, find data in meandata and add to traffic_model_data
 
-pub fn calibrate_traffic_model<'a>(
-    observed_densities_of_edges: &Vec<Vec<f64>>,
-    observed_speeds_of_edges: &Vec<Vec<f64>>,
-    free_flow_travel_times: &[f64],
-    traffic_model_type: &TrafficModelType,
-) -> HashMap<usize, Box<dyn TrafficModel>> {
-    assert!(observed_densities_of_edges.len() == observed_speeds_of_edges.len());
-    assert!(observed_densities_of_edges.len() == free_flow_travel_times.len());
+    for (edge_index, edge_id) in edge_ids.iter().enumerate() {
+        if traffic_model_data.observed_densities[edge_index].len() < threshold {
+            let mut densities: Vec<f64> = Vec::new();
+            let mut speeds: Vec<f64> = Vec::new();
 
-    match traffic_model_type {
-        TrafficModelType::ModifiedLee => calibrate_modified_lee(observed_densities_of_edges, observed_speeds_of_edges, free_flow_travel_times),
-    }
-}
+            for interval in meandata.intervals.iter_mut() {
+                if let Some(edge) = interval.get_edge(edge_id) {
+                    if edge.lane_density.is_none() || edge.speed.is_none() {
+                        continue;
+                    }
 
-fn calibrate_modified_lee<'a>(
-    observed_densities_of_edges: &Vec<Vec<f64>>,
-    observed_speeds_of_edges: &Vec<Vec<f64>>,
-    free_flow_travel_times: &[f64],
-) -> HashMap<usize, Box<dyn TrafficModel>> {
-    let calibrated_models: HashMap<usize, Box<dyn TrafficModel>> = free_flow_travel_times
-        .par_iter()
-        .enumerate()
-        .map(|(edge_index, fftt)| {
-            let observed_density = &observed_densities_of_edges[edge_index];
-            let observed_speed = &observed_speeds_of_edges[edge_index];
-            let max_density = if let Some(d) = observed_density.iter().max_by(|a, b| a.total_cmp(b)) {
-                *d
-            } else {
-                0.0
-            };
-
-            let mut modified_lee = ModifiedLee::new(*fftt, max_density);
-
-            if !observed_density.is_empty() {
-                modified_lee.calibrate(&observed_speed, &observed_density);
+                    densities.push(edge.lane_density.unwrap());
+                    speeds.push(edge.speed.unwrap() * 3.6); // convert m/s to km/h
+                }
             }
-            (edge_index, Box::new(modified_lee) as Box<dyn TrafficModel>)
-        })
-        .collect();
 
-    calibrated_models
+            println!("Added {} data points for edge {}", densities.len(), edge_id);
+
+            traffic_model_data.observed_densities[edge_index].extend_from_slice(&densities);
+            traffic_model_data.observed_speeds[edge_index].extend_from_slice(&speeds);
+
+            traffic_model_data.calibrate_model(edge_index);
+        }
+    }
 }

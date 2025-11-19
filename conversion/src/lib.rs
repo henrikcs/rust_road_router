@@ -60,15 +60,30 @@ pub const FILE_EDGE_LENGTHS: &str = "edge_lengths";
 // contains the number of lanes of the edges
 pub const FILE_EDGE_LANES: &str = "edge_lanes";
 
+// contains the speed in m/s of the edges
+pub const FILE_EDGE_SPEEDS: &str = "edge_speed";
+
 /// contains the traffic model parameters for each edge
 /// the parameters are stored in the same order for each edge as f64 values
 pub const FILE_EDGE_TRAFFIC_MODEL_PARAMS: &str = "edge_traffic_model_params";
 
+/// edge with index `i` has its model parameters stored
+/// starting from index `first_model_param_of_edge[i]` in `model_params`
+pub const FILE_EDGE_FIRST_MODEL_PARAM: &str = "first_model_param_of_edge";
+
 /// contains lane density observations for edges (vehicles per km) as f64 values
 pub const FILE_EDGE_DENSITY_OBSERVATIONS: &str = "edge_density_observations";
 
+/// edge with index `i` has its density observations stored
+/// starting from index `first_density_observation_of_edge[i]` in `density_observations`
+pub const FILE_EDGE_FIRST_DENSITY_OBSERVATION: &str = "first_density_observation_of_edge";
+
 /// contains speed observations for edges (m/s) as f64 values
 pub const FILE_EDGE_SPEED_OBSERVATIONS: &str = "edge_speed_observations";
+
+/// edge with index `i` has its speed observations stored
+/// starting from index `first_speed_observation_of_edge[i]` in `speed_observations`
+pub const FILE_EDGE_FIRST_SPEED_OBSERVATION: &str = "first_speed_observation_of_edge";
 
 pub const FILE_RELATIVE_GAPS: &str = "rel_gaps.txt";
 
@@ -84,6 +99,7 @@ pub const MIN_EDGE_WEIGHT: f64 = 1.0;
 
 pub const MAX_EDGE_WEIGHT: f64 = 86_400.0; // 24 hours in seconds
 pub const SUMO_MAX_TRAVEL_TIME: f64 = 100_000.0; // 100k seconds
+pub const SUMO_DEFAULT_SPEED: f64 = 13.9; // 50 km/h in m/s
 
 pub fn speed_profile_to_tt_profile(speeds: &[(Timestamp, u32)], edge_len: u32) -> Vec<(Timestamp, Weight)> {
     let t_wrap = speeds.last().unwrap().0;

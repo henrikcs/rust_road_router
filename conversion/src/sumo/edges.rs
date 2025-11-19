@@ -1,6 +1,9 @@
 use serde_derive::Deserialize;
 
-use crate::sumo::{SumoPosition, SumoTravelTime};
+use crate::{
+    sumo::{SumoPosition, SumoTravelTime},
+    SUMO_DEFAULT_SPEED,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct EdgesDocumentRoot {
@@ -44,7 +47,7 @@ pub struct Edge {
 
 impl Edge {
     pub fn get_speed(&self) -> SumoTravelTime {
-        self.speed.unwrap_or(13.9) // default speed is 13.9 m/s (50 km/h)
+        self.speed.unwrap_or(SUMO_DEFAULT_SPEED)
     }
 
     pub fn get_length(&self, (from_x, from_y): (SumoPosition, SumoPosition), (to_x, to_y): (SumoPosition, SumoPosition)) -> SumoTravelTime {
@@ -75,7 +78,7 @@ impl Edge {
 
         // Convert priority to road class (negative priority in SUMO)
         let road_class = if let Some(prio) = self.priority { -prio } else { -1 };
-        let speed = if let Some(speed) = self.speed { speed } else { 13.9 }; // default speed is 13.9 m/s (50 km/h)
+        let speed = if let Some(speed) = self.speed { speed } else { SUMO_DEFAULT_SPEED };
         let lanes = if let Some(lanes) = self.num_lanes { lanes as f64 } else { 1.0 };
 
         // Based on the definitions in PTV-Validate and in the VISUM-Cologne network

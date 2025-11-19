@@ -433,6 +433,11 @@ pub struct FastDtaArgs {
     /// sets the VDF
     #[arg(long = "traffic-model", default_value = "modified-lee")]
     pub traffic_model: String,
+
+    /// threshold for the number of data points (lane density and speed observations) per edge
+    /// to calibrate the traffic model parameters
+    #[arg(long = "calibration-data-points-threshold", default_value = "500")]
+    pub calibration_data_points_threshold: usize,
 }
 
 impl FastDtaArgs {

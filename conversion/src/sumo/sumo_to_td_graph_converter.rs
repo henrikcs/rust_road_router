@@ -13,9 +13,9 @@ use crate::{
         FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML, VEH_LENGTH,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
-    FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME, FILE_LATITUDE,
-    FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES,
-    MIN_EDGE_WEIGHT,
+    FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_EDGE_SPEEDS, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
+    FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES,
+    FILE_QUERY_ORIGINAL_TO_EDGES, MIN_EDGE_WEIGHT, SUMO_DEFAULT_SPEED,
 };
 
 pub struct FlattenedSumoEdge {
@@ -28,10 +28,20 @@ pub struct FlattenedSumoEdge {
     length: SumoTravelTime,
     capacity: f64,
     lanes: u32,
+    speed: f64,
 }
 
 impl FlattenedSumoEdge {
-    pub fn new(from_node_index: u32, to_node_index: u32, edge_id: String, weight: SumoTravelTime, length: SumoTravelTime, capacity: f64, lanes: u32) -> Self {
+    pub fn new(
+        from_node_index: u32,
+        to_node_index: u32,
+        edge_id: String,
+        weight: SumoTravelTime,
+        length: SumoTravelTime,
+        capacity: f64,
+        lanes: u32,
+        speed: f64,
+    ) -> Self {
         FlattenedSumoEdge {
             from_node_index,
             to_node_index,
@@ -40,6 +50,7 @@ impl FlattenedSumoEdge {
             length,
             capacity,
             lanes,
+            speed,
         }
     }
 
@@ -58,6 +69,7 @@ impl Clone for FlattenedSumoEdge {
             self.length,
             self.capacity,
             self.lanes,
+            self.speed,
         )
     }
 }
@@ -103,7 +115,7 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     g.4.write_to(&output_dir.join(FILE_IPP_TRAVEL_TIME))?;
 
     // extract default weights of all edges and write them to a file
-    let (edge_default_travel_times, capas, lengths, lanes): (Vec<u32>, Vec<f64>, Vec<f64>, Vec<u32>) = edge_indices_to_id
+    let (edge_default_travel_times, capas, lengths, lanes, speeds): (Vec<u32>, Vec<f64>, Vec<f64>, Vec<u32>, Vec<f64>) = edge_indices_to_id
         .iter()
         .map(|edge| {
             // weight is calculated in method `initialize_edges_for_td_graph`
@@ -112,14 +124,16 @@ pub fn convert_sumo_to_routing_kit_and_queries(
             let capa = e.capacity;
             let length = e.length;
             let lanes = e.lanes;
+            let speeds = e.speed;
 
-            (default_tt, capa, length, lanes)
+            (default_tt, capa, length, lanes, speeds)
         })
         .collect();
 
     edge_default_travel_times.write_to(&output_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES))?;
     lengths.write_to(&output_dir.join(FILE_EDGE_LENGTHS))?;
     lanes.write_to(&output_dir.join(FILE_EDGE_LANES))?;
+    speeds.write_to(&output_dir.join(FILE_EDGE_SPEEDS))?;
     capas.write_to(&output_dir.join(FILE_EDGE_CAPACITIES))?;
 
     write_strings_to_file(&output_dir.join(FILE_EDGE_INDICES_TO_ID), &edge_indices_to_id.iter().collect())?;
@@ -355,6 +369,7 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Fl
             length,
             edge.get_capacity(),
             edge.num_lanes.unwrap_or(1),
+            edge.speed.unwrap_or(SUMO_DEFAULT_SPEED),
         ));
     }
 
@@ -420,7 +435,7 @@ mod tests {
                     from: String::from("n2"),
                     to: String::from("n1"),
                     num_lanes: Some(1),
-                    speed: Some(13.9),
+                    speed: Some(SUMO_DEFAULT_SPEED),
                     length: None,
                     lanes: vec![],
                     params: vec![],
@@ -431,7 +446,7 @@ mod tests {
                     from: String::from("n1"),
                     to: String::from("n2"),
                     num_lanes: Some(1),
-                    speed: Some(13.9),
+                    speed: Some(SUMO_DEFAULT_SPEED),
                     length: None,
                     lanes: vec![],
                     params: vec![],
@@ -485,7 +500,7 @@ mod tests {
                     from: String::from("n2"),
                     to: String::from("n1"),
                     num_lanes: Some(1),
-                    speed: Some(13.9),
+                    speed: Some(SUMO_DEFAULT_SPEED),
                     length: None,
                     lanes: vec![],
                     params: vec![],
@@ -496,7 +511,7 @@ mod tests {
                     from: String::from("n1"),
                     to: String::from("n2"),
                     num_lanes: Some(1),
-                    speed: Some(13.9),
+                    speed: Some(SUMO_DEFAULT_SPEED),
                     length: None,
                     lanes: vec![],
                     params: vec![],
@@ -553,7 +568,7 @@ mod tests {
                     from: String::from("n2"),
                     to: String::from("n1"),
                     num_lanes: Some(1),
-                    speed: Some(13.9),
+                    speed: Some(SUMO_DEFAULT_SPEED),
                     length: None,
                     lanes: vec![],
                     params: vec![],
@@ -564,7 +579,7 @@ mod tests {
                     from: String::from("n1"),
                     to: String::from("n2"),
                     num_lanes: Some(1),
-                    speed: Some(13.9),
+                    speed: Some(SUMO_DEFAULT_SPEED),
                     length: None,
                     lanes: vec![],
                     params: vec![],

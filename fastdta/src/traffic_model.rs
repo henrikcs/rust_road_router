@@ -6,6 +6,13 @@ pub trait TrafficModel: Send + Sync {
 
     // print debug information about the traffic model
     fn debug(&self);
+
+    /// convert the traffic model parameters to a vector
+    fn get_params_as_vec(&self) -> Vec<f64>;
+
+    fn from_vec(params: &Vec<f64>) -> Self
+    where
+        Self: Sized;
 }
 
 #[derive(Debug, Clone)]
@@ -125,25 +132,6 @@ pub mod modified_lee {
                 theta: ranges.get_theta_mid(),
                 a: ranges.get_a_mid(),
                 e: ranges.get_e_mid(),
-            }
-        }
-
-        /// create ModifiedLee from vector of parameters
-        /// params[0] = free_flow_speed
-        /// params[1] = a
-        /// params[2] = e
-        /// params[3] = theta
-        /// params[4] = jam_density
-        /// panics if params.len() != 5
-        pub fn from_vec(params: &Vec<f64>) -> Self {
-            assert!(params.len() == 5);
-            Self {
-                free_flow_speed: params[0],
-                a: params[1],
-                e: params[2],
-                theta: params[3],
-                jam_density: params[4],
-                jam_density_min: 0.0, // default value, not used in this context
             }
         }
 
@@ -299,11 +287,35 @@ pub mod modified_lee {
         fn get_speed(&self, density: f64) -> f64 {
             Self::f(density, self.free_flow_speed, self.a, self.e, self.theta, self.jam_density)
         }
+
         fn debug(&self) {
             println!(
                 "Modified Lee Traffic Model Parameters: free_flow_speed = {}, a = {}, e = {}, theta = {}, jam_density = {}",
                 self.free_flow_speed, self.a, self.e, self.theta, self.jam_density
             );
+        }
+
+        fn get_params_as_vec(&self) -> Vec<f64> {
+            vec![self.free_flow_speed, self.a, self.e, self.theta, self.jam_density]
+        }
+
+        /// create ModifiedLee from vector of parameters
+        /// params[0] = free_flow_speed
+        /// params[1] = a
+        /// params[2] = e
+        /// params[3] = theta
+        /// params[4] = jam_density
+        /// panics if params.len() != 5
+        fn from_vec(params: &Vec<f64>) -> Self {
+            assert!(params.len() == 5);
+            Self {
+                free_flow_speed: params[0],
+                a: params[1],
+                e: params[2],
+                theta: params[3],
+                jam_density: params[4],
+                jam_density_min: 0.0, // default value, not used in this context
+            }
         }
     }
 

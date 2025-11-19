@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use conversion::SUMO_MAX_TRAVEL_TIME;
 use conversion::sumo::meandata::Interval;
 use rust_road_router::datastr::graph::floating_time_dependent::{TDGraph, TTFPoint};
@@ -28,7 +26,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
-    traffic_model: &HashMap<usize, Box<dyn TrafficModel>>,
+    traffic_models: &Vec<Box<dyn TrafficModel>>,
     lanes: &Vec<u32>,
 ) -> Vec<Vec<f64>> {
     // Debug assertion: verify periods have no holes (consecutive periods are continuous)
@@ -51,7 +49,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
-            traffic_model,
+            traffic_models,
             lanes,
         );
     }
@@ -68,7 +66,7 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
-            traffic_model,
+            traffic_models,
             lanes,
         );
     }
@@ -115,7 +113,7 @@ fn process_path<G: TravelTimeGraph>(
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
-    traffic_model: &HashMap<usize, Box<dyn TrafficModel>>,
+    traffic_models: &Vec<Box<dyn TrafficModel>>,
     lanes: &Vec<u32>,
 ) {
     let mut current_time = departure_time;
@@ -177,7 +175,7 @@ fn process_path<G: TravelTimeGraph>(
 
                     let estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
 
-                    let estimated_tt = traffic_model.get(&(edge_id as usize)).map_or(edge_free_flow_tts[edge_id as usize], |tm| {
+                    let estimated_tt = traffic_models.get(edge_id as usize).map_or(edge_free_flow_tts[edge_id as usize], |tm| {
                         let tt = edge_lengths[edge_id as usize] / tm.get_speed(estimated_density) / 3.6;
                         if tt < 0.0 {
                             return SUMO_MAX_TRAVEL_TIME;
@@ -200,7 +198,7 @@ fn process_path<G: TravelTimeGraph>(
                             estimated_density
                         );
                         if estimated_tt < 0.0 {
-                            let tm = traffic_model.get(&(edge_id as usize)).unwrap();
+                            let tm = traffic_models.get(edge_id as usize).unwrap();
                             tm.debug();
                             panic!("Estimated travel time for edge {} is negative: {}", edge_ids[edge_id as usize], estimated_tt);
                         }

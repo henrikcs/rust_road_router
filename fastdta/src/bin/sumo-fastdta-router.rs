@@ -1,17 +1,15 @@
 use std::path::Path;
 
-use conversion::{FILE_EDGE_DEFAULT_TRAVEL_TIMES, SerializedTravelTime};
-use fastdta::calibrate_traffic_model::calibrate_traffic_model;
+use fastdta::calibrate_traffic_model::calibrate_traffic_models;
 use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::customize::customize;
 use fastdta::logger::Logger;
 use fastdta::postprocess::{prepare_next_iteration, set_relative_gap_with_previous_alternative_paths};
-use fastdta::query::{get_paths_with_cch, get_paths_with_dijkstra};
+use fastdta::query::get_paths_with_cch;
 use fastdta::relative_gap::append_relative_gap_to_file;
-use fastdta::route::{get_graph_data_for_cch, get_graph_data_for_dijkstra, get_graph_data_for_fast_dta, get_paths_by_samples};
+use fastdta::route::{get_graph_data_for_cch, get_graph_data_for_fast_dta, get_paths_by_samples};
 use fastdta::sampler::sample;
-use rust_road_router::io::Load;
 use rust_road_router::report::measure;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,26 +27,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let logger = Logger::new("sumo-fastdta-router", &input_dir.display().to_string(), iteration as i32);
 
-    let ((edge_ids, query_data, mut meandata, alternative_paths_for_dta, traffic_model_data), duration) = measure(|| {
-        let (e, q, m, a) = get_graph_data_for_fast_dta(input_dir, iteration);
+    let ((edge_ids, query_data, mut meandata, alternative_paths_from_dta, mut traffic_model_data), duration) =
+        measure(|| get_graph_data_for_fast_dta(input_dir, iteration, traffic_model_type));
 
-        let ff_tts = Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES))
-            .unwrap()
-            .iter()
-            .map(|stt| *stt as f64 / 1000.0)
-            .collect::<Vec<f64>>();
-
-        // traffic model data might be empty if no calibration was done before
-        let traffic_model_data = TrafficModelData::reconstruct(&input_dir, traffic_model_type);
-
-        (e, q, m, a, ff_tts)
-    });
     logger.log("preprocessing", duration.as_nanos());
 
-    let (traffic_model, duration) = measure(|| {
-        // for each edge, go into each interval and extract lane_density and speed as data points
-        // then use these data points to calibrate the traffic model parameters of ModifiedLee
-        calibrate_traffic_model(&meandata, &edge_ids, &default_tts_sec, &traffic_model_type)
+    let (_, duration) = measure(|| {
+        calibrate_traffic_models(&mut traffic_model_data, &mut meandata, &edge_ids, args.calibration_data_points_threshold);
     });
 
     logger.log("calibration", duration.as_nanos());
@@ -63,8 +48,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &logger,
             &query_data,
             &samples,
-            &traffic_model,
-            &alternative_paths_for_dta,
+            &traffic_model_data.traffic_models,
+            &alternative_paths_from_dta,
             &mut meandata,
             &edge_ids,
         )
@@ -89,17 +74,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             true,
         );
 
+        traffic_model_data.deconstruct(&input_dir).unwrap();
+
         if iteration == 0 {
             // initialize relative gap file with 0.0 for the first iteration
             append_relative_gap_to_file(0.0, &input_dir);
         } else {
             // get graph from previous iteration
-            let (edge_ids, graph, cch) = get_graph_data_for_cch(input_dir, iteration);
+            let (_, graph, cch) = get_graph_data_for_cch(input_dir, iteration);
             let customized_graph = customize(&cch, &graph);
 
-            let (shortest_paths, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
+            let (_, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
 
-            set_relative_gap_with_previous_alternative_paths(&alternative_paths_for_dta, &graph, &input_dir, &shortest_travel_times, &departures);
+            set_relative_gap_with_previous_alternative_paths(&alternative_paths_from_dta, &graph, &input_dir, &shortest_travel_times, &departures);
         }
     });
 
