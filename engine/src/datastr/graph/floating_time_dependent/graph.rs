@@ -217,15 +217,26 @@ impl Graph {
         // set weight at position in ipps
         // dbg!(&range.start, &range.end, &pos, self.ipps[range.start + pos], &self.ipps[range.clone()]);
         if pos < range.end - range.start && self.ipps[range.start + pos].at.fuzzy_eq(at) {
-            // println!(
-            //     "Updating existing weight point at time {:?} for edge {} with ipps {:?}",
-            //     at,
-            //     edge_id_usize,
-            //     &self.ipps[range.clone()]
-            // );
+            // if at == Timestamp::new(3300.0) {
+            //     println!(
+            //         "Updating existing weight point at time {:?} for edge {} with ipps {:?}",
+            //         at,
+            //         edge_id_usize,
+            //         &self.ipps[range.clone()]
+            //     );
+            // }
 
             self.ipps[range.start + pos].val = new_weight;
             self.adjust_ipps(edge_id);
+
+            // if at == Timestamp::new(3300.0) {
+            //     println!(
+            //         "Updated existing weight point at time {:?} for edge {} with ipps {:?}",
+            //         at,
+            //         edge_id_usize,
+            //         &self.ipps[range.clone()]
+            //     );
+            // }
         } else {
             panic!(
                 "No existing weight point at time {:?} for edge {} with ipps {:?}",
@@ -245,6 +256,9 @@ impl Graph {
             return;
         }
 
+        // Ensure periodicity property: last value should equal first value
+        self.ipps[range.end - 1].val = self.ipps[range.start].val;
+
         // Iterate from second to last element down to first element to ensure FIFO property
         for i in (range.start..range.end - 1).rev() {
             let interval_duration = self.ipps[i + 1].at - self.ipps[i].at;
@@ -253,9 +267,6 @@ impl Graph {
             // Enforce FIFO: current travel time should not exceed interval_duration + next_val
             self.ipps[i].val = FlWeight::min(self.ipps[i].val, interval_duration + next_val);
         }
-
-        // Ensure periodicity property: last value should equal first value
-        self.ipps[range.end - 1].val = self.ipps[range.start].val;
     }
 }
 

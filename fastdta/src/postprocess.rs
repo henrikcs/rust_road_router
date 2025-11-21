@@ -45,7 +45,7 @@ pub fn prepare_next_iteration(
 
         if !skip_relative_gap {
             // get choices from old_alternative_paths to calculate relative gap
-            set_relative_gap_with_previous_alternative_paths(&old_alternative_paths, graph, &input_dir, travel_times, departures);
+            set_relative_gap_with_previous_paths(&old_alternative_paths.get_chosen_paths(), graph, &input_dir, travel_times, departures);
         }
 
         // merge previous alternatives with current shortest paths
@@ -103,15 +103,14 @@ fn transform_alternative_paths_for_dta_to_vectors(
     (path_sets, costs, probabilities, choices)
 }
 
-pub fn set_relative_gap_with_previous_alternative_paths(
-    previous_alternative_paths: &AlternativePathsForDTA,
+pub fn set_relative_gap_with_previous_paths(
+    previous_paths: &Vec<&Vec<u32>>,
     graph: &TDGraph,
     input_dir: &Path,
     travel_times: &Vec<FlWeight>,
     departures: &Vec<SerializedTimestamp>,
 ) {
-    let previous_choices = previous_alternative_paths.get_chosen_paths();
-    let simulated_tts: Vec<f64> = previous_choices
+    let simulated_tts: Vec<f64> = previous_paths
         .iter()
         .enumerate()
         .map(|(i, path)| f64::from(graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path)))

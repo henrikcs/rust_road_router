@@ -1,5 +1,5 @@
 pub trait TrafficModel: Send + Sync {
-    /// speed in km/s for given density in vehicles per km per lane
+    /// speed in km/h for given density in vehicles per km per lane
     fn get_speed(&self, density: f64) -> f64;
 
     fn calibrate(&mut self, observed_speed: &[f64], observed_density: &[f64]);
@@ -37,6 +37,7 @@ pub mod modified_lee {
     const MAX_E: f64 = 10.0;
     const MAX_THETA: f64 = 5.0;
     const MAX_JAM_DENSITY: f64 = 167.0; // vehicles per km per lane (= 6m per vehicle)
+    const MIN_JAM_DENSITY: f64 = 50.0; // vehicles per km per lane (= 20m per vehicle)
 
     #[derive(Debug, Clone)]
     pub struct ModifiedLeeRanges {
@@ -48,7 +49,7 @@ pub mod modified_lee {
 
     impl ModifiedLeeRanges {
         pub fn init(min_jam_density: f64) -> Self {
-            Self::new(0.001, 5.0, 0.0, 5.0, 0.001, 5.0, min_jam_density, MAX_JAM_DENSITY)
+            Self::new(MIN_A, MAX_A, MIN_E, MAX_E, MIN_THETA, MAX_THETA, min_jam_density, MAX_JAM_DENSITY)
         }
 
         pub fn new(a_min: f64, a_max: f64, e_min: f64, e_max: f64, theta_min: f64, theta_max: f64, jam_density_min: f64, jam_density_max: f64) -> Self {
@@ -133,11 +134,11 @@ pub mod modified_lee {
 
     impl ModifiedLee {
         pub fn new(free_flow_speed: f64, jam_density_min: f64) -> Self {
-            let ranges = ModifiedLeeRanges::init(jam_density_min);
+            let ranges = ModifiedLeeRanges::init(f64::max(jam_density_min, MIN_JAM_DENSITY));
 
             Self {
                 free_flow_speed,
-                jam_density_min,
+                jam_density_min: f64::max(jam_density_min, MIN_JAM_DENSITY),
                 jam_density: ranges.get_jam_density_mid(),
                 theta: ranges.get_theta_mid(),
                 a: ranges.get_a_mid(),
@@ -307,10 +308,21 @@ pub mod modified_lee {
 
             opt.add_inequality_constraint(stable_shockwave_property_constraint, (), 1.0e-8).unwrap();
 
-            opt.set_xtol_rel(1.0e-4).unwrap();
+            opt.set_xtol_rel(1.0e-5).unwrap();
+            opt.set_xtol_abs(&[1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5]).unwrap();
+            opt.set_ftol_abs(1.0e-3).unwrap();
+            opt.set_maxtime(0.01).unwrap();
 
             let mut x = [self.a, self.e, self.theta, self.jam_density];
             let res = opt.optimize(&mut x);
+            if let Err(e) = &res {
+                match e.0 {
+                    nlopt::FailState::RoundoffLimited | nlopt::FailState::ForcedStop => {}
+                    _ => {
+                        println!("NLopt optimization failed: {:?}", e);
+                    }
+                }
+            }
 
             self.a = x[0];
             self.e = x[1];
@@ -321,7 +333,7 @@ pub mod modified_lee {
 
     impl TrafficModel for ModifiedLee {
         fn calibrate(&mut self, observed_speed: &[f64], observed_density: &[f64]) {
-            self.calibrate_dividing_intervals(observed_speed, observed_density);
+            self.calibrate_with_nlopt(observed_speed, observed_density);
 
             // panic!(
             //     "Calibrated Modified Lee parameters: a = {}, e = {}, theta = {}, jam_density = {}",
@@ -359,7 +371,7 @@ pub mod modified_lee {
                 e: params[2],
                 theta: params[3],
                 jam_density: params[4],
-                jam_density_min: 0.0, // default value, not used in this context
+                jam_density_min: MIN_JAM_DENSITY, // default value, not used in this context
             }
         }
     }
@@ -408,7 +420,7 @@ pub mod modified_lee {
 
         #[test]
         fn test_free_flow_speed() {
-            let model = ModifiedLee::new(13.6, 30.0);
+            let model = ModifiedLee::new(13.6, 60.0);
 
             let speed = model.get_speed(0.0);
             dbg!(&speed);
@@ -422,7 +434,7 @@ pub mod modified_lee {
                 e: 3.10,
                 theta: 2.23,
                 jam_density: 60.0,
-                jam_density_min: 30.0,
+                jam_density_min: 60.0,
                 free_flow_speed: 109.0,
             };
 

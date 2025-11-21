@@ -5,7 +5,7 @@ use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::customize::customize;
 use fastdta::logger::Logger;
-use fastdta::postprocess::{prepare_next_iteration, set_relative_gap_with_previous_alternative_paths};
+use fastdta::postprocess::{prepare_next_iteration, set_relative_gap_with_previous_paths};
 use fastdta::query::get_paths_with_cch;
 use fastdta::relative_gap::append_relative_gap_to_file;
 use fastdta::route::{get_graph_data_for_cch, get_graph_data_for_fast_dta, get_paths_by_samples};
@@ -41,6 +41,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (samples, duration) = measure(|| sample(&samples, query_data.0.len(), args.router_args.seed.unwrap_or(rand::random::<i32>())));
     logger.log("sample", duration.as_nanos());
 
+    let previous_paths = alternative_paths_from_dta.get_chosen_paths();
+
     let ((graph, paths, travel_times, departures), duration) = measure(|| {
         get_paths_by_samples(
             &input_dir,
@@ -49,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &query_data,
             &samples,
             &traffic_model_data.traffic_models,
-            &alternative_paths_from_dta,
+            &previous_paths,
             &mut meandata,
             &edge_ids,
         )
@@ -86,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let (_, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
 
-            set_relative_gap_with_previous_alternative_paths(&alternative_paths_from_dta, &graph, &input_dir, &shortest_travel_times, &departures);
+            set_relative_gap_with_previous_paths(&previous_paths, &graph, &input_dir, &shortest_travel_times, &departures);
         }
     });
 

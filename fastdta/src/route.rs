@@ -110,7 +110,7 @@ pub fn get_paths_by_samples(
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     samples: &Vec<Vec<usize>>,
     traffic_models: &Vec<Box<dyn TrafficModel>>,
-    alternative_paths_from_dta: &AlternativePathsForDTA,
+    previous_paths: &Vec<&Vec<u32>>,
     meandata: &mut MeandataDocumentRoot,
     edge_ids: &Vec<String>,
 ) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
@@ -130,8 +130,6 @@ pub fn get_paths_by_samples(
     let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
 
     let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
-
-    let old_paths = alternative_paths_from_dta.get_chosen_paths();
 
     for (i, sample) in samples.iter().enumerate() {
         let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&meandata, &edge_ids, &free_flow_tts_ms);
@@ -171,7 +169,7 @@ pub fn get_paths_by_samples(
             shortest_paths[query_i] = sampled_shortest_paths[i].clone();
             travel_times[query_i] = sampled_travel_times[i];
             departures[query_i] = sampled_departures[i];
-            sampled_old_paths.push(*old_paths.get(query_i).unwrap_or(&&empty_vec));
+            sampled_old_paths.push(*previous_paths.get(query_i).unwrap_or(&&empty_vec));
             sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
         });
 
