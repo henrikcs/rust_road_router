@@ -73,10 +73,7 @@ pub fn get_paths_with_cch_queries(
 
                 Some((path, distance))
             } else {
-                println!(
-                    "No path found from {} to {} at {departure:?}",
-                    queries_original_from_edges[from as usize], queries_original_to_edges[to as usize]
-                );
+                println!("No path found from {} to {} at {departure:?}", from_edge, to_edge);
                 None
             }
         },
