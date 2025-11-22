@@ -352,6 +352,12 @@ pub mod modified_lee {
             );
         }
 
+        /// convert the traffic model parameters to a vector
+        /// params[0] = free_flow_speed
+        /// params[1] = a
+        /// params[2] = e
+        /// params[3] = theta
+        /// params[4] = jam_density
         fn get_params_as_vec(&self) -> Vec<f64> {
             vec![self.free_flow_speed, self.a, self.e, self.theta, self.jam_density]
         }
