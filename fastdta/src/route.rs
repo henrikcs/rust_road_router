@@ -188,7 +188,7 @@ pub fn get_paths_by_samples(
 
         // println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);
 
-        debug(&meandata, &input_dir, iteration as u32, i as u32);
+        // debug(&meandata, &input_dir, iteration as u32, i as u32);
     }
 
     (graph, shortest_paths, travel_times, departures)

@@ -105,10 +105,6 @@ fn main() {
     remove_dir_all(&temp_cch_dir).unwrap();
 }
 
-pub fn get_path_ids_from_indices(edge_ids: &Vec<String>, indices: &Vec<u32>) -> Vec<String> {
-    indices.iter().map(|&i| edge_ids[i as usize].clone()).collect()
-}
-
 /// Command-line arguments for counting connections and whether they are complete or not
 #[derive(Parser, Debug)]
 #[command(version, about = "Sumo Relative Gap Calculator options", long_about = None)]
@@ -138,6 +134,10 @@ pub struct Args {
     /// If specified, only the files for that iteration will be read
     #[arg(long = "iteration")]
     pub iteration: Option<u32>,
+}
+
+fn get_path_ids_from_indices(edge_ids: &Vec<String>, indices: &Vec<u32>) -> Vec<String> {
+    indices.iter().map(|&i| edge_ids[i as usize].clone()).collect()
 }
 
 /// prints the experienced total network travel time
