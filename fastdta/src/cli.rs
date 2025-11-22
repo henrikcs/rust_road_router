@@ -424,11 +424,12 @@ pub struct FastDtaArgs {
     pub router_args: RouterArgs,
 
     ///sample sizes and number of sample per iteration
-    /// e.g. --samples 0.1 0.2 0.3 0.4 will sample 10% in the first iteration, 20% in the second, 30% in the third, and 40% in the fourth,
+    /// e.g. --samples "0.1 0.2 0.3 0.4" will sample 10% in the first iteration, 20% in the second, 30% in the third, and 40% in the fourth,
     /// such that each sample does not intersect with previous samples
-    /// Samples are uniformly distributed over all trips  
+    /// Samples are uniformly distributed over all trips
+    /// Format: "<f64>[ <f64>]*" - space-separated floating point values
     #[arg(long = "samples")]
-    pub samples: Option<Vec<f64>>,
+    pub samples: Option<String>,
 
     /// sets the VDF
     #[arg(long = "traffic-model", default_value = "modified-lee")]
@@ -453,7 +454,12 @@ impl FastDtaArgs {
 
     pub fn get_samples(&self) -> Vec<f64> {
         let smpls = match &self.samples {
-            Some(s) => s.clone(),
+            Some(s) => {
+                // Parse space-separated f64 values from string
+                s.split_whitespace()
+                    .map(|val| val.parse::<f64>().expect(&format!("Invalid sample value: {}", val)))
+                    .collect()
+            }
             None => vec![0.9, 0.1],
         };
 

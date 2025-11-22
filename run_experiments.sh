@@ -21,7 +21,8 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<begin>;<end>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>\n]"
+    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<begin>;<end>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>[;<samples>]\n]"
+    echo "                         The optional 'samples' parameter (last field) is a space-separated list of f64 values for fastdta routing."
     echo ""
     echo "Routing algorithm options (at least one is required):"
     echo "  --cch                  Run all experiments with CCH routing."
@@ -177,7 +178,7 @@ cp ~/rust_road_router/fastdta/duaIterate.py "$SUMO_HOME"/tools/assign
 
 # --- Run experiments ---
 line_index=0
-while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation convergence_deviation convergence_relgap last_iter seed || [[ -n "$in_dir" ]]; do
+while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation convergence_deviation convergence_relgap last_iter seed samples || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
 
@@ -245,9 +246,17 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                     fastdta-preprocessor--input-prefix "$prefix"
                     fastdta-preprocessor--input-dir "$in_dir"
                     fastdta-router--seed $seed
-                    fastdta-router--samples 1 
-                    fastdta-router--samples 1
                 )
+                # Use samples from CSV if provided, otherwise use default "1 1"
+                if [ -n "$samples" ]; then
+                    dua_args+=(
+                        fastdta-router--samples "$samples"
+                    )
+                else
+                    dua_args+=(
+                        fastdta-router--samples "1 1"
+                    )
+                fi
             fi
 
             # any other algorithm uses relative-gap-calculator: 
