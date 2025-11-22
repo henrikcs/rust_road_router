@@ -437,7 +437,7 @@ pub struct FastDtaArgs {
 
     /// threshold for the number of data points (lane density and speed observations) per edge
     /// to calibrate the traffic model parameters
-    #[arg(long = "calibration-data-points-threshold", default_value = "500")]
+    #[arg(long = "calibration-data-points-threshold", default_value = "1000")]
     pub calibration_data_points_threshold: usize,
 }
 

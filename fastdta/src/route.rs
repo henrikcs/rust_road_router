@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use conversion::{
-    DIR_DTA, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_EDGE_SPEEDS, SerializedTimestamp,
-    SerializedTravelTime,
+    DIR_DTA, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_EDGE_SPEEDS, GLOBAL_FREE_FLOW_SPEED_FACTOR,
+    SerializedTimestamp, SerializedTravelTime,
     sumo::{
         FileReader, FileWriter,
         meandata::MeandataDocumentRoot,
@@ -58,7 +58,7 @@ pub fn get_graph_data_for_fast_dta(
         let free_flow_speeds: Vec<f64> = Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_SPEEDS))
             .unwrap()
             .iter()
-            .map(|ffs| *ffs * 3.6)
+            .map(|ffs| *ffs * 3.6 * GLOBAL_FREE_FLOW_SPEED_FACTOR) // convert m/s to km/h and add 10% speeding factor as a realistic assumption
             .collect();
 
         return (

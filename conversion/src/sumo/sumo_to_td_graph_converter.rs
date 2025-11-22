@@ -15,7 +15,7 @@ use crate::{
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
     FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_EDGE_SPEEDS, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
     FILE_LATITUDE, FILE_LONGITUDE, FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_IDS, FILE_QUERY_ORIGINAL_FROM_EDGES,
-    FILE_QUERY_ORIGINAL_TO_EDGES, MIN_EDGE_WEIGHT, SUMO_DEFAULT_SPEED,
+    FILE_QUERY_ORIGINAL_TO_EDGES, GLOBAL_FREE_FLOW_SPEED_FACTOR, MIN_EDGE_WEIGHT, SUMO_DEFAULT_SPEED,
 };
 
 pub struct FlattenedSumoEdge {
@@ -356,7 +356,11 @@ fn initialize_edges_for_td_graph(nodes: &Vec<Node>, edges: &Vec<Edge>) -> Vec<Fl
 
         let length = edge.get_length((from_node.x, from_node.y), (to_node.x, to_node.y));
 
-        let weight = f64::max(f64::max(length - 1.0 * VEH_LENGTH, 0.0) / edge.get_speed(), MIN_EDGE_WEIGHT);
+        // weight is the default weight, which is the length divided by the free-flow speed
+        let weight = f64::max(
+            (length - 1.0 * VEH_LENGTH) / (edge.get_speed() * GLOBAL_FREE_FLOW_SPEED_FACTOR),
+            MIN_EDGE_WEIGHT,
+        );
 
         let from_node_index = from_node_index as u32;
         let to_node_index = to_node_index as u32;
