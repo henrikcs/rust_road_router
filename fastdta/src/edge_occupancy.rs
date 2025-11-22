@@ -1,5 +1,5 @@
 use conversion::SUMO_MAX_TRAVEL_TIME;
-use conversion::sumo::meandata::Interval;
+use conversion::sumo::meandata::{Edge, Interval};
 use rust_road_router::datastr::graph::floating_time_dependent::{TDGraph, TTFPoint};
 use rust_road_router::datastr::graph::{
     Graph,
@@ -141,19 +141,32 @@ fn process_path<G: TravelTimeGraph>(
             }
         };
 
+        if let Some(interval) = intervals.get_mut(bin_search_res) {
+            // add edge, if not present
+            if interval.get_edge(edge_ids[edge_id as usize].as_str()).is_none() {
+                interval.add_edge(Edge {
+                    id: edge_ids[edge_id as usize].clone(),
+                    sampled_seconds: Some(0.0),
+                    ..Default::default()
+                });
+            }
+
+            // set departed to edge.departed = edge.departed + sign * 1;
+            if let Some(edge) = interval.get_edge_mut(edge_ids[edge_id as usize].as_str()) {
+                edge.dbg_entered = edge.dbg_entered + (sign as u32);
+            }
+        }
+
         for (interval_idx, interval) in intervals.iter_mut().skip(bin_search_res).enumerate() {
-            if current_time >= arrival_time {
-                break; // No more travel time to distribute
-            }
-
-            // Skip periods that end before or at our current time
-            if interval.end <= f64::from(current_time) {
-                continue;
-            }
-
             // Skip periods that start after or at our travel ends
-            if interval.begin >= f64::from(arrival_time) {
-                break;
+            if current_time >= arrival_time || interval.begin >= f64::from(arrival_time) {
+                if let Some(interval) = intervals.get_mut(bin_search_res) {
+                    // set departed to edge.departed = edge.departed + sign * 1;
+                    if let Some(edge) = interval.get_edge_mut(edge_ids[edge_id as usize].as_str()) {
+                        edge.dbg_left = edge.dbg_left + (sign as u32);
+                    }
+                }
+                break; // No more travel time to distribute
             }
 
             // Calculate the overlap between travel time and this period
@@ -166,6 +179,7 @@ fn process_path<G: TravelTimeGraph>(
 
                 let interval_duration = interval.end - interval.begin;
                 let interval_begin = interval.begin;
+
                 interval.get_edge_mut(edge_ids[edge_id as usize].as_str()).map(|edge| {
                     let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
                     let previous_tt = edge.traveltime;

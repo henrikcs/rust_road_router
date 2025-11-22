@@ -45,6 +45,19 @@ pub struct Edge {
     pub sampled_seconds: Option<f64>,
     #[serde(rename = "@laneDensity")]
     pub lane_density: Option<f64>,
+    #[serde(rename = "@departed")]
+    pub departed: Option<u32>,
+    #[serde(rename = "@arrived")]
+    pub arrived: Option<u32>,
+    #[serde(rename = "@entered")]
+    pub entered: Option<u32>,
+    #[serde(rename = "@left")]
+    pub left: Option<u32>,
+
+    #[serde(skip_deserializing)]
+    pub dbg_entered: u32,
+    #[serde(skip_deserializing)]
+    pub dbg_left: u32,
 }
 
 impl Edge {
@@ -100,20 +113,35 @@ impl Interval {
         }
     }
 
+    pub fn add_edge(&mut self, edge: Edge) {
+        let edge_id = edge.id.clone();
+        self.edges.push(edge);
+
+        if self.edge_map.is_none() {
+            self.init_edge_map();
+        } else {
+            let map = self.edge_map.as_mut().unwrap();
+            map.insert(edge_id, self.edges.len() - 1);
+        }
+    }
+
     pub fn get_edge(&mut self, id: &str) -> Option<&Edge> {
         if self.edge_map.is_none() {
-            let map: HashMap<String, usize> = self.edges.iter().enumerate().map(|(i, e)| (e.id.clone(), i)).collect();
-            self.edge_map = Some(map);
+            self.init_edge_map();
         }
         self.edge_map.as_ref().unwrap().get(id).map(|&i| &self.edges[i])
     }
 
     pub fn get_edge_mut(&mut self, id: &str) -> Option<&mut Edge> {
         if self.edge_map.is_none() {
-            let map: HashMap<String, usize> = self.edges.iter().enumerate().map(|(i, e)| (e.id.clone(), i)).collect();
-            self.edge_map = Some(map);
+            self.init_edge_map();
         }
         self.edge_map.as_ref().unwrap().get(id).map(|&i| &mut self.edges[i])
+    }
+
+    fn init_edge_map(&mut self) {
+        let map: HashMap<String, usize> = self.edges.iter().enumerate().map(|(i, e)| (e.id.clone(), i)).collect();
+        self.edge_map = Some(map);
     }
 }
 

@@ -39,6 +39,17 @@ pub fn calibrate_traffic_models(traffic_model_data: &mut TrafficModelData, meand
                 continue;
             }
 
+            if edge_id == "a2" {
+                println!(
+                    "Currently {} data points for edge {}",
+                    traffic_model_data.observed_densities[edge_index].len(),
+                    edge_id
+                );
+                println!("Densities: {:?}", &traffic_model_data.observed_densities[edge_index]);
+                println!("Speeds: {:?}", &traffic_model_data.observed_speeds[edge_index]);
+                traffic_model_data.traffic_models[edge_index].debug()
+            }
+
             traffic_model_data.calibrate_model(edge_index);
 
             if edge_id == "a2" {
