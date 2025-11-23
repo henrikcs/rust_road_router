@@ -58,7 +58,7 @@ pub fn get_graph_data_for_fast_dta(
         let free_flow_speeds: Vec<f64> = Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_SPEEDS))
             .unwrap()
             .iter()
-            .map(|ffs| *ffs * 3.6 * GLOBAL_FREE_FLOW_SPEED_FACTOR) // convert m/s to km/h and add 10% speeding factor as a realistic assumption
+            .map(|ffs| *ffs * 3.6 * GLOBAL_FREE_FLOW_SPEED_FACTOR)
             .collect();
 
         return (
