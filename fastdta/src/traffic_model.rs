@@ -289,7 +289,7 @@ pub mod modified_lee {
         }
 
         pub fn calibrate_with_nlopt(&mut self, observed_speed: &[f64], observed_density: &[f64]) {
-            // use nloptr to calibrate the parameters
+            // use nlopt to calibrate the parameters
 
             let objective_function = |x: &[f64], _grad: Option<&mut [f64]>, _params: &mut [f64; 0]| {
                 let mlf = ModifiedLeeCostFunction::new(self.free_flow_speed, &observed_speed, &observed_density);
@@ -308,9 +308,7 @@ pub mod modified_lee {
 
             opt.add_inequality_constraint(stable_shockwave_property_constraint, (), 1.0e-8).unwrap();
 
-            opt.set_xtol_rel(1.0e-5).unwrap();
-            opt.set_xtol_abs(&[1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5]).unwrap();
-            opt.set_ftol_abs(1.0e-3).unwrap();
+            opt.set_ftol_abs(1.0e-5).unwrap();
             opt.set_maxtime(0.01).unwrap();
 
             let mut x = [self.a, self.e, self.theta, self.jam_density];
