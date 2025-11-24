@@ -9,14 +9,8 @@ use rust_road_router::datastr::graph::{
 use crate::traffic_model::TrafficModel;
 
 /// given a graph, a set of old paths, a set of new paths, and their respective departure times,
-/// compute the edge occupancy deltas for each edge in the graph over time
-/// the occupancy is sum of travel times of all vehicles on the edge within a time window,
-/// where the occupancy for edges along old paths is subtracted
-/// and the occupancy for edges along new paths is added
-/// the period is given in seconds
-/// the path is given as a vector of edge ids
-/// returns a vector of vectors, where the outer vector is indexed by period
-/// and the inner vector is indexed by edge id
+/// computes the estimated densities on the edges which vehicles are rerouted on
+/// and updates the graph's travel times accordingly.
 pub fn adjust_weights_in_graph_by_following_paths<G: TravelTimeGraph>(
     graph: &mut G,
     old_paths: &Vec<&Vec<u32>>,
@@ -33,8 +27,6 @@ pub fn adjust_weights_in_graph_by_following_paths<G: TravelTimeGraph>(
     debug_assert!(intervals.windows(2).all(|w| w[0].end == w[1].begin), "Periods must be continuous with no gaps");
 
     // dbg!(&graph.ipps());
-
-    let num_edges = graph.num_arcs();
 
     // Process old paths (subtract travel times)
     for (path_idx, path) in old_paths.iter().enumerate() {

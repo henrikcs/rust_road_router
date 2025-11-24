@@ -23,8 +23,8 @@ use rust_road_router::{datastr::graph::floating_time_dependent::Timestamp, io::R
 
 use crate::{
     alternative_paths::AlternativePathsForDTA,
-    edge_occupancy::adjust_weights_in_graph_by_following_paths,
     logger::Logger,
+    path_processor::adjust_weights_in_graph_by_following_paths,
     preprocess::get_cch,
     query::{get_paths_with_cch_queries, read_queries},
     traffic_model::{TrafficModel, TrafficModelType},
@@ -172,6 +172,7 @@ pub fn get_paths_by_samples(
             sampled_old_paths.push(*previous_paths.get(query_i).unwrap_or(&&empty_vec));
             sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
         });
+        // TODO: try calling sumo directly and set meandata according to returned dump file
 
         adjust_weights_in_graph_by_following_paths(
             &mut graph,
