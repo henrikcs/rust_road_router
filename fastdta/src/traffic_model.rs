@@ -36,7 +36,7 @@ pub mod modified_lee {
     const MAX_A: f64 = 5.0;
     const MAX_E: f64 = 10.0;
     const MAX_THETA: f64 = 5.0;
-    const MAX_JAM_DENSITY: f64 = 167.0; // vehicles per km per lane (= 6m per vehicle)
+    const MAX_JAM_DENSITY: f64 = 200.0; // vehicles per km per lane (= 5m per vehicle)
     const MIN_JAM_DENSITY: f64 = 50.0; // vehicles per km per lane (= 20m per vehicle)
 
     #[derive(Debug, Clone)]

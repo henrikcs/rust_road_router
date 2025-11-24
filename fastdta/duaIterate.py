@@ -46,6 +46,7 @@ EDGEDATA_ADD = "edgedata.add.xml"
 ROUTING_ALGORITHM_CCH = "CCH"
 ROUTING_ALGORITHM_DIJKSTRA_RUST = "dijkstra-rust"
 ROUTING_ALGORITHM_FASTDTA = "fastdta"
+ROUTING_ALGORITHM_SUMO_SAMPLE = "sumo-sample"
 
 CCH_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
 """Binary used for conversion from Sumo input to CCH Preprocessing
@@ -81,6 +82,11 @@ FASTDTA_ROUTER_BINARY = "sumo-fastdta-router"
 
 make sure the the binary is in PATH
 """
+
+""" uses the same preprocessor as fastdta router """
+SUMO_SAMPLE_PREPROCESS_BINARY = "sumo-fastdta-preprocessor"
+
+SUMO_SAMPLE_ROUTER_BINARY = "sumo-sample-router"
 
 RELATIVE_GAP_BINARY = "sumo-relative-gap-calculator"
 """ Binary used for calculating the relative gap.
@@ -648,9 +654,14 @@ def main(args=None):
         FASTDTA_PREPROCESS_BINARY, 'fastdta-preprocessor', options.remaining_args)
     fastdta_routing_args = assign_remaining_args(
         FASTDTA_ROUTER_BINARY, 'fastdta-router', options.remaining_args)
+    sumo_sample_preprocessing_args = assign_remaining_args(
+        SUMO_SAMPLE_PREPROCESS_BINARY, 'sample-preprocessor', options.remaining_args)
+    sumo_routing_args = assign_remaining_args(
+        SUMO_SAMPLE_ROUTER_BINARY, 'sample-router', options.remaining_args)
     relative_gap_args = assign_remaining_args(
         RELATIVE_GAP_BINARY, 'relative-gap', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
+
     log = open(options.dualog, "w+")
     if options.zip:
         if options.clean_alt:
@@ -690,7 +701,8 @@ def main(args=None):
 
     if ROUTING_ALGORITHM_CCH in options.routing_algorithm or \
         ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm or \
-            ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
+            ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm or \
+        ROUTING_ALGORITHM_SUMO_SAMPLE in options.routing_algorithm:
 
         # note that the rust libraries only support a single demand file as an input.
         tik = datetime.now()
@@ -716,7 +728,17 @@ def main(args=None):
             ret = call_binary(FASTDTA_PREPROCESS_BINARY,
                               fastdta_preprocessing_args + ["--trips-file", input_demands[0]])
             if ret != 0:
-                sys.exit("Error: Dijkstra preprocessing failed.")
+                sys.exit("Error: FastDTA preprocessing failed.")
+
+        if ROUTING_ALGORITHM_SUMO_SAMPLE in options.routing_algorithm:
+            print("> Preprocessing network for Sumo Sample")
+            print(">> Begin time: %s" % tik)
+            print(">> Argumetns: %s" % " ".join(
+                sumo_sample_preprocessing_args + ["--trips-file", input_demands[0]]))
+            ret = call_binary(SUMO_SAMPLE_PREPROCESS_BINARY,
+                              sumo_sample_preprocessing_args + ["--trips-file", input_demands[0]])
+            if ret != 0:
+                sys.exit("Error: Sumo Sample preprocessing failed.")
 
         tok = datetime.now()
         print(">> End time: %s" % tok)
@@ -779,6 +801,13 @@ def main(args=None):
                          "--input-prefix", get_basename(input_demands[0])]
                         + arguments_for_router
                         + fastdta_routing_args)
+                elif ROUTING_ALGORITHM_SUMO_SAMPLE in options.routing_algorithm:
+                    ret = call_binary(
+                        SUMO_SAMPLE_ROUTER_BINARY,
+                        ["--iteration", str(step),
+                         "--input-prefix", get_basename(input_demands[0])]
+                        + arguments_for_router
+                        + sumo_routing_args)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 

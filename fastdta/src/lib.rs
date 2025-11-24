@@ -13,5 +13,8 @@ pub mod query;
 pub mod relative_gap;
 pub mod route;
 pub mod sampler;
+pub mod sumo_routes_writer;
+pub mod sumo_runner;
+pub mod sumo_sample_routing;
 pub mod traffic_model;
 pub mod traffic_model_data;

@@ -467,3 +467,40 @@ impl FastDtaArgs {
         smpls
     }
 }
+
+/// Command-line arguments for SUMO-based sample routing
+#[derive(Parser, Debug)]
+#[command(version, about = "SUMO sample routing CLI options", long_about = None)]
+pub struct SumoSampleRouterArgs {
+    #[command(flatten)]
+    pub router_args: RouterArgs,
+
+    /// sample sizes and number of sample per iteration
+    /// e.g. --samples "0.1 0.2 0.3 0.4" will sample 10% in the first iteration, 20% in the second, 30% in the third, and 40% in the fourth,
+    /// such that each sample does not intersect with previous samples
+    /// Samples are uniformly distributed over all trips
+    /// Format: "<f64>[ <f64>]*" - space-separated floating point values
+    #[arg(long = "samples")]
+    pub samples: Option<String>,
+
+    /// aggregation interval for SUMO edgeData output (in seconds)
+    #[arg(long = "aggregation", default_value = "60")]
+    pub aggregation: u32,
+}
+
+impl SumoSampleRouterArgs {
+    pub fn get_samples(&self) -> Vec<f64> {
+        let smpls = match &self.samples {
+            Some(s) => {
+                // Parse space-separated f64 values from string
+                s.split_whitespace()
+                    .map(|val| val.parse::<f64>().expect(&format!("Invalid sample value: {}", val)))
+                    .collect()
+            }
+            None => vec![0.9, 0.1],
+        };
+
+        println!("Using samples: {:?}", smpls);
+        smpls
+    }
+}
