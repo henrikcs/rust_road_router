@@ -130,8 +130,6 @@ pub fn get_paths_by_samples(
     let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
 
     let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
-
-    for (i, sample) in samples.iter().enumerate() {
         let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&meandata, &edge_ids, &free_flow_tts_ms);
 
         graph = TDGraph::new(
@@ -142,6 +140,8 @@ pub fn get_paths_by_samples(
             ipp_travel_time,
         );
         let cch = get_cch(input_dir, &graph);
+
+    for (i, sample) in samples.iter().enumerate() {
         let (customized_graph, duration) = measure(|| customize(&cch, &graph));
 
         logger.log(format!("cch customization (sample {i})").as_str(), duration.as_nanos());
