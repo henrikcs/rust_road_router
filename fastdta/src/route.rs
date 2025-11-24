@@ -23,7 +23,7 @@ use rust_road_router::{datastr::graph::floating_time_dependent::Timestamp, io::R
 
 use crate::{
     alternative_paths::AlternativePathsForDTA,
-    edge_occupancy::get_edge_occupancy_deltas,
+    edge_occupancy::adjust_weights_in_graph_by_following_paths,
     logger::Logger,
     preprocess::get_cch,
     query::{get_paths_with_cch_queries, read_queries},
@@ -130,16 +130,16 @@ pub fn get_paths_by_samples(
     let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
 
     let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
-        let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&meandata, &edge_ids, &free_flow_tts_ms);
+    let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&meandata, &edge_ids, &free_flow_tts_ms);
 
-        graph = TDGraph::new(
-            Vec::from(graph.first_out()),
-            Vec::from(graph.head()),
-            first_ipp_of_arc,
-            ipp_departure_time,
-            ipp_travel_time,
-        );
-        let cch = get_cch(input_dir, &graph);
+    graph = TDGraph::new(
+        Vec::from(graph.first_out()),
+        Vec::from(graph.head()),
+        first_ipp_of_arc,
+        ipp_departure_time,
+        ipp_travel_time,
+    );
+    let cch = get_cch(input_dir, &graph);
 
     for (i, sample) in samples.iter().enumerate() {
         let (customized_graph, duration) = measure(|| customize(&cch, &graph));
@@ -173,7 +173,7 @@ pub fn get_paths_by_samples(
             sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
         });
 
-        get_edge_occupancy_deltas(
+        adjust_weights_in_graph_by_following_paths(
             &mut graph,
             &sampled_old_paths,
             &sampled_shortest_paths,

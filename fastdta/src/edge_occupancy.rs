@@ -17,7 +17,7 @@ use crate::traffic_model::TrafficModel;
 /// the path is given as a vector of edge ids
 /// returns a vector of vectors, where the outer vector is indexed by period
 /// and the inner vector is indexed by edge id
-pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
+pub fn adjust_weights_in_graph_by_following_paths<G: TravelTimeGraph>(
     graph: &mut G,
     old_paths: &Vec<&Vec<u32>>,
     new_paths: &Vec<Vec<u32>>,
@@ -28,14 +28,13 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
     edge_free_flow_tts: &Vec<f64>,
     traffic_models: &Vec<Box<dyn TrafficModel>>,
     lanes: &Vec<u32>,
-) -> Vec<Vec<f64>> {
+) {
     // Debug assertion: verify periods have no holes (consecutive periods are continuous)
     debug_assert!(intervals.windows(2).all(|w| w[0].end == w[1].begin), "Periods must be continuous with no gaps");
 
     // dbg!(&graph.ipps());
 
     let num_edges = graph.num_arcs();
-    let mut edge_occupancy_deltas = vec![vec![0.0; num_edges]; intervals.len()];
 
     // Process old paths (subtract travel times)
     for (path_idx, path) in old_paths.iter().enumerate() {
@@ -45,7 +44,6 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             departures[path_idx],
             -1.0,
             intervals,
-            &mut edge_occupancy_deltas,
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
@@ -62,7 +60,6 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             departures[path_idx],
             1.0,
             intervals,
-            &mut edge_occupancy_deltas,
             edge_ids,
             edge_lengths,
             edge_free_flow_tts,
@@ -70,8 +67,6 @@ pub fn get_edge_occupancy_deltas<G: TravelTimeGraph>(
             lanes,
         );
     }
-
-    edge_occupancy_deltas
 }
 
 /// Trait for graphs that can provide travel time calculations
@@ -109,7 +104,6 @@ fn process_path<G: TravelTimeGraph>(
     departure_time: Timestamp,
     sign: f64,
     intervals: &mut Vec<Interval>,
-    edge_occupancy_deltas: &mut Vec<Vec<f64>>,
     edge_ids: &Vec<String>,
     edge_lengths: &Vec<f64>,
     edge_free_flow_tts: &Vec<f64>,
@@ -175,8 +169,6 @@ fn process_path<G: TravelTimeGraph>(
             let overlap_duration = overlap_end - overlap_start;
 
             if overlap_duration > 0.0 {
-                edge_occupancy_deltas[bin_search_res + interval_idx][edge_id as usize] += sign * overlap_duration;
-
                 let interval_duration = interval.end - interval.begin;
                 let interval_begin = interval.begin;
 
