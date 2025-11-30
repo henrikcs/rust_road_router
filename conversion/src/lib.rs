@@ -97,7 +97,12 @@ pub type SerializedPosition = f32;
 /// lowest possible travel time for an edge in seconds
 pub const MIN_EDGE_WEIGHT: f64 = 1.0;
 
-pub const GLOBAL_FREE_FLOW_SPEED_FACTOR: f64 = 1.0; // around 80% of the speed limit, according to https://www.sciencedirect.com/science/article/pii/S1877050924013164
+/// factor to multiply free-flow speeds with to get global free-flow speeds
+/// [1] uses a factor of below 1.0 which accounts for turning delays at intersections or red lights in urbad areas.
+/// However, we dont consider traffic lights or turning delays in our model yet, so we keep the factor at 1.0 for now.
+///
+/// [1]: https://www.sciencedirect.com/science/article/pii/S1877050924013164
+pub const GLOBAL_FREE_FLOW_SPEED_FACTOR: f64 = 1.0;
 
 pub const MAX_EDGE_WEIGHT: f64 = 86_400.0; // 24 hours in seconds
 pub const SUMO_MAX_TRAVEL_TIME: f64 = 100_000.0; // 100k seconds
