@@ -20,7 +20,7 @@ pub fn get_routes_file_name_in_iteration(trips_file: &Path, iteration: u32) -> S
 }
 
 pub fn get_meandata_file(dir: &Path) -> PathBuf {
-    fs::read_dir(dir)
+    let f = fs::read_dir(dir)
         .unwrap()
         .find(|entry| {
             // check if entry is a file
@@ -37,5 +37,7 @@ pub fn get_meandata_file(dir: &Path) -> PathBuf {
                 && entry.as_ref().unwrap().file_name().to_str().unwrap().ends_with(".xml")
         })
         .map(|entry| entry.unwrap().path())
-        .unwrap()
+        .unwrap();
+    dbg!(&f);
+    f
 }

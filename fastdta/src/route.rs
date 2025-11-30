@@ -130,6 +130,7 @@ pub fn get_paths_by_samples(
     let edge_lanes = &Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
 
     let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
+    let original_meandata = meandata.clone();
     let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&meandata, &edge_ids, &free_flow_tts_ms);
 
     graph = TDGraph::new(
@@ -172,7 +173,6 @@ pub fn get_paths_by_samples(
             sampled_old_paths.push(*previous_paths.get(query_i).unwrap_or(&&empty_vec));
             sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
         });
-        // TODO: try calling sumo directly and set meandata according to returned dump file
 
         adjust_weights_in_graph_by_following_paths(
             &mut graph,
@@ -191,6 +191,22 @@ pub fn get_paths_by_samples(
 
         // debug(&meandata, &input_dir, iteration as u32, i as u32);
     }
+
+    let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&original_meandata, &edge_ids, &free_flow_tts_ms);
+
+    graph = TDGraph::new(
+        Vec::from(graph.first_out()),
+        Vec::from(graph.head()),
+        first_ipp_of_arc,
+        ipp_departure_time,
+        ipp_travel_time,
+    );
+
+    travel_times = shortest_paths
+        .iter()
+        .enumerate()
+        .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
+        .collect();
 
     (graph, shortest_paths, travel_times, departures)
 }

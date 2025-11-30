@@ -50,6 +50,33 @@ pub fn write_paths_as_sumo_routes(
     }
 }
 
+/// Write paths as SUMO routes file for simulation input
+/// This is similar to write_paths_as_sumo_routes but simplified for batch processing
+pub fn write_batch_routes_for_sumo(
+    output_path: &Path,
+    trip_ids: &Vec<String>,
+    paths: &Vec<Vec<EdgeId>>,
+    departures: &Vec<SerializedTimestamp>,
+    edge_indices_to_id: &Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Transform paths from EdgeId to SUMO edge IDs (strings)
+    let sumo_paths: Vec<String> = paths
+        .iter()
+        .map(|path| {
+            path.iter()
+                .map(|&edge_index| edge_indices_to_id[edge_index as usize].clone())
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .collect();
+
+    let sumo_routes = convert_to_sumo_routes(sumo_paths.iter().collect(), trip_ids, departures);
+
+    SumoRoutesWriter::write(output_path, &sumo_routes)?;
+
+    Ok(())
+}
+
 /// prepares a datastructure which can be serialized into a *.rou.xml for SUMO
 fn convert_to_sumo_routes(paths: Vec<&String>, trip_ids: &Vec<String>, departures: &Vec<SerializedTimestamp>) -> RoutesDocumentRoot {
     // create RoutesDocumentRoot

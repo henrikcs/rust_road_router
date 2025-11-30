@@ -2,13 +2,8 @@ use std::path::Path;
 
 use fastdta::cli;
 use fastdta::cli::Parser;
-use fastdta::customize::customize;
 use fastdta::logger::Logger;
 use fastdta::postprocess::prepare_next_iteration;
-use fastdta::postprocess::set_relative_gap_with_previous_paths;
-use fastdta::query::get_paths_with_cch;
-use fastdta::relative_gap::append_relative_gap_to_file;
-use fastdta::route::get_graph_data_for_cch;
 use fastdta::sampler::sample;
 use fastdta::sumo_sample_routing::get_paths_by_samples_with_sumo;
 use rust_road_router::io::read_strings_from_file;
@@ -44,20 +39,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (samples, duration) = measure(|| sample(&samples, query_data.0.len(), args.router_args.seed.unwrap_or(rand::random::<i32>())));
     logger.log("sample", duration.as_nanos());
 
-    // Get previous paths if iteration > 0
-    let alternative_paths_holder = if iteration > 0 {
-        let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
-        Some(fastdta::alternative_paths::AlternativePathsForDTA::reconstruct(
-            &previous_iteration_dir.join(conversion::DIR_DTA),
-        ))
-    } else {
-        None
-    };
-    let previous_paths = alternative_paths_holder.as_ref().map(|ap| ap.get_chosen_paths()).unwrap_or_default();
-
     // Route all queries using samples with SUMO simulation
-    let ((graph, paths, travel_times, departures), duration) =
-        measure(|| get_paths_by_samples_with_sumo(&input_dir, &net_file, iteration, aggregation, &logger, &query_data, &samples, &edge_ids));
+    let ((graph, paths, travel_times, departures), duration) = measure(|| {
+        get_paths_by_samples_with_sumo(
+            &input_dir,
+            &net_file,
+            iteration,
+            aggregation,
+            args.router_args.begin.unwrap_or(0.0),
+            args.router_args.end.unwrap_or(86400.0),
+            &logger,
+            &query_data,
+            &samples,
+            &edge_ids,
+        )
+    });
 
     logger.log("sumo-based routing", duration.as_nanos());
 
@@ -79,6 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             true,
         );
 
+        /*
         if iteration == 0 {
             // Initialize relative gap file with 0.0 for the first iteration
             append_relative_gap_to_file(0.0, &input_dir);
@@ -89,8 +86,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let (_, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
 
-            set_relative_gap_with_previous_paths(&previous_paths, &graph, &input_dir, &shortest_travel_times, &departures);
-        }
+            // Get previous paths if iteration > 0
+            let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
+            let ap = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(conversion::DIR_DTA));
+
+            set_relative_gap_with_previous_paths(&ap.get_chosen_paths(), &graph, &input_dir, &shortest_travel_times, &departures);
+        }*/
     });
 
     logger.log("postprocessing", duration.as_nanos());

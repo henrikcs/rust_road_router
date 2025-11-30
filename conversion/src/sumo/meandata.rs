@@ -2,20 +2,17 @@ use std::collections::HashMap;
 
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{
-    sumo::{SumoTimestamp, SumoTravelTime},
-    SUMO_MAX_TRAVEL_TIME,
-};
+use crate::sumo::{SumoTimestamp, SumoTravelTime};
 
 /// this is read from `dump_*.xml` files
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename = "meandata")]
 pub struct MeandataDocumentRoot {
     #[serde(rename = "interval")]
     pub intervals: Vec<Interval>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
 pub struct Interval {
     #[serde(rename = "@id")]
     pub id: String,
@@ -31,7 +28,7 @@ pub struct Interval {
     edge_map: Option<HashMap<String, usize>>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize, Default, Clone)]
 pub struct Edge {
     #[serde(rename = "@id")]
     pub id: String,

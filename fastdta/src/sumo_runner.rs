@@ -9,16 +9,20 @@ pub struct SumoConfig {
     pub additional_file: PathBuf,
     pub precision: u32,
     pub step_length: f64,
+    pub begin: f64,
+    pub end: f64,
 }
 
 impl SumoConfig {
-    pub fn new(net_file: PathBuf, routes_file: PathBuf, additional_file: PathBuf) -> Self {
+    pub fn new(net_file: PathBuf, routes_file: PathBuf, additional_file: PathBuf, begin: f64, end: f64) -> Self {
         Self {
             net_file,
             routes_file,
             additional_file,
             precision: 6,
             step_length: 0.1,
+            begin,
+            end,
         }
     }
 }
@@ -43,6 +47,10 @@ pub fn run_sumo(config: &SumoConfig) -> Result<(), Box<dyn std::error::Error>> {
         .arg("5")
         .arg("--time-to-teleport.disconnected")
         .arg("0")
+        .arg("--begin")
+        .arg(&config.begin.to_string())
+        .arg("--end")
+        .arg(&config.end.to_string())
         .status()?;
 
     if !status.success() {
@@ -55,7 +63,7 @@ pub fn run_sumo(config: &SumoConfig) -> Result<(), Box<dyn std::error::Error>> {
 /// Generate SUMO additional file for edgeData output
 /// Format: <a><edgeData id="dump_<aggregation>" freq="<aggregation>" file="dump_<aggregation>_<iteration>_<batch>.xml" excludeEmpty="true" minSamples="1"/></a>
 pub fn generate_additional_file(output_path: &Path, aggregation: u32, iteration: u32, batch: u32) -> Result<(), Box<dyn std::error::Error>> {
-    let dump_filename = format!("dump_{}_{:0>3}_{:0>3}.xml", aggregation, iteration, batch);
+    let dump_filename = format!("_dump_{}_{:0>3}_{:0>3}.xml", aggregation, iteration, batch);
     let dump_path = output_path.parent().unwrap().join(&dump_filename);
 
     let content = format!(

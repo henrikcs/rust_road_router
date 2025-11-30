@@ -113,13 +113,10 @@ impl AlternativePaths {
     pub fn apply_choice_algorithm(&mut self, choice_algorithm: &ChoiceAlgorithm, previous_costs: &Vec<f64>) {
         match choice_algorithm {
             ChoiceAlgorithm::Gawron { a, beta } => {
-                // update self.cost[self.choice] using beta smoothing
-                self.costs[self.choice] = self.costs[self.choice] * beta + previous_costs[self.choice] * (1.0 - beta);
-
-                self.probabilities = gawron(&self, *a, *beta);
+                self.probabilities = gawron(self, *a, *beta, previous_costs);
             }
             ChoiceAlgorithm::Logit { beta, gamma, theta } => {
-                self.probabilities = logit(&self, *beta, *gamma, *theta);
+                self.probabilities = logit(self, *beta, *gamma, *theta);
             }
         }
     }
@@ -206,8 +203,6 @@ impl AlternativePathsForDTA {
                             i
                         );
 
-                        dbg!(&alternative_path.edges);
-                        dbg!(&alternatives.costs[j]);
                         alternatives.costs[j] = f64::INFINITY;
                     }
                 }
@@ -522,9 +517,11 @@ mod tests {
 
         alternatives.perform_choice_model(&choice_algorithm, 5, &old_cost);
 
-        let expected_cost = 0.7 * 10.0 + 0.3 * 8.0; // beta * new_cost + (1-beta) * old_cost
-        assert_eq!(alternatives.costs[0], expected_cost);
-        assert_eq!(alternatives.costs[1], 15.0);
+        assert_eq!(alternatives.costs[0], 10.0);
+
+        // Cost smoothing DOES apply to non-chosen route (route 1)
+        let expected_cost_1 = 0.7 * 15.0 + 0.3 * 12.0; // beta * new_cost + (1-beta) * old_cost = 10.5 + 3.6 = 14.1
+        assert!((alternatives.costs[1] - expected_cost_1).abs() < 1e-10);
 
         // Probabilities should have been recalculated
         assert_eq!(alternatives.probabilities.len(), 2);
