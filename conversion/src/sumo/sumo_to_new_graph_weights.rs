@@ -18,6 +18,8 @@ use crate::{
     MIN_EDGE_WEIGHT,
 };
 
+const FIFO_BUFFER_MS: SerializedTravelTime = 1000;
+
 pub fn get_graph_with_travel_times_from_previous_iteration(input_dir: &Path, iteration: u32, edge_ids: &Vec<String>) -> TDGraph {
     // if iteration > 0, we load the previous iteration's travel times
     if iteration > 0 {
@@ -116,19 +118,20 @@ fn preprocess_tt<'a>(
                     // since the time functions are periodic and wrap around
                     let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
 
-                    if interval_duration + default_travel_time < tt {
+                    if interval_duration + default_travel_time - FIFO_BUFFER_MS < tt {
                         // If the next travel time is less than the current, we adjust the current travel time
                         println!(
-                            "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                            "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} - {FIFO_BUFFER_MS}= {}ms",
                             edge_id,
                             timestamp,
                             0,
                             tt,
                             interval_duration,
                             default_travel_time,
-                            interval_duration + default_travel_time
+                            interval_duration + default_travel_time - FIFO_BUFFER_MS
                         );
-                        tt = interval_duration + default_travel_time;
+                        // subtract 100 to ensure strict fifo
+                        tt = interval_duration + default_travel_time - FIFO_BUFFER_MS;
                     }
                 }
                 if interval_index > 0 {
@@ -138,19 +141,20 @@ fn preprocess_tt<'a>(
                         let interval_duration = next_timestamp - timestamp;
                         let next_tt = adapted_tt.get(&next_timestamp).unwrap();
 
-                        if interval_duration + next_tt < tt {
+                        if interval_duration + next_tt - FIFO_BUFFER_MS < tt {
                             // If the next travel time is less than the current, we adjust the current travel time
                             println!(
-                                "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} = {}ms",
+                                "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} - {FIFO_BUFFER_MS} = {}ms",
                                 edge_id,
                                 timestamp,
                                 next_timestamp,
                                 tt,
                                 interval_duration,
                                 next_tt,
-                                interval_duration + next_tt
+                                interval_duration + next_tt - FIFO_BUFFER_MS
                             );
-                            tt = interval_duration + next_tt;
+                            // subtract FIFO_BUFFER_MS to ensure strict fifo
+                            tt = interval_duration + next_tt - FIFO_BUFFER_MS;
                         }
                     }
                 }

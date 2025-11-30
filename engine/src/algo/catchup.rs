@@ -166,7 +166,7 @@ impl<'a> Server<'a> {
                     // we use this distance later for some pruning
                     // so here, we already store upper_bound + epsilon as a distance
                     // this allows for pruning but guarantees that we will later improve it with a real distance, even if its exactly upper_bound
-                    self.distances[node as usize] = min(self.distances[node as usize], departure_time + upper_bound + FlWeight::new(EPSILON));
+                    self.distances[node as usize] = min(self.distances[node as usize], departure_time + upper_bound);
 
                     // improve tentative distance if possible
                     if !tentative_distance.1.fuzzy_lt(lower_bound) {

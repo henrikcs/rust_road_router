@@ -109,8 +109,8 @@ pub fn clockwise(p: &TTFPoint, q: &TTFPoint, r: &TTFPoint) -> bool {
 
 /// More efficient colinearity check when `p.at < q.at < r.at` through linear interpolation
 pub fn colinear_ordered(p: &TTFPoint, q: &TTFPoint, r: &TTFPoint) -> bool {
-    debug_assert!(p.at.fuzzy_lt(q.at));
-    debug_assert!(q.at.fuzzy_lt(r.at));
+    debug_assert!(p.at.fuzzy_lt(q.at), "{:?} {:?}", p.at, q.at);
+    debug_assert!(q.at.fuzzy_lt(r.at), "{:?} {:?}", q.at, r.at);
 
     let v = r - p;
     q.val.fuzzy_eq(p.val + (f64::from(q.at - p.at) / f64::from(v.at)) * v.val)
