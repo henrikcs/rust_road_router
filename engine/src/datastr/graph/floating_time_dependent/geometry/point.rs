@@ -91,7 +91,16 @@ pub fn intersection_point(f1: &TTFPoint, f2: &TTFPoint, g1: &TTFPoint, g2: &TTFP
         at: f1.at + frac * (f2.at - f1.at),
         val: f1.val + frac * (f2.val - f1.val),
     };
-    debug_assert!(interpolate_linear(f1, f2, result.at).fuzzy_eq(result.val));
+    debug_assert!(
+        interpolate_linear(f1, f2, result.at).fuzzy_eq(result.val),
+        "{:?} {:?} {:?} {:?}; {:?} != {:?}",
+        f1,
+        f2,
+        g1,
+        g2,
+        interpolate_linear(f1, f2, result.at),
+        result.val
+    );
     debug_assert!(interpolate_linear(g1, g2, result.at).fuzzy_eq(result.val));
     debug_assert!(interpolate_linear(f1, f2, result.at).fuzzy_eq(interpolate_linear(g1, g2, result.at)));
     result

@@ -127,6 +127,7 @@ enum BoundMergingState {
 }
 
 // Similar to `ApproxTTFContainer`, though this one is for actually working with the functions, `ApproxTTFContainer` is for storing them.
+#[derive(Debug)]
 pub enum PeriodicATTF<'a> {
     Exact(PeriodicPiecewiseLinearFunction<'a>),
     Approx(PeriodicPiecewiseLinearFunction<'a>, PeriodicPiecewiseLinearFunction<'a>),

@@ -25,7 +25,7 @@ pub const APPROX_THRESHOLD: usize = include!(concat!(env!("OUT_DIR"), "/TDCCH_AP
 #[derive(Debug)]
 pub struct Shortcut {
     sources: Sources,
-    cache: Option<ATTFContainer<Box<[TTFPoint]>>>,
+    pub cache: Option<ATTFContainer<Box<[TTFPoint]>>>,
     pub lower_bound: FlWeight,
     pub upper_bound: FlWeight,
     constant: bool,
@@ -81,6 +81,7 @@ impl Shortcut {
     /// The `shortcut_graph` has to contain all the edges we may need to unpack.
     pub fn merge(&mut self, linked_ids: (EdgeId, EdgeId), shortcut_graph: &impl ShortcutGraphTrt<OriginalGraph = TDGraph>, buffers: &mut MergeBuffers) {
         // We already know, we won't need this edge, so do nothing
+
         if !self.required {
             return;
         }
@@ -138,6 +139,13 @@ impl Shortcut {
             let self_plf = self.periodic_ttf(shortcut_graph).unwrap();
 
             // link TTFs in triangle
+            if linked_ids == (415, 413) {
+                // write to a file for debugging
+                use std::fs::File;
+                use std::io::Write;
+                let mut file = File::create("debug_triangle_linking.txt").unwrap();
+                writeln!(file, "First PLF:\n{:?}\n\nSecond PLF:\n{:?}", &first_plf, &second_plf).unwrap();
+            }
             let linked_ipps = first_plf.link(&second_plf);
             if cfg!(feature = "detailed-stats") {
                 ACTUALLY_LINKED.fetch_add(1, Relaxed);

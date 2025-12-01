@@ -405,7 +405,7 @@
       ]
     },
     {
-      "label": "Run DTA (leopoldshafen)",
+      "label": "Run DTA (lh)",
       "type": "shell",
       "command": "python",
       "dependsOn": [
@@ -432,9 +432,9 @@
         "--aggregation",
         "60",
         "--begin",
-        "0",
+        "21600",
         "--end",
-        "86400",
+        "43200",
         "--relative-gap",
         "0.0001",
         "--max-convergence-deviation",
@@ -455,7 +455,7 @@
       ]
     },
     {
-      "label": "Run FastDTA (leopoldshafen)",
+      "label": "Run FastDTA (lh)",
       "type": "shell",
       "command": "python",
       "dependsOn": [
@@ -511,7 +511,7 @@
       ]
     },
     {
-      "label": "Run DTA (leopoldshafen; SUMO)",
+      "label": "Run DTA (lh; SUMO)",
       "type": "shell",
       "command": "python",
       "dependsOn": [

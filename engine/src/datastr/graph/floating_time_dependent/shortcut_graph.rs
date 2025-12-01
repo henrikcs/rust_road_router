@@ -1212,7 +1212,7 @@ impl<'a> ReconstructionGraph<'a> {
             .sum()
     }
 
-    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF> {
+    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF<'_>> {
         // TODO remove in favor of ReconstructedGraph::periodic_ttf
         if let Some(cache) = shortcut_id.get_from(&self.incoming_cache, &self.outgoing_cache) {
             return cache.ttf(Timestamp::ZERO, period())?.try_into().ok();

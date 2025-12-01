@@ -95,6 +95,26 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Debug Router (leopoldshafen)",
+      "program": "${workspaceFolder}/target/debug/sumo-tdcch-router",
+      "args": [
+        "--input-dir",
+        "./data/imported/sumo/leopoldshafen",
+        "--input-prefix",
+        "leopoldshafen",
+        "--iteration",
+        "1"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}",
+        "RUST_BACKTRACE": "0"
+      },
+      "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Debug FastDTA Router (capa)",
       "program": "${workspaceFolder}/target/debug/sumo-fastdta-router",
       "args": [
