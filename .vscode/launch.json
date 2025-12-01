@@ -108,7 +108,7 @@
       "cwd": "${workspaceFolder}",
       "env": {
         "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}",
-        "RUST_BACKTRACE": "0"
+        "RUST_BACKTRACE": "1"
       },
       "preLaunchTask": "Build (debug)"
     },

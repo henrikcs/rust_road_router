@@ -13,7 +13,7 @@ members = [
 resolver = "2"
 
 [profile.dev]
-opt-level = 3
+opt-level = 0
 [profile.release]
 debug = true
 incremental = false

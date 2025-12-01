@@ -530,33 +530,8 @@ where
                             triangles.sort_by_key(|&(down, up)| shortcut_graph.get_incoming(down).lower_bound + shortcut_graph.get_outgoing(up).lower_bound);
                         }
                         for &edges in &triangles {
-                            if edges == (415, 413) || edges == (413, 415) {
-                                dbg!(current_node);
-                                let edge_id = 415;
-                                // write periodic ttf into file
-                                use std::fs::File;
-                                use std::io::Write;
-                                let mut file = File::create(format!("debug_edge_pre_merge{}.txt", edge_id)).unwrap();
-                                writeln!(
-                                    file,
-                                    "Edge {} pttf:\n{:?}",
-                                    edge_id,
-                                    &shortcut_graph.periodic_ttf(ShortcutId::Incoming(415)).unwrap()
-                                )
-                                .unwrap();
-                            }
                             // main work happening here
                             upward_shortcut.merge(edges, &shortcut_graph, &mut buffers);
-
-                            let res = std::panic::catch_unwind(|| {
-                                if let Some(c) = &shortcut_graph.get_incoming(415).cache {
-                                    println!("current node: {}; Num Points for 415: {}", current_node, c.borrow().num_points());
-                                }
-                            });
-
-                            if res.is_err() {
-                                println!("current node: {}; Num Points for 415: {}", current_node, 0);
-                            }
 
                             if cfg!(feature = "detailed-stats") {
                                 TRIANGLES_PROCESSED.fetch_add(1, Ordering::Relaxed);

@@ -95,7 +95,7 @@ pub type SerializedTimestamp = u32;
 pub type SerializedPosition = f32;
 
 /// lowest possible travel time for an edge in seconds
-pub const MIN_EDGE_WEIGHT: f64 = 1.0;
+pub const MIN_EDGE_WEIGHT: f64 = 0.0;
 
 /// factor to multiply free-flow speeds with to get global free-flow speeds
 /// [1] uses a factor of below 1.0 which accounts for turning delays at intersections or red lights in urbad areas.

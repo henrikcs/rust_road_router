@@ -60,7 +60,7 @@ impl Graph {
         }
         first_ipp_of_arc[head.len()] += added;
 
-        let ipps = new_ipp_departure_time
+        let ipps: Vec<TTFPoint> = new_ipp_departure_time
             .into_iter()
             .zip(new_ipp_travel_time.into_iter())
             .map(|(dt, tt)| TTFPoint {
@@ -79,21 +79,8 @@ impl Graph {
     }
 
     /// Borrow PLF
-    pub fn travel_time_function(&self, edge_id: EdgeId) -> PeriodicPiecewiseLinearFunction {
+    pub fn travel_time_function(&self, edge_id: EdgeId) -> PeriodicPiecewiseLinearFunction<'_> {
         let edge_id = edge_id as usize;
-        if edge_id == 415 || edge_id == 413 {
-            // write to debug file
-            use std::fs::File;
-            use std::io::Write;
-            let mut file = File::create(format!("debug_edge_{}.txt", edge_id)).unwrap();
-            writeln!(
-                file,
-                "Edge {} PLF:\n{:?}",
-                edge_id,
-                &self.ipps[self.first_ipp_of_arc[edge_id] as usize..self.first_ipp_of_arc[edge_id + 1] as usize]
-            )
-            .unwrap();
-        }
         PeriodicPiecewiseLinearFunction::new(&self.ipps[self.first_ipp_of_arc[edge_id] as usize..self.first_ipp_of_arc[edge_id + 1] as usize])
     }
 

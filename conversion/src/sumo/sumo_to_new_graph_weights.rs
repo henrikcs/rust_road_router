@@ -18,7 +18,7 @@ use crate::{
     MIN_EDGE_WEIGHT,
 };
 
-const FIFO_BUFFER_MS: SerializedTravelTime = 1000;
+const FIFO_BUFFER_MS: SerializedTravelTime = 0;
 
 pub fn get_graph_with_travel_times_from_previous_iteration(input_dir: &Path, iteration: u32, edge_ids: &Vec<String>) -> TDGraph {
     // if iteration > 0, we load the previous iteration's travel times
