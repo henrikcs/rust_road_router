@@ -513,7 +513,7 @@ pub trait Sources {
 
     fn edge_source_at(&self, t: Timestamp) -> Option<&ShortcutSourceData>;
 
-    fn wrapping_iter(&self, start: Timestamp, end: Timestamp) -> WrappingSourceIter;
+    fn wrapping_iter(&self, start: Timestamp, end: Timestamp) -> WrappingSourceIter<'_>;
 }
 
 use std::cmp::{max, min};
@@ -601,7 +601,7 @@ impl Sources for [(Timestamp, ShortcutSourceData)] {
         .map(|(_, s)| s)
     }
 
-    fn wrapping_iter(&self, start: Timestamp, end: Timestamp) -> WrappingSourceIter {
+    fn wrapping_iter(&self, start: Timestamp, end: Timestamp) -> WrappingSourceIter<'_> {
         WrappingSourceIter {
             cursor: SourceCursor::valid_at(&self, start),
             end,
