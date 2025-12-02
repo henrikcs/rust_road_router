@@ -286,7 +286,6 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
         loop {
             let mut x;
             let y;
-            let mut dbg_condition = -1;
 
             if g.cur().at.fuzzy_eq(f.cur().at + f.cur().val) {
                 x = f.cur().at;
@@ -294,7 +293,6 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
 
                 g.advance();
                 f.advance();
-                dbg_condition = 0;
             } else if g.cur().at < f.cur().at + f.cur().val {
                 debug_assert!(g.cur().at.fuzzy_lt(f.cur().at + f.cur().val));
 
@@ -303,7 +301,6 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
                 y = g.cur().at + g.cur().val - x;
 
                 g.advance();
-                dbg_condition = 1;
             } else {
                 debug_assert!((f.cur().at + f.cur().val).fuzzy_lt(g.cur().at));
 
@@ -312,7 +309,6 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
                 y = g.prev().val + m_g * (f.cur().at + f.cur().val - g.prev().at) + f.cur().val;
 
                 f.advance();
-                dbg_condition = 2;
             }
 
             if !x.fuzzy_lt(period()) {
