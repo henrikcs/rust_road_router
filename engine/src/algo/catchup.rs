@@ -163,10 +163,11 @@ impl<'a> Server<'a> {
                     let lower_bound = self.forward.node_data(node).lower_bound + self.backward.node_data(node).lower_bound;
                     let upper_bound = self.forward.node_data(node).upper_bound + self.backward.node_data(node).upper_bound;
 
-                    // we use this distance later for some pruning
-                    // so here, we already store upper_bound + epsilon as a distance
-                    // this allows for pruning but guarantees that we will later improve it with a real distance, even if its exactly upper_bound
-                    self.distances[node as usize] = min(self.distances[node as usize], departure_time + upper_bound);
+                    // Set distance with a safety margin to account for EPSILON shifts in PLF operations
+                    // The margin ensures that the pruning condition won't incorrectly skip edge relaxations
+                    // We use 3*EPSILON as a margin: this is larger than the 2.1*EPSILON shift in append_too_close
+                    // but small enough that fuzzy_lt comparisons will still work correctly
+                    self.distances[node as usize] = min(self.distances[node as usize], departure_time + upper_bound + FlWeight::new(EPSILON));
 
                     // improve tentative distance if possible
                     if !tentative_distance.1.fuzzy_lt(lower_bound) {
@@ -533,6 +534,15 @@ impl<'a> Server<'a> {
             }
 
             let (parent, shortcut_id) = self.parents[rank as usize];
+            debug_assert_ne!(
+                parent,
+                std::u32::MAX,
+                "Node {} has no parent set. Distance: {:?}, From: {}, To: {}",
+                rank,
+                t_prev,
+                self.from,
+                self.to
+            );
             let t_parent = self.distances[parent as usize];
 
             let mut shortcut_path = Vec::new();
