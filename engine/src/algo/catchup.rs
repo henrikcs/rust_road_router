@@ -165,8 +165,6 @@ impl<'a> Server<'a> {
 
                     // Set distance with a safety margin to account for EPSILON shifts in PLF operations
                     // The margin ensures that the pruning condition won't incorrectly skip edge relaxations
-                    // We use 3*EPSILON as a margin: this is larger than the 2.1*EPSILON shift in append_too_close
-                    // but small enough that fuzzy_lt comparisons will still work correctly
                     self.distances[node as usize] = min(self.distances[node as usize], departure_time + upper_bound + FlWeight::new(EPSILON));
 
                     // improve tentative distance if possible
