@@ -399,7 +399,7 @@ impl LiveGraph {
     }
 
     /// Borrow PLF
-    pub fn travel_time_function(&self, edge_id: EdgeId) -> UpdatedPiecewiseLinearFunction {
+    pub fn travel_time_function(&self, edge_id: EdgeId) -> UpdatedPiecewiseLinearFunction<'_> {
         let edge_idx = edge_id as usize;
         UpdatedPiecewiseLinearFunction::new(
             self.graph.travel_time_function(edge_id),

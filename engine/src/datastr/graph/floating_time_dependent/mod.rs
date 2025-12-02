@@ -377,7 +377,7 @@ impl ReusablePLFStorage {
     }
 
     /// Create a new PLF and push it on top of the existing ones in this object
-    pub fn push_plf(&mut self) -> MutTopPLF {
+    pub fn push_plf(&mut self) -> MutTopPLF<'_> {
         self.first_points.push(self.data.len() as u32);
         MutTopPLF { storage: self }
     }

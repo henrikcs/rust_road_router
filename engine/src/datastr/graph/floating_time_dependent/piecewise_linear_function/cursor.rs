@@ -12,7 +12,7 @@ pub trait MergeCursor<'a> {
     fn prev(&self) -> TTFPoint;
     fn advance(&mut self);
 
-    fn ipps(&self) -> &'a [TTFPoint];
+    fn _ipps(&self) -> &'a [TTFPoint];
 }
 
 /// Cursor for complete TTFs
@@ -113,7 +113,7 @@ impl<'a> MergeCursor<'a> for Cursor<'a> {
         }
     }
 
-    fn ipps(&self) -> &'a [TTFPoint] {
+    fn _ipps(&self) -> &'a [TTFPoint] {
         self.ipps
     }
 }
@@ -168,7 +168,7 @@ impl<'a> MergeCursor<'a> for PartialPlfMergeCursor<'a> {
         }
     }
 
-    fn ipps(&self) -> &'a [TTFPoint] {
+    fn _ipps(&self) -> &'a [TTFPoint] {
         self.iter.as_slice()
     }
 }

@@ -507,7 +507,7 @@ pub enum Sources {
 }
 
 impl Sources {
-    pub fn wrapping_iter_for(&self, start: Timestamp, end: Timestamp) -> SourcesIter {
+    pub fn wrapping_iter_for(&self, start: Timestamp, end: Timestamp) -> SourcesIter<'_> {
         match self {
             Sources::None => SourcesIter::None,
             Sources::One(source) => SourcesIter::One(start, std::iter::once(*source)),
@@ -515,7 +515,7 @@ impl Sources {
         }
     }
 
-    pub fn iter(&self, start: Timestamp, end: Timestamp) -> SourcesIter {
+    pub fn iter(&self, start: Timestamp, end: Timestamp) -> SourcesIter<'_> {
         match self {
             Sources::None => SourcesIter::None,
             Sources::One(source) => SourcesIter::One(start, std::iter::once(*source)),

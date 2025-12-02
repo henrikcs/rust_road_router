@@ -80,8 +80,8 @@ impl ShortcutId {
 pub trait ShortcutGraphTrt {
     type OriginalGraph: for<'g> TDGraphTrait<'g>;
 
-    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF>;
-    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF>;
+    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF<'_>>;
+    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF<'_>>;
     fn is_valid_path(&self, shortcut_id: ShortcutId) -> bool;
     fn lower_bound(&self, shortcut_id: ShortcutId) -> FlWeight;
     fn upper_bound(&self, shortcut_id: ShortcutId) -> FlWeight;
@@ -137,10 +137,10 @@ impl<'a> PartialShortcutGraph<'a> {
 impl<'a> ShortcutGraphTrt for PartialShortcutGraph<'a> {
     type OriginalGraph = TDGraph;
 
-    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF> {
+    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF<'_>> {
         self.get(shortcut_id).periodic_ttf(self)
     }
-    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF> {
+    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF<'_>> {
         self.get(shortcut_id).partial_ttf(self, start, end)
     }
     fn is_valid_path(&self, shortcut_id: ShortcutId) -> bool {
@@ -337,12 +337,12 @@ impl<'a> CustomizedGraph<'a> {
     }
 
     /// Get bounds graph for forward elimination tree interval query
-    pub fn upward_bounds_graph(&self) -> BorrowedGraph<(FlWeight, FlWeight)> {
+    pub fn upward_bounds_graph(&self) -> BorrowedGraph<'_, (FlWeight, FlWeight)> {
         FirstOutGraph::new(&self.outgoing.first_out[..], &self.outgoing.head[..], &self.outgoing.bounds[..])
     }
 
     /// Get bounds graph for backward elimination tree interval query
-    pub fn downward_bounds_graph(&self) -> BorrowedGraph<(FlWeight, FlWeight)> {
+    pub fn downward_bounds_graph(&self) -> BorrowedGraph<'_, (FlWeight, FlWeight)> {
         FirstOutGraph::new(&self.incoming.first_out[..], &self.incoming.head[..], &self.incoming.bounds[..])
     }
 
@@ -662,10 +662,10 @@ impl CustomizedSingleDirGraph {
 impl<'a> ShortcutGraphTrt for CustomizedGraph<'a> {
     type OriginalGraph = TDGraph;
 
-    fn periodic_ttf(&self, _: ShortcutId) -> Option<PeriodicATTF> {
+    fn periodic_ttf(&self, _: ShortcutId) -> Option<PeriodicATTF<'_>> {
         None
     }
-    fn partial_ttf(&self, _: ShortcutId, _start: Timestamp, _end: Timestamp) -> Option<PartialATTF> {
+    fn partial_ttf(&self, _: ShortcutId, _start: Timestamp, _end: Timestamp) -> Option<PartialATTF<'_>> {
         None
     }
     fn is_valid_path(&self, _: ShortcutId) -> bool {
@@ -1044,7 +1044,7 @@ impl<'a> ReconstructionGraph<'a> {
             debug_assert!(self.ttf_available(shortcut_id, start, end));
         }
         for waiting in state.awaited_by.drain(..) {
-            let mut waiting_state = waiting.get_mut_from(incoming_reconstruction_states, outgoing_reconstruction_states);
+            let waiting_state = waiting.get_mut_from(incoming_reconstruction_states, outgoing_reconstruction_states);
             waiting_state.missing_deps -= 1;
             if waiting_state.missing_deps == 0 && !waiting_state.requested_times.is_empty() {
                 let new_el = ReconstructionQueueElement {
@@ -1195,7 +1195,7 @@ impl<'a> ReconstructionGraph<'a> {
         shortcut_id.get_mut_from(&mut self.incoming_cache, &mut self.outgoing_cache).take()
     }
 
-    pub fn as_reconstructed(&self) -> ReconstructedGraph {
+    pub fn as_reconstructed(&self) -> ReconstructedGraph<'_> {
         ReconstructedGraph {
             customized_graph: self.customized_graph,
             outgoing_cache: self.outgoing_cache,
@@ -1230,7 +1230,7 @@ impl<'a> ReconstructionGraph<'a> {
             _ => None,
         }
     }
-    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF> {
+    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF<'_>> {
         // TODO remove in favor of ReconstructedGraph::partial_ttf
         if let Some(cache) = shortcut_id.get_from(&self.incoming_cache, &self.outgoing_cache) {
             return cache.ttf(start, end);
@@ -1311,7 +1311,7 @@ impl<'a> ReconstructedGraph<'a> {
 impl<'a> ShortcutGraphTrt for ReconstructedGraph<'a> {
     type OriginalGraph = TDGraph;
 
-    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF> {
+    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF<'_>> {
         if let Some(cache) = shortcut_id.get_from(&self.incoming_cache, &self.outgoing_cache) {
             return cache.ttf(Timestamp::ZERO, period())?.try_into().ok();
         }
@@ -1328,7 +1328,7 @@ impl<'a> ShortcutGraphTrt for ReconstructedGraph<'a> {
             _ => None,
         }
     }
-    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF> {
+    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF<'_>> {
         if let Some(cache) = shortcut_id.get_from(&self.incoming_cache, &self.outgoing_cache) {
             return cache.ttf(start, end);
         }
@@ -1454,13 +1454,13 @@ impl<'a> ProfileGraphWrapper<'a> {
 impl<'a> ShortcutGraphTrt for ProfileGraphWrapper<'a> {
     type OriginalGraph = TDGraph;
 
-    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF> {
+    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF<'_>> {
         if self.delegate(shortcut_id) {
             return self.profile_graph.periodic_ttf(shortcut_id);
         }
         self.get(shortcut_id).periodic_ttf(self)
     }
-    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF> {
+    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF<'_>> {
         if self.delegate(shortcut_id) {
             return self.profile_graph.partial_ttf(shortcut_id, start, end);
         }
@@ -1751,7 +1751,7 @@ impl<'a> PartialProfileGraphWrapper<'a> {
             debug_assert!(self.ttf_available(shortcut_id, start, end));
         }
         for waiting in state.awaited_by.drain(..) {
-            let mut waiting_state = waiting.get_mut_from(incoming_reconstruction_states, outgoing_reconstruction_states);
+            let waiting_state = waiting.get_mut_from(incoming_reconstruction_states, outgoing_reconstruction_states);
             waiting_state.missing_deps -= 1;
             if waiting_state.missing_deps == 0 && !waiting_state.requested_times.is_empty() {
                 let (lower_node, upper_node) = if self.delegate(waiting) {
@@ -1784,7 +1784,7 @@ impl<'a> PartialProfileGraphWrapper<'a> {
 impl<'a> ShortcutGraphTrt for PartialProfileGraphWrapper<'a> {
     type OriginalGraph = TDGraph;
 
-    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF> {
+    fn periodic_ttf(&self, shortcut_id: ShortcutId) -> Option<PeriodicATTF<'_>> {
         if self.delegate(shortcut_id) {
             return self.profile_graph.periodic_ttf(shortcut_id);
         }
@@ -1795,7 +1795,7 @@ impl<'a> ShortcutGraphTrt for PartialProfileGraphWrapper<'a> {
                 .and_then(|shortcut| shortcut.periodic_ttf(self))
         }
     }
-    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF> {
+    fn partial_ttf(&self, shortcut_id: ShortcutId, start: Timestamp, end: Timestamp) -> Option<PartialATTF<'_>> {
         if self.delegate(shortcut_id) {
             return self.profile_graph.partial_ttf(shortcut_id, start, end);
         }
