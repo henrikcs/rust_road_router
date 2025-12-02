@@ -91,24 +91,27 @@ pub fn intersection_point(f1: &TTFPoint, f2: &TTFPoint, g1: &TTFPoint, g2: &TTFP
         at: f1.at + frac * (f2.at - f1.at),
         val: f1.val + frac * (f2.val - f1.val),
     };
-    // Allow slightly more tolerance for accumulated floating-point errors
-    // The intersection calculation and linear interpolation use different formulas
-    // and can give slightly different results
-    // This should be removed from the compiler when building for release
-    let f_interp = interpolate_linear(f1, f2, result.at);
-    let g_interp = interpolate_linear(g1, g2, result.at);
-    debug_assert!(
-        (f_interp - result.val).abs() <= FlWeight::new(EPSILON * 1.5),
-        "{:?} {:?} {:?} {:?}; {:?} != {:?}",
-        f1,
-        f2,
-        g1,
-        g2,
-        f_interp,
-        result.val
-    );
-    debug_assert!((g_interp - result.val).abs() <= FlWeight::new(EPSILON * 1.5));
-    debug_assert!((f_interp - g_interp).abs() <= FlWeight::new(EPSILON * 1.5));
+
+    #[cfg(debug_assertions)]
+    {
+        // Allow slightly more tolerance for accumulated floating-point errors
+        // The intersection calculation and linear interpolation use different formulas
+        // and can give slightly different results
+        let f_interp = interpolate_linear(f1, f2, result.at);
+        let g_interp = interpolate_linear(g1, g2, result.at);
+        debug_assert!(
+            (f_interp - result.val).abs() <= FlWeight::new(EPSILON * 1.1),
+            "{:?} {:?} {:?} {:?}; {:?} != {:?}",
+            f1,
+            f2,
+            g1,
+            g2,
+            f_interp,
+            result.val
+        );
+        debug_assert!((g_interp - result.val).abs() <= FlWeight::new(EPSILON * 1.1));
+        debug_assert!((f_interp - g_interp).abs() <= FlWeight::new(EPSILON * 1.1));
+    }
     result
 }
 

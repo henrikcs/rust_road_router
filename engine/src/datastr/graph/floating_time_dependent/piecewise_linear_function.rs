@@ -59,19 +59,9 @@ fn append_too_close(points: &mut Vec<TTFPoint>, mut point: TTFPoint) {
         let shifted_val = interpolate_linear(&points[points_len - 2], &points[points_len - 1], shifted_at);
         points[points_len - 1].at = shifted_at;
         points[points_len - 1].val = shifted_val;
-        // Ensure the new point is at least EPSILON after the adjusted previous point
-        // Use 1.1 * EPSILON to ensure fuzzy_lt will work
-        point.at = shifted_at + FlWeight::new(EPSILON * 1.1);
+        point.at = shifted_at;
     } else {
-        point.at = points[points_len - 1].at + FlWeight::new(EPSILON * 1.1);
-    }
-
-    // Ensure FIFO property after the shift: val[i+1] >= val[i] - (at[i+1] - at[i])
-    let prev = &points[points_len - 1];
-    let time_diff = point.at - prev.at;
-    let min_val = prev.val - time_diff;
-    if point.val < min_val {
-        point.val = min_val;
+        point.at = points[points_len - 1].at + FlWeight::new(EPSILON);
     }
 
     points.push(point);
