@@ -138,14 +138,6 @@ impl Shortcut {
             // get own cached TTF
             let self_plf = self.periodic_ttf(shortcut_graph).unwrap();
 
-            // link TTFs in triangle
-            if linked_ids == (415, 413) {
-                // write to a file for debugging
-                use std::fs::File;
-                use std::io::Write;
-                let mut file = File::create("debug_triangle_linking.txt").unwrap();
-                writeln!(file, "First PLF:\n{:?}\n\nSecond PLF:\n{:?}", &first_plf, &second_plf).unwrap();
-            }
             let linked_ipps = first_plf.link(&second_plf);
             if cfg!(feature = "detailed-stats") {
                 ACTUALLY_LINKED.fetch_add(1, Relaxed);
