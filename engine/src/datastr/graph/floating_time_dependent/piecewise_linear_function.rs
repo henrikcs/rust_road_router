@@ -205,6 +205,7 @@ impl<'a> PeriodicPiecewiseLinearFunction<'a> {
                 debug_assert!(switchover_val.fuzzy_eq(f.cur().val), "{:?}", dbg_each!(switchover_val, f.cur()));
             } else {
                 let second_switchover_val = interpolate_linear(&f.prev(), &f.cur(), start);
+                //TODO: here the assertion fails when enabling tdcch-approx, and on an instance with a large number of IPPs (>200k) probably due to accumulated floating-point errors
                 debug_assert!(
                     switchover_val.fuzzy_eq(second_switchover_val),
                     "{:?}",
