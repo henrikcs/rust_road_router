@@ -8,6 +8,7 @@ use conversion::{
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use rust_road_router::algo::catchup::Server;
 use rust_road_router::algo::customizable_contraction_hierarchy::CCH;
+use rust_road_router::algo::dijkstra::query::floating_td_dijkstra;
 use rust_road_router::algo::{TDQuery, TDQueryServer};
 use rust_road_router::datastr::graph::floating_time_dependent::{CustomizedGraph, FlWeight, TDGraph, Timestamp};
 use rust_road_router::datastr::graph::{EdgeId, EdgeIdT};
@@ -42,7 +43,29 @@ pub fn get_paths_with_cch_queries(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    get_paths_from_queries_par(
+    let mut server = Server::new(&cch, &customized_graph);
+
+    get_paths_with_catchup_server(
+        &mut server,
+        queries_from,
+        queries_to,
+        queries_departure,
+        queries_original_from_edges,
+        queries_original_to_edges,
+        graph,
+    )
+}
+
+fn get_paths_with_catchup_server(
+    server: &mut Server,
+    queries_from: &Vec<u32>,
+    queries_to: &Vec<u32>,
+    queries_departure: &Vec<SerializedTimestamp>,
+    queries_original_from_edges: &Vec<u32>,
+    queries_original_to_edges: &Vec<u32>,
+    graph: &TDGraph,
+) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+    _get_paths_from_queries(
         |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
@@ -53,7 +76,6 @@ pub fn get_paths_with_cch_queries(
 
             let delayed_departure = departure + from_edge_tt;
 
-            let mut server = Server::new(&cch, &customized_graph);
             let result = server.td_query(TDQuery {
                 from,
                 to,
@@ -105,7 +127,29 @@ pub fn get_paths_with_dijkstra_queries(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    get_paths_from_queries_par(
+    let mut server = floating_td_dijkstra::Server::new(graph);
+
+    get_paths_with_dijkstra_server(
+        &mut server,
+        queries_from,
+        queries_to,
+        queries_departure,
+        queries_original_from_edges,
+        queries_original_to_edges,
+        graph,
+    )
+}
+
+fn get_paths_with_dijkstra_server(
+    server: &mut floating_td_dijkstra::Server,
+    queries_from: &Vec<u32>,
+    queries_to: &Vec<u32>,
+    queries_departure: &Vec<SerializedTimestamp>,
+    queries_original_from_edges: &Vec<u32>,
+    queries_original_to_edges: &Vec<u32>,
+    graph: &TDGraph,
+) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+    _get_paths_from_queries(
         move |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
@@ -116,7 +160,6 @@ pub fn get_paths_with_dijkstra_queries(
 
             let delayed_departure = departure + from_edge_tt;
 
-            let mut server = rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server::new(graph);
             let result = server.td_query(TDQuery {
                 from,
                 to,
