@@ -6,8 +6,8 @@ use conversion::{
 };
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
-use rust_road_router::algo::catchup::Server;
-use rust_road_router::algo::customizable_contraction_hierarchy::CCH;
+use rust_road_router::algo::catchup::{Server, floating_td_stepped_elimination_tree::FloatingTDSteppedEliminationTree};
+use rust_road_router::algo::customizable_contraction_hierarchy::{CCH, CCHT};
 use rust_road_router::algo::{TDQuery, TDQueryServer};
 use rust_road_router::datastr::graph::floating_time_dependent::{CustomizedGraph, FlWeight, TDGraph, Timestamp};
 use rust_road_router::datastr::graph::{EdgeId, EdgeIdT};
@@ -42,8 +42,16 @@ pub fn get_paths_with_cch_queries(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+    // Create template elimination trees once
+    let forward_template = FloatingTDSteppedEliminationTree::new(customized_graph.upward_bounds_graph(), cch.elimination_tree());
+    let backward_template = FloatingTDSteppedEliminationTree::new(customized_graph.downward_bounds_graph(), cch.elimination_tree());
+
     get_paths_from_queries_par(
-        |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
+        || {
+            // Clone the elimination trees for each thread (cheaper than creating from scratch)
+            Server::new_with_elimination_trees(&cch, &customized_graph, forward_template.clone(), backward_template.clone())
+        },
+        |server: &mut Server, from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
             if from_edge == to_edge {
@@ -53,7 +61,6 @@ pub fn get_paths_with_cch_queries(
 
             let delayed_departure = departure + from_edge_tt;
 
-            let mut server = Server::new(&cch, &customized_graph);
             let result = server.td_query(TDQuery {
                 from,
                 to,
@@ -106,7 +113,14 @@ pub fn get_paths_with_dijkstra_queries(
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     get_paths_from_queries_par(
-        move |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
+        || rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server::new(graph),
+        |server: &mut rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server,
+         from_edge,
+         to_edge,
+         from: u32,
+         to: u32,
+         departure: Timestamp,
+         graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
             if from_edge == to_edge {
@@ -116,7 +130,6 @@ pub fn get_paths_with_dijkstra_queries(
 
             let delayed_departure = departure + from_edge_tt;
 
-            let mut server = rust_road_router::algo::dijkstra::query::floating_td_dijkstra::Server::new(graph);
             let result = server.td_query(TDQuery {
                 from,
                 to,
@@ -172,8 +185,11 @@ pub fn read_queries(input_dir: &Path) -> (Vec<u32>, Vec<u32>, Vec<SerializedTime
 }
 
 fn get_paths_from_queries_par<
-    F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)> + std::marker::Sync + std::marker::Send + Clone,
+    ServerT,
+    InitF: Fn() -> ServerT + std::marker::Sync + std::marker::Send,
+    F: Fn(&mut ServerT, EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)> + std::marker::Sync + std::marker::Send,
 >(
+    server_init: InitF,
     path_collector: F,
     queries_from: &Vec<u32>,
     queries_to: &Vec<u32>,
@@ -184,13 +200,14 @@ fn get_paths_from_queries_par<
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let mut pdds: Vec<(Vec<EdgeId>, FlWeight, SerializedTimestamp)> = vec![(vec![], FlWeight::INFINITY, 0); queries_from.len()];
 
-    pdds.par_iter_mut()
-        .enumerate()
-        .for_each_with(path_collector, |path_collector, (i, (path, tt, dep))| {
+    pdds.par_iter_mut().enumerate().for_each_init(
+        || server_init(),
+        |server, (i, (path, tt, dep))| {
             let departure = queries_departure[i];
             departure.clone_into(dep);
 
             if let Some((shortest_path, shortest_travel_time)) = path_collector(
+                server,
                 queries_original_from_edges[i],
                 queries_original_to_edges[i],
                 queries_from[i],
@@ -206,7 +223,8 @@ fn get_paths_from_queries_par<
                     queries_original_from_edges[i], queries_original_to_edges[i], i
                 );
             }
-        });
+        },
+    );
 
     let mut paths = Vec::with_capacity(queries_from.len());
     let mut distances = Vec::with_capacity(queries_from.len());

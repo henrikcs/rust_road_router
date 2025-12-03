@@ -37,6 +37,18 @@ pub struct FloatingTDSteppedEliminationTree<'a, 'b> {
     origin: Option<NodeId>,
 }
 
+impl<'a, 'b> Clone for FloatingTDSteppedEliminationTree<'a, 'b> {
+    fn clone(&self) -> Self {
+        FloatingTDSteppedEliminationTree {
+            graph: self.graph.clone(),
+            distances: self.distances.clone(),
+            elimination_tree: self.elimination_tree,
+            next: self.next,
+            origin: self.origin,
+        }
+    }
+}
+
 impl<'a, 'b> FloatingTDSteppedEliminationTree<'a, 'b> {
     pub fn new(graph: BorrowedGraph<'a, (FlWeight, FlWeight)>, elimination_tree: &'b [InRangeOption<NodeId>]) -> FloatingTDSteppedEliminationTree<'a, 'b> {
         let n = graph.num_nodes();
