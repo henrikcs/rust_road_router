@@ -12,7 +12,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let input_dir = Path::new(&args.input_dir);
     let input_prefix = &args.input_prefix;
-    let iteration = args.iteration;
+    let iteration: u32 = args.iteration;
+    let keep_route_probability = args.keep_route_probability.unwrap_or(0.0);
 
     let choice_algorithm = args.get_choice_algorithm();
 
@@ -43,6 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             write_sumo_alternatives,
             args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
+            keep_route_probability,
             false,
         )
     });

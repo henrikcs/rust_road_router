@@ -26,6 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let choice_algorithm = args.router_args.get_choice_algorithm();
     let traffic_model_type = args.get_traffic_model();
     let samples = args.get_samples();
+    let keep_route_probability = args.router_args.keep_route_probability.unwrap_or(0.0);
 
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
@@ -77,6 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             args.router_args.get_write_sumo_alternatives(),
             args.router_args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
+            keep_route_probability,
             true,
         );
 

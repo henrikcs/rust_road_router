@@ -20,6 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let net_file_string = router_args.net_file.as_ref().unwrap();
     let net_file = Path::new(&net_file_string);
     let aggregation = args.aggregation;
+    let keep_route_probability = router_args.keep_route_probability.unwrap_or(0.0);
 
     let choice_algorithm = router_args.get_choice_algorithm();
     let samples = args.get_samples();
@@ -72,6 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             args.router_args.get_write_sumo_alternatives(),
             args.router_args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
+            keep_route_probability,
             true,
         );
 

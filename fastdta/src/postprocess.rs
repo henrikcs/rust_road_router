@@ -33,6 +33,7 @@ pub fn prepare_next_iteration(
     write_sumo_alternatives: bool,
     seed: i32,
     edge_indices_to_id: &Vec<String>,
+    keep_route_probability: f64,
     skip_relative_gap: bool,
 ) {
     let current_iteration_dir = input_dir.join(format!("{:0>3}", iteration));
@@ -51,7 +52,7 @@ pub fn prepare_next_iteration(
         // merge previous alternatives with current shortest paths
         let mut new_alternative_paths = old_alternative_paths.update_alternatives_with_new_paths(&shortest_paths, &travel_times, &departures, &graph);
 
-        new_alternative_paths.perform_choice_model(&old_alternative_paths, &choice_algorithm, max_alternatives, seed);
+        new_alternative_paths.perform_choice_model(&old_alternative_paths, &choice_algorithm, max_alternatives, keep_route_probability, seed);
 
         new_alternative_paths
     } else {

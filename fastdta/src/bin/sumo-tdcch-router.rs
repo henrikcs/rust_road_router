@@ -14,6 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_dir = Path::new(&args.input_dir);
     let input_prefix = &args.input_prefix;
     let iteration = args.iteration;
+    let keep_route_probability = args.keep_route_probability.unwrap_or(0.0);
 
     let logger = Logger::new("sumo-tdcch-router", &input_dir.display().to_string(), iteration as i32);
 
@@ -53,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             write_sumo_alternatives,
             args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
+            keep_route_probability,
             false,
         )
     });

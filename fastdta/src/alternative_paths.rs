@@ -6,7 +6,7 @@ use conversion::{
 };
 use rand::{
     SeedableRng,
-    distr::{Distribution, weighted::WeightedIndex},
+    distr::{Bernoulli, Distribution, weighted::WeightedIndex},
     rngs::StdRng,
 };
 use rust_road_router::{
@@ -135,16 +135,38 @@ pub struct AlternativePath {
 }
 
 impl AlternativePathsForDTA {
-    pub fn perform_choice_model(&mut self, previous_alternatives: &Self, choice_algorithm: &ChoiceAlgorithm, max_alternatives: u32, seed: i32) {
+    pub fn perform_choice_model(
+        &mut self,
+        previous_alternatives: &Self,
+        choice_algorithm: &ChoiceAlgorithm,
+        max_alternatives: u32,
+        keep_route_probabilities: f64,
+        seed: i32,
+    ) {
         let mut rng: StdRng = StdRng::seed_from_u64(seed.abs() as u64);
+        let bernoulli = Bernoulli::new(keep_route_probabilities).unwrap();
+
+        let mut number_kept_routes = 0;
 
         for (i, alternative_paths) in self.alternatives_in_query.iter_mut().enumerate() {
             let previous_costs = &previous_alternatives.alternatives_in_query[i].costs;
 
             alternative_paths.perform_choice_model(choice_algorithm, max_alternatives, previous_costs);
 
+            // decide if the route may change or not by checking "keep_route_probabilities[i]"
+            if bernoulli.sample(&mut rng) {
+                number_kept_routes += 1;
+                continue;
+            }
+
             alternative_paths.choose(&mut rng);
         }
+
+        println!(
+            "Number of kept routes due to keep_route_probability: {}/{}",
+            number_kept_routes,
+            self.alternatives_in_query.len()
+        );
     }
 
     pub fn init(shortest_paths: &Vec<Vec<u32>>, travel_times: &Vec<FlWeight>) -> Self {
@@ -600,7 +622,7 @@ mod tests {
             }],
         };
 
-        current_alternatives.perform_choice_model(&previous_alternatives, &choice_algorithm, 5, 123);
+        current_alternatives.perform_choice_model(&previous_alternatives, &choice_algorithm, 5, 0.0, 123);
 
         // Check that choice was made (0 or 1)
         assert!(current_alternatives.alternatives_in_query[0].choice < 2);
