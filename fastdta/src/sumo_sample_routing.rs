@@ -3,15 +3,17 @@ use std::path::Path;
 use conversion::{
     DIR_DTA, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_QUERY_IDS, SerializedTimestamp, SerializedTravelTime,
     sumo::{
-        FileReader, meandata_reader::SumoMeandataReader, paths_to_sumo_routes_converter::write_batch_routes_for_sumo,
-        sumo_to_new_graph_weights::extract_interpolation_points_from_meandata,
+        FileReader,
+        meandata_reader::SumoMeandataReader,
+        paths_to_sumo_routes_converter::write_batch_routes_for_sumo,
+        sumo_to_new_graph_weights::{extract_interpolation_points_from_meandata, get_graph_with_travel_times_from_previous_iteration},
     },
 };
 
 use rust_road_router::{
     algo::catchup::customize,
     datastr::graph::floating_time_dependent::{FlWeight, TDGraph, Timestamp},
-    io::{Load, Reconstruct, read_strings_from_file},
+    io::{Load, read_strings_from_file},
     report::measure,
 };
 
@@ -45,29 +47,14 @@ pub fn get_paths_by_samples_with_sumo(
     let query_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
 
     // Start with the base graph (either from previous iteration or free-flow)
-    let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
-
+    let mut graph: TDGraph = get_graph_with_travel_times_from_previous_iteration(&input_dir, iteration, &edge_ids);
     // Initialize with all queries - will be populated with previous or new paths
     let mut all_routed_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()];
     let mut all_routed_departures: Vec<SerializedTimestamp> = query_data.4.clone();
 
-    // If iteration > 0, load previous iteration's paths and meandata
+    // If iteration > 0, load previous iteration's paths
     if iteration > 0 {
         let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
-        let previous_meandata_file = find_latest_meandata_file(&previous_iteration_dir);
-
-        if let Some(meandata_file) = previous_meandata_file {
-            let meandata = SumoMeandataReader::read(&meandata_file).expect("Failed to read previous SUMO meandata");
-            let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&meandata, &edge_ids, &free_flow_tts_ms);
-
-            graph = TDGraph::new(
-                Vec::from(graph.first_out()),
-                Vec::from(graph.head()),
-                first_ipp_of_arc,
-                ipp_departure_time,
-                ipp_travel_time,
-            );
-        }
 
         // Load previous iteration's alternative paths
         let alternative_paths = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
@@ -157,27 +144,8 @@ pub fn get_paths_by_samples_with_sumo(
     // calculate the travel times of the shortest_paths in the final graph
     // return the travel times using the final graph
     //
-    // graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
 
-    let mut graph: TDGraph = TDGraph::reconstruct_from(&input_dir).expect("Failed to reconstruct the time-dependent graph");
-
-    if iteration > 0 {
-        let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
-        let previous_meandata_file = find_latest_meandata_file(&previous_iteration_dir);
-
-        if let Some(meandata_file) = previous_meandata_file {
-            let meandata = SumoMeandataReader::read(&meandata_file).expect("Failed to read previous SUMO meandata");
-            let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) = extract_interpolation_points_from_meandata(&meandata, &edge_ids, &free_flow_tts_ms);
-
-            graph = TDGraph::new(
-                Vec::from(graph.first_out()),
-                Vec::from(graph.head()),
-                first_ipp_of_arc,
-                ipp_departure_time,
-                ipp_travel_time,
-            );
-        }
-    }
+    graph = get_graph_with_travel_times_from_previous_iteration(&input_dir, iteration, &edge_ids);
 
     travel_times = shortest_paths
         .iter()
@@ -249,31 +217,4 @@ fn update_graph_from_sumo_dump(
     );
 
     Ok(())
-}
-
-/// Find the latest meandata file in a directory (highest batch number)
-fn find_latest_meandata_file(dir: &Path) -> Option<std::path::PathBuf> {
-    if !dir.exists() {
-        return None;
-    }
-
-    let mut dump_files: Vec<_> = std::fs::read_dir(dir)
-        .ok()?
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
-            let path = entry.path();
-            if path.is_file() && path.file_name()?.to_str()?.starts_with("dump_") {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    dump_files.sort();
-    let f = dump_files.last().cloned();
-
-    dbg!(&f);
-
-    f
 }
