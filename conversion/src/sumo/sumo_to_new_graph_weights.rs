@@ -120,16 +120,16 @@ fn preprocess_tt<'a>(
 
                     if interval_duration + default_travel_time - FIFO_BUFFER_MS < tt {
                         // If the next travel time is less than the current, we adjust the current travel time
-                        println!(
-                            "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} - {FIFO_BUFFER_MS}= {}ms",
-                            edge_id,
-                            timestamp,
-                            0,
-                            tt,
-                            interval_duration,
-                            default_travel_time,
-                            interval_duration + default_travel_time - FIFO_BUFFER_MS
-                        );
+                        // println!(
+                        //     "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} - {FIFO_BUFFER_MS}= {}ms",
+                        //     edge_id,
+                        //     timestamp,
+                        //     0,
+                        //     tt,
+                        //     interval_duration,
+                        //     default_travel_time,
+                        //     interval_duration + default_travel_time - FIFO_BUFFER_MS
+                        // );
                         // subtract 100 to ensure strict fifo
                         tt = interval_duration + default_travel_time - FIFO_BUFFER_MS;
                     }
@@ -143,16 +143,16 @@ fn preprocess_tt<'a>(
 
                         if interval_duration + next_tt - FIFO_BUFFER_MS < tt {
                             // If the next travel time is less than the current, we adjust the current travel time
-                            println!(
-                                "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} - {FIFO_BUFFER_MS} = {}ms",
-                                edge_id,
-                                timestamp,
-                                next_timestamp,
-                                tt,
-                                interval_duration,
-                                next_tt,
-                                interval_duration + next_tt - FIFO_BUFFER_MS
-                            );
+                            // println!(
+                            //     "Adjusting travel time for edge {} in interval {}-{}: {}ms -> {} + {} - {FIFO_BUFFER_MS} = {}ms",
+                            //     edge_id,
+                            //     timestamp,
+                            //     next_timestamp,
+                            //     tt,
+                            //     interval_duration,
+                            //     next_tt,
+                            //     interval_duration + next_tt - FIFO_BUFFER_MS
+                            // );
                             // subtract FIFO_BUFFER_MS to ensure strict fifo
                             tt = interval_duration + next_tt - FIFO_BUFFER_MS;
                         }
