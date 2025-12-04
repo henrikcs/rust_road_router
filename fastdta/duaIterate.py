@@ -295,18 +295,18 @@ def getArgs(step, options, file, output, routesInfo):
         args += ['--additional-files', options.districts]
     if options.logit:
         args += ['--route-choice-method', 'logit']
-        if options.MSA:
-            probKeepRoute = step/(step+1)
-            args += ['--keep-route-probability', str(probKeepRoute)]
-        if options.convergenceSteps:
-            if options.convergenceSteps > 0:
-                probKeepRoute = max(
-                    0, min(step / float(options.convergenceSteps), 1))
-            else:
-                startStep = -options.convergenceSteps
-                probKeepRoute = 0 if step > startStep else 1 - \
-                    1.0 / (step - startStep)
-            args += ['--keep-route-probability', str(probKeepRoute)]
+    if options.MSA:
+        probKeepRoute = step/(step+1)
+        args += ['--keep-route-probability', str(probKeepRoute)]
+    if options.convergenceSteps:
+        if options.convergenceSteps > 0:
+            probKeepRoute = max(
+                0, min(step / float(options.convergenceSteps), 1))
+        else:
+            startStep = -options.convergenceSteps
+            probKeepRoute = 0 if step > startStep else 1 - \
+                1.0 / (step - startStep)
+        args += ['--keep-route-probability', str(probKeepRoute)]
 
     if step > 0 or options.addweights:
         weightpath = ""
