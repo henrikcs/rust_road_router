@@ -67,6 +67,7 @@ call_duaIterate() {
     local out_dir="$1"
     shift
     mkdir -p "$out_dir"
+    # go to subshell to not affect current shell's working directory
     (
         cd "$out_dir" || exit
         echo "Calling duaIterate.py with output directory: $out_dir and arguments: $*"
@@ -305,13 +306,11 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 fastdta-preprocessor--input-dir "$in_dir"
                 fastdta-router--seed $seed
             )
-            
-            # create a list of samples from the fastdta_samples string
-            # iterate over the list and call call_duaIterate for each sample set
 
             for sample_set in $(parse_samples "$fastdta_samples"); do
-                sample_out_dir="$out_dir_$(echo "$sample_set" | tr ' ' '_')"
-
+                # out_dir should be suffixed with sample_set such that out dirs do not overlap
+                # sample_set's spaces are replaced with underscores
+                sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
                 call_duaIterate "$sample_out_dir" "${dua_args[@]}" fastdta-router--samples "$sample_set"
             done
 
@@ -327,10 +326,10 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 sample-router--aggregation "$aggregation"
             )
             
-            for sample_set in $(parse_samples "$fastdta_samples"); do
+            for sample_set in $(parse_samples "$sumo_samples"); do
                 # out_dir should be suffixed with sample_set such that out dirs do not overlap
                 # sample_set's spaces are replaced with underscores
-                sample_out_dir="$out_dir_$(echo "$sample_set" | tr ' ' '_')"
+                sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
 
                 call_duaIterate "$sample_out_dir" "${dua_args[@]}" sample-router--samples "$sample_set"
             done
