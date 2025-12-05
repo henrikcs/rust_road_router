@@ -22,9 +22,110 @@ use crate::{
     logger::Logger,
     preprocess::get_cch,
     query::get_paths_with_cch_queries,
+    sampled_queries::get_sampled_queries_with_keep_routes,
     sumo_runner::{SumoConfig, generate_additional_file, run_sumo},
 };
 
+/// Route all queries using samples, simulating each sample with SUMO
+/// Returns the final graph, shortest paths, travel times, and departures
+pub fn get_paths_by_samples_with_sumo_keep_routes(
+    input_dir: &Path,
+    net_file: &Path,
+    iteration: u32,
+    aggregation: u32,
+    begin: f64,
+    end: f64,
+    logger: &Logger,
+    query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
+    samples: &Vec<Vec<usize>>,
+    previous_paths: &Vec<&Vec<u32>>,
+    edge_ids: &Vec<String>,
+    keep_routes: &Vec<bool>,
+) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+    let mut routed_paths: Vec<Vec<u32>> = previous_paths.iter().map(|path| (*path).clone()).collect();
+
+    let free_flow_tts_ms = &Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
+    let query_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
+    let departures = query_data.2.clone();
+
+    // Start with the base graph (either from previous iteration or free-flow)
+    let mut graph: TDGraph = get_graph_with_travel_times_from_previous_iteration(&input_dir, iteration, &edge_ids);
+
+    let cch = get_cch(input_dir, &graph);
+
+    for (batch_idx, sample) in samples.iter().enumerate() {
+        logger.log(&format!("Processing batch {}/{}", batch_idx + 1, samples.len()), 0);
+
+        // Customize and route current sample
+        let (customized_graph, duration) = measure(|| customize(&cch, &graph));
+        logger.log(&format!("cch customization (batch {batch_idx})"), duration.as_nanos());
+
+        let (sampled_shortest_paths, duration) =
+            measure(|| get_sampled_queries_with_keep_routes(&graph, &cch, &customized_graph, keep_routes, sample, query_data, &previous_paths));
+        logger.log(&format!("routing (batch {batch_idx})"), duration.as_nanos());
+
+        // Store results for this sample and update all_routed_paths
+        sample.iter().enumerate().for_each(|(i, &query_i)| {
+            routed_paths[query_i] = sampled_shortest_paths[i].clone();
+        });
+
+        // Prepare paths for SUMO simulation: collect all non-empty paths with their trip IDs
+        let mut simulation_paths: Vec<Vec<u32>> = Vec::new();
+        let mut simulation_trip_ids: Vec<String> = Vec::new();
+        let mut simulation_departures: Vec<SerializedTimestamp> = Vec::new();
+
+        for query_i in 0..query_data.0.len() {
+            if !routed_paths[query_i].is_empty() {
+                simulation_paths.push(routed_paths[query_i].clone());
+                simulation_trip_ids.push(query_ids[query_i].clone());
+                simulation_departures.push(departures[query_i]);
+            }
+        }
+
+        // Run SUMO simulation with all routes (updated with current batch)
+        let (_, duration) = measure(|| {
+            run_sumo_simulation_for_batch(
+                input_dir,
+                net_file,
+                iteration,
+                batch_idx,
+                aggregation,
+                begin,
+                end,
+                &simulation_paths,
+                &simulation_trip_ids,
+                &simulation_departures,
+                edge_ids,
+            )
+            .expect("Failed to run SUMO simulation");
+        });
+        logger.log(&format!("sumo simulation (batch {batch_idx})"), duration.as_nanos());
+
+        // Read the dump file and update graph weights
+        let (_, duration) = measure(|| {
+            update_graph_from_sumo_dump(input_dir, iteration, batch_idx, aggregation, &mut graph, edge_ids, free_flow_tts_ms)
+                .expect("Failed to update graph from SUMO dump");
+        });
+        logger.log(&format!("update graph weights (batch {batch_idx})"), duration.as_nanos());
+    }
+
+    // Final reconstruction of the graph after all batches
+    // calculate the travel times of the shortest_paths in the final graph
+    // return the travel times using the final graph
+    //
+
+    graph = get_graph_with_travel_times_from_previous_iteration(&input_dir, iteration, &edge_ids);
+
+    let travel_times = routed_paths
+        .iter()
+        .enumerate()
+        .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
+        .collect();
+
+    (graph, routed_paths, travel_times, departures)
+}
+
+/// legacy method kept for comparison
 /// Route all queries using samples, simulating each sample with SUMO
 /// Returns the final graph, shortest paths, travel times, and departures
 pub fn get_paths_by_samples_with_sumo(
@@ -38,7 +139,6 @@ pub fn get_paths_by_samples_with_sumo(
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     samples: &Vec<Vec<usize>>,
     edge_ids: &Vec<String>,
-    keep_routes: &Vec<bool>,
 ) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let mut shortest_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()];
     let mut travel_times = vec![FlWeight::INVALID; query_data.0.len()];

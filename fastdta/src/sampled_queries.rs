@@ -8,8 +8,8 @@ use conversion::{
 };
 
 use rust_road_router::{
-    algo::catchup::customize,
-    datastr::graph::floating_time_dependent::{FlWeight, TDGraph},
+    algo::{catchup::customize, customizable_contraction_hierarchy::CCH},
+    datastr::graph::floating_time_dependent::{CustomizedGraph, FlWeight, TDGraph},
     io::Load,
     report::measure,
 };
@@ -38,7 +38,7 @@ pub fn get_paths_by_samples_with_keep_routes(
     //   find shortest routes for the sampled trips
     //   customize the graph with the shortest routes using the density on the edges during a time window
 
-    let mut shortest_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()]; // Vec::with_capacity(query_data.0.len());
+    let mut routed_paths: Vec<Vec<u32>> = previous_paths.iter().map(|path| (*path).clone()).collect();
     let departures = query_data.2.clone();
 
     let free_flow_tts_ms = &Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
@@ -65,50 +65,16 @@ pub fn get_paths_by_samples_with_keep_routes(
 
         logger.log(format!("cch customization (sample {i})").as_str(), duration.as_nanos());
 
-        let (sampled_new_paths, duration) = measure(|| {
-            // queries which are not reroutable keep their previous paths
-            // for other queries, find new shortest paths
-            // in the end, return the combined set of paths
-            let reroutable_samples: Vec<&usize> = sample.iter().filter(|&i| !keep_routes[*i]).collect();
-
-            let (rerouted_paths, _, _) = get_paths_with_cch_queries(
-                &cch,
-                &customized_graph,
-                &reroutable_samples.iter().map(|&i| query_data.0[*i]).collect(),
-                &reroutable_samples.iter().map(|&i| query_data.1[*i]).collect(),
-                &reroutable_samples.iter().map(|&i| query_data.2[*i]).collect(),
-                &reroutable_samples.iter().map(|&i| query_data.3[*i]).collect(),
-                &reroutable_samples.iter().map(|&i| query_data.4[*i]).collect(),
-                &graph,
-            );
-
-            // combine new paths with previous paths for non-reroutable queries
-
-            let mut rerouted_path_index = 0;
-            let sampled_routes: Vec<Vec<u32>> = sample
-                .iter()
-                .map(|s| {
-                    if keep_routes[*s] {
-                        previous_paths[*s].clone()
-                    } else {
-                        let p = rerouted_paths[rerouted_path_index].clone();
-                        rerouted_path_index += 1;
-                        p
-                    }
-                })
-                .collect();
-
-            sampled_routes
-        });
+        let (sampled_new_paths, duration) =
+            measure(|| get_sampled_queries_with_keep_routes(&graph, &cch, &customized_graph, keep_routes, sample, query_data, previous_paths));
 
         logger.log(format!("routing (sample {i})").as_str(), duration.as_nanos());
 
         let mut sampled_old_paths: Vec<&Vec<u32>> = Vec::with_capacity(sample.len());
-        let empty_vec: Vec<u32> = Vec::new();
 
         sample.iter().enumerate().for_each(|(i, &query_i)| {
-            shortest_paths[query_i] = sampled_new_paths[i].clone();
-            sampled_old_paths.push(*previous_paths.get(query_i).unwrap_or(&&empty_vec));
+            routed_paths[query_i] = sampled_new_paths[i].clone();
+            sampled_old_paths.push(previous_paths[query_i]);
         });
 
         adjust_weights_in_graph_by_following_paths(
@@ -139,19 +105,63 @@ pub fn get_paths_by_samples_with_keep_routes(
         ipp_travel_time,
     );
 
-    let travel_times = shortest_paths
+    let travel_times = routed_paths
         .iter()
         .enumerate()
         .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
         .collect();
 
-    (graph, shortest_paths, travel_times, departures)
+    (graph, routed_paths, travel_times, departures)
 }
 
 fn _debug(meandata: &MeandataDocumentRoot, path: &Path, iteration: u32, sample: u32) {
     let output_file = path.join(format!("dump_i_{:0>3}_s_{:0>3}.xml", iteration, sample));
 
     SumoMeandataWriter::write(&output_file, meandata).unwrap();
+}
+
+pub fn get_sampled_queries_with_keep_routes(
+    graph: &TDGraph,
+    cch: &CCH,
+    customized_graph: &CustomizedGraph,
+    keep_routes: &Vec<bool>,
+    sample: &Vec<usize>,
+    query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
+    previous_paths: &Vec<&Vec<u32>>,
+) -> Vec<Vec<u32>> {
+    // queries which are not reroutable keep their previous paths
+    // for other queries, find new shortest paths
+    // in the end, return the combined set of paths
+    let reroutable_samples: Vec<&usize> = sample.iter().filter(|&i| !keep_routes[*i]).collect();
+
+    let (rerouted_paths, _, _) = get_paths_with_cch_queries(
+        &cch,
+        &customized_graph,
+        &reroutable_samples.iter().map(|&i| query_data.0[*i]).collect(),
+        &reroutable_samples.iter().map(|&i| query_data.1[*i]).collect(),
+        &reroutable_samples.iter().map(|&i| query_data.2[*i]).collect(),
+        &reroutable_samples.iter().map(|&i| query_data.3[*i]).collect(),
+        &reroutable_samples.iter().map(|&i| query_data.4[*i]).collect(),
+        &graph,
+    );
+
+    // combine new paths with previous paths for non-reroutable queries
+
+    let mut rerouted_path_index = 0;
+    let sampled_routes: Vec<Vec<u32>> = sample
+        .iter()
+        .map(|s| {
+            if keep_routes[*s] {
+                previous_paths[*s].clone()
+            } else {
+                let p = rerouted_paths[rerouted_path_index].clone();
+                rerouted_path_index += 1;
+                p
+            }
+        })
+        .collect();
+
+    sampled_routes
 }
 
 /// legacy method kept for comparison

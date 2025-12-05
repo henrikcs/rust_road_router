@@ -65,7 +65,7 @@ fn get_paths_with_catchup_server(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    _get_paths_from_queries(
+    get_paths_from_queries(
         |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
@@ -149,7 +149,7 @@ fn get_paths_with_dijkstra_server(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    _get_paths_from_queries(
+    get_paths_from_queries(
         move |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
             let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
@@ -214,7 +214,7 @@ pub fn read_queries(input_dir: &Path) -> (Vec<u32>, Vec<u32>, Vec<SerializedTime
     )
 }
 
-fn get_paths_from_queries_par<
+fn _get_paths_from_queries_par<
     F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)> + std::marker::Sync + std::marker::Send + Clone,
 >(
     path_collector: F,
@@ -264,7 +264,7 @@ fn get_paths_from_queries_par<
     (paths, distances, departures)
 }
 
-fn _get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
+fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
     mut path_collector: F,
     queries_from: &Vec<u32>,
     queries_to: &Vec<u32>,

@@ -439,6 +439,10 @@ pub struct FastDtaArgs {
     /// to calibrate the traffic model parameters
     #[arg(long = "calibration-data-points-threshold", default_value = "1000")]
     pub calibration_data_points_threshold: usize,
+
+    /// use "keep_route" during sampling (true) or after sampling (false)
+    #[arg(long = "keep-route-in-sampling", default_value_t = false)]
+    pub keep_route_in_sampling: bool,
 }
 
 impl FastDtaArgs {
@@ -486,6 +490,10 @@ pub struct SumoSampleRouterArgs {
     /// aggregation interval for SUMO edgeData output (in seconds)
     #[arg(long = "aggregation", default_value = "60")]
     pub aggregation: u32,
+
+    /// use "keep_route" during sampling (true) or after sampling (false)
+    #[arg(long = "keep-route-in-sampling", default_value_t = false)]
+    pub keep_route_in_sampling: bool,
 }
 
 impl SumoSampleRouterArgs {

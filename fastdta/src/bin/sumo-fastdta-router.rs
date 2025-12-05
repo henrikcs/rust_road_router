@@ -10,7 +10,7 @@ use fastdta::postprocess::{prepare_next_iteration_for_sampled_routing, set_relat
 use fastdta::preprocess_routes::{get_graph_data_for_cch, get_graph_data_for_fast_dta};
 use fastdta::query::get_paths_with_cch;
 use fastdta::relative_gap::{EPSILON_TRAVEL_TIME, append_relative_gap_to_file};
-use fastdta::sampled_queries::get_paths_by_samples_with_keep_routes;
+use fastdta::sampled_queries::{get_paths_by_samples, get_paths_by_samples_with_keep_routes};
 use fastdta::sampler::sample;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
@@ -50,6 +50,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let previous_paths = alternative_paths_from_dta.get_chosen_paths();
 
     let ((graph, paths, travel_times, departures), duration) = measure(|| {
+        if !args.keep_route_in_sampling {
+            return get_paths_by_samples(
+                &input_dir,
+                iteration,
+                &logger,
+                &query_data,
+                &samples,
+                &traffic_model_data.traffic_models,
+                &previous_paths,
+                &mut meandata,
+                &edge_ids,
+            );
+        }
         get_paths_by_samples_with_keep_routes(
             &input_dir,
             iteration,

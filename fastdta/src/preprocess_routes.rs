@@ -10,7 +10,7 @@ use conversion::{
 use rand::{Rng, SeedableRng, rngs};
 use rust_road_router::{
     algo::customizable_contraction_hierarchy::CCH,
-    datastr::graph::floating_time_dependent::TDGraph,
+    datastr::graph::floating_time_dependent::{FlWeight, TDGraph},
     io::{Load, read_strings_from_file},
 };
 
@@ -56,7 +56,7 @@ pub fn get_graph_data_for_fast_dta(
             edge_ids,
             query_data,
             MeandataDocumentRoot::empty(),
-            AlternativePathsForDTA::init(&vec![], &vec![]),
+            AlternativePathsForDTA::init(&vec![vec![]; number_of_queries], &vec![FlWeight::new(0.0); number_of_queries]),
             TrafficModelData::init(&free_flow_speeds, TrafficModelType::ModifiedLee),
             vec![false; number_of_queries],
         );

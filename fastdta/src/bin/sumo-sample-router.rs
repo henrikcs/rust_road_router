@@ -1,15 +1,16 @@
 use std::path::Path;
 
+use fastdta::alternative_paths::AlternativePathsForDTA;
 use fastdta::cli::Parser;
 use fastdta::logger::Logger;
-use fastdta::postprocess::{prepare_next_iteration, prepare_next_iteration_for_sampled_routing};
+use fastdta::postprocess::prepare_next_iteration_for_sampled_routing;
+use fastdta::sampled_queries_sumo::{get_paths_by_samples_with_sumo, get_paths_by_samples_with_sumo_keep_routes};
 use fastdta::sampler::sample;
-use fastdta::sumo_sample_routing::get_paths_by_samples_with_sumo;
 use fastdta::{calculate_keep_routes, cli};
 use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
 
-use conversion::FILE_EDGE_INDICES_TO_ID;
+use conversion::{DIR_DTA, FILE_EDGE_INDICES_TO_ID};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::SumoSampleRouterArgs::parse();
@@ -39,13 +40,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (keep_routes, duration) = measure(|| calculate_keep_routes(query_data.0.len(), keep_route_probability, rand::random::<i32>()));
     logger.log("read queries", duration.as_nanos());
 
+    let (alternative_paths, duration) = measure(|| {
+        if iteration == 0 {
+            return AlternativePathsForDTA::init(
+                &vec![vec![]; query_data.0.len()],
+                &vec![rust_road_router::datastr::graph::floating_time_dependent::FlWeight::new(0.0); query_data.0.len()],
+            );
+        }
+
+        let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
+
+        // Load previous iteration's alternative paths
+        AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA))
+    });
+
+    logger.log("extract previous paths", duration.as_nanos());
+
     // Generate samples
     let (samples, duration) = measure(|| sample(&samples, query_data.0.len(), args.router_args.seed.unwrap_or(rand::random::<i32>())));
     logger.log("sample", duration.as_nanos());
 
     // Route all queries using samples with SUMO simulation
     let ((graph, paths, travel_times, departures), duration) = measure(|| {
-        get_paths_by_samples_with_sumo(
+        if !args.keep_route_in_sampling {
+            return get_paths_by_samples_with_sumo(
+                &input_dir,
+                &net_file,
+                iteration,
+                aggregation,
+                router_args.begin.unwrap_or(0.0),
+                router_args.end.unwrap_or(86400.0),
+                &logger,
+                &query_data,
+                &samples,
+                &edge_ids,
+            );
+        }
+
+        get_paths_by_samples_with_sumo_keep_routes(
             &input_dir,
             &net_file,
             iteration,
@@ -55,6 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &logger,
             &query_data,
             &samples,
+            &alternative_paths.get_chosen_paths(),
             &edge_ids,
             &keep_routes,
         )
@@ -79,24 +112,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &edge_ids,
             &keep_routes,
         );
-
-        /*
-        if iteration == 0 {
-            // Initialize relative gap file with 0.0 for the first iteration
-            append_relative_gap_to_file(0.0, &input_dir);
-        } else {
-            // Get graph from previous iteration and calculate relative gap
-            let (_, graph, cch) = get_graph_data_for_cch(input_dir, iteration);
-            let customized_graph = customize(&cch, &graph);
-
-            let (_, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
-
-            // Get previous paths if iteration > 0
-            let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
-            let ap = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(conversion::DIR_DTA));
-
-            set_relative_gap_with_previous_paths(&ap.get_chosen_paths(), &graph, &input_dir, &shortest_travel_times, &departures);
-        }*/
     });
 
     logger.log("postprocessing", duration.as_nanos());
