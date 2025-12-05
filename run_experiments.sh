@@ -219,6 +219,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 1.0
                 --logittheta
                 1.0
+                -s
                 duarouter--weights.interpolate
                 duarouter--seed $seed
                 sumo--ignore-route-errors
