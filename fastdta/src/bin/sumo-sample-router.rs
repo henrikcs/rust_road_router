@@ -1,11 +1,11 @@
 use std::path::Path;
 
-use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::logger::Logger;
-use fastdta::postprocess::prepare_next_iteration;
+use fastdta::postprocess::{prepare_next_iteration, prepare_next_iteration_for_sampled_routing};
 use fastdta::sampler::sample;
 use fastdta::sumo_sample_routing::get_paths_by_samples_with_sumo;
+use fastdta::{calculate_keep_routes, cli};
 use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
 
@@ -36,6 +36,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (query_data, duration) = measure(|| fastdta::query::read_queries(input_dir));
     logger.log("read queries", duration.as_nanos());
 
+    let (keep_routes, duration) = measure(|| calculate_keep_routes(query_data.0.len(), keep_route_probability, rand::random::<i32>()));
+    logger.log("read queries", duration.as_nanos());
+
     // Generate samples
     let (samples, duration) = measure(|| sample(&samples, query_data.0.len(), args.router_args.seed.unwrap_or(rand::random::<i32>())));
     logger.log("sample", duration.as_nanos());
@@ -53,6 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &query_data,
             &samples,
             &edge_ids,
+            &keep_routes,
         )
     });
 
@@ -60,7 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Prepare next iteration
     let (_, duration) = measure(|| {
-        prepare_next_iteration(
+        prepare_next_iteration_for_sampled_routing(
             &input_dir,
             &input_prefix,
             iteration,
@@ -73,8 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             args.router_args.get_write_sumo_alternatives(),
             args.router_args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
-            keep_route_probability,
-            true,
+            &keep_routes,
         );
 
         /*

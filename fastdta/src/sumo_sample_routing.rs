@@ -38,6 +38,7 @@ pub fn get_paths_by_samples_with_sumo(
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     samples: &Vec<Vec<usize>>,
     edge_ids: &Vec<String>,
+    keep_routes: &Vec<bool>,
 ) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let mut shortest_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()];
     let mut travel_times = vec![FlWeight::INVALID; query_data.0.len()];

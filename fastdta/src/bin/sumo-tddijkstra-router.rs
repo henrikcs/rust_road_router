@@ -4,8 +4,8 @@ use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::logger::Logger;
 use fastdta::postprocess::prepare_next_iteration;
+use fastdta::preprocess_routes::get_graph_data_for_dijkstra;
 use fastdta::query::get_paths_with_dijkstra;
-use fastdta::route::get_graph_data_for_dijkstra;
 use rust_road_router::report::measure;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::RouterArgs::parse();
@@ -45,7 +45,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
             keep_route_probability,
-            false,
         )
     });
 

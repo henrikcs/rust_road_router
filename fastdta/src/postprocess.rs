@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use conversion::{DIR_DTA, SerializedTimestamp, sumo::paths_to_sumo_routes_converter::write_paths_as_sumo_routes};
+use rand::{Rng, SeedableRng, rngs};
 use rust_road_router::datastr::graph::{
     EdgeId,
     floating_time_dependent::{FlWeight, TDGraph, Timestamp},
@@ -12,11 +13,44 @@ use crate::{
     relative_gap::{append_relative_gap_to_file, get_relative_gap},
 };
 
+pub fn prepare_next_iteration_for_sampled_routing(
+    input_dir: &Path,
+    input_prefix: &String,
+    iteration: u32,
+    shortest_paths: &Vec<Vec<EdgeId>>,
+    travel_times: &Vec<FlWeight>,
+    departures: &Vec<SerializedTimestamp>,
+    graph: &TDGraph,
+    choice_algorithm: ChoiceAlgorithm,
+    max_alternatives: u32,
+    write_sumo_alternatives: bool,
+    seed: i32,
+    edge_indices_to_id: &Vec<String>,
+    keep_routes: &Vec<bool>,
+) {
+    postprocess(
+        input_dir,
+        input_prefix,
+        iteration,
+        shortest_paths,
+        travel_times,
+        departures,
+        graph,
+        choice_algorithm,
+        max_alternatives,
+        write_sumo_alternatives,
+        seed,
+        edge_indices_to_id,
+        keep_routes,
+        true,
+    );
+}
+
 /// calculate the relative gap,
 /// assemble the alternative paths,
 /// output as a sumo format for the next iteration
 ///
-/// merge previous alternatives with current paths (make sure there are no duplicates)
+/// merge previous alternatives with current paths
 /// calculate costs for each path in the current graph
 /// choose a path based on the choice algorithm
 /// return alternative paths, choice, probabilities and costs
@@ -34,6 +68,48 @@ pub fn prepare_next_iteration(
     seed: i32,
     edge_indices_to_id: &Vec<String>,
     keep_route_probability: f64,
+) {
+    let keep_routes: Vec<bool> = if keep_route_probability <= 0.0 {
+        vec![false; shortest_paths.len()]
+    } else if keep_route_probability >= 1.0 {
+        vec![true; shortest_paths.len()]
+    } else {
+        let mut rng: rngs::StdRng = SeedableRng::seed_from_u64(seed.abs() as u64);
+        shortest_paths.iter().map(|_| rng.random_bool(keep_route_probability)).collect()
+    };
+
+    postprocess(
+        input_dir,
+        input_prefix,
+        iteration,
+        shortest_paths,
+        travel_times,
+        departures,
+        graph,
+        choice_algorithm,
+        max_alternatives,
+        write_sumo_alternatives,
+        seed,
+        edge_indices_to_id,
+        &keep_routes,
+        false,
+    );
+}
+
+fn postprocess(
+    input_dir: &Path,
+    input_prefix: &String,
+    iteration: u32,
+    shortest_paths: &Vec<Vec<EdgeId>>,
+    travel_times: &Vec<FlWeight>,
+    departures: &Vec<SerializedTimestamp>,
+    graph: &TDGraph,
+    choice_algorithm: ChoiceAlgorithm,
+    max_alternatives: u32,
+    write_sumo_alternatives: bool,
+    seed: i32,
+    edge_indices_to_id: &Vec<String>,
+    keep_routes: &Vec<bool>,
     skip_relative_gap: bool,
 ) {
     let current_iteration_dir = input_dir.join(format!("{:0>3}", iteration));
@@ -52,7 +128,7 @@ pub fn prepare_next_iteration(
         // merge previous alternatives with current shortest paths
         let mut new_alternative_paths = old_alternative_paths.update_alternatives_with_new_paths(&shortest_paths, &travel_times, &departures, &graph);
 
-        new_alternative_paths.perform_choice_model(&old_alternative_paths, &choice_algorithm, max_alternatives, keep_route_probability, seed);
+        new_alternative_paths.perform_choice_model(&old_alternative_paths, &choice_algorithm, max_alternatives, &keep_routes, seed);
 
         new_alternative_paths
     } else {

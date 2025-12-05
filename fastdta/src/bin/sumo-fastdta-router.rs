@@ -6,10 +6,11 @@ use fastdta::cli;
 use fastdta::cli::Parser;
 use fastdta::customize::customize;
 use fastdta::logger::Logger;
-use fastdta::postprocess::{prepare_next_iteration, set_relative_gap_with_previous_paths};
+use fastdta::postprocess::{prepare_next_iteration_for_sampled_routing, set_relative_gap_with_previous_paths};
+use fastdta::preprocess_routes::{get_graph_data_for_cch, get_graph_data_for_fast_dta};
 use fastdta::query::get_paths_with_cch;
 use fastdta::relative_gap::{EPSILON_TRAVEL_TIME, append_relative_gap_to_file};
-use fastdta::route::{get_graph_data_for_cch, get_graph_data_for_fast_dta, get_paths_by_samples};
+use fastdta::sampled_queries::get_paths_by_samples_with_keep_routes;
 use fastdta::sampler::sample;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
@@ -32,8 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let logger = Logger::new("sumo-fastdta-router", &input_dir.display().to_string(), iteration as i32);
 
-    let ((edge_ids, query_data, mut meandata, alternative_paths_from_dta, mut traffic_model_data), duration) =
-        measure(|| get_graph_data_for_fast_dta(input_dir, iteration, traffic_model_type));
+    let ((edge_ids, query_data, mut meandata, alternative_paths_from_dta, mut traffic_model_data, keep_routes), duration) =
+        measure(|| get_graph_data_for_fast_dta(input_dir, iteration, traffic_model_type, keep_route_probability));
 
     logger.log("preprocessing", duration.as_nanos());
 
@@ -49,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let previous_paths = alternative_paths_from_dta.get_chosen_paths();
 
     let ((graph, paths, travel_times, departures), duration) = measure(|| {
-        get_paths_by_samples(
+        get_paths_by_samples_with_keep_routes(
             &input_dir,
             iteration,
             &logger,
@@ -59,13 +60,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &previous_paths,
             &mut meandata,
             &edge_ids,
+            &keep_routes,
         )
     });
 
     logger.log("fastdta routing", duration.as_nanos());
 
     let (_, duration) = measure(|| {
-        prepare_next_iteration(
+        prepare_next_iteration_for_sampled_routing(
             &input_dir,
             &input_prefix,
             iteration,
@@ -78,8 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             args.router_args.get_write_sumo_alternatives(),
             args.router_args.seed.unwrap_or(rand::random::<i32>()),
             &edge_ids,
-            keep_route_probability,
-            true,
+            &keep_routes,
         );
 
         traffic_model_data.deconstruct(&input_dir).unwrap();
