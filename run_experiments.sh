@@ -13,6 +13,8 @@ timestamp=$(date +'%Y-%m-%d-%H-%M')
 declare start_time
 start_time=$(date '+%Y-%m-%d %H:%M:%S')
 declare message=""
+declare fastdta_samples=""
+declare sumo_samples=""
 
 # --- Function to display usage ---
 usage() {
@@ -21,17 +23,18 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<begin>;<end>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>[;<samples>]\n]"
-    echo "                         The optional 'samples' parameter (last field) is a space-separated list of f64 values for fastdta routing."
+    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<begin>;<end>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>\n]"
     echo ""
     echo "Routing algorithm options (at least one is required):"
-    echo "  --cch                  Run all experiments with CCH routing."
-    echo "  --ch                   Run all experiments with CH routing."
-    echo "  --dijkstra             Run all experiments with Dijkstra routing."
-    echo "  --dijkstra-rust        Run all experiments with Dijkstra (Rust) routing."
-    echo "  --fast-dta             Run all experiments with Fast DTA routing."
-    echo "  --sumo                 Run all experiments with SUMO Sampled routing (same as fast dta, only using SUMO as the traffic model)."
-    echo "  --a-star               Run all experiments with A* routing."
+    echo "  --cch                                  Run all experiments with CCH routing."
+    echo "  --ch                                   Run all experiments with CH routing."
+    echo "  --dijkstra                             Run all experiments with Dijkstra routing."
+    echo "  --dijkstra-rust                        Run all experiments with Dijkstra (Rust) routing."
+    echo "  --fast-dta \"((<number> )+;)+\"        Run all experiments with Fast DTA routing with the given list of samples."
+    echo "                                         Example: --fast-dta \"1.0 1.0; 1 2 3 4; 1 1 1 1;\""
+    echo "  --sumo \"(<number>+;)+\"            Run all experiments with SUMO Sampled routing (same as fast dta, only using SUMO as the traffic model)."
+    echo "                                         Example: --sumo \"1.0 1.0; 1 2 3 4; 1 1 1 1;\""
+    echo "  --a-star                               Run all experiments with A* routing."
     echo ""
     echo "Other options:"
     echo "  --output <path>        Specify the base output directory (default: current directory)."
@@ -39,6 +42,34 @@ usage() {
     echo "  --debug                Build and use the debug target instead of release."
     exit 1
 }
+
+# parse_sample_string is a function which is given a string in the format (<number>+;?)+ 
+# where number is a positive float or integer and numbers are separated by spaces and groups are separated by semicolons
+# returns a list of strings, each item in the form of "(<number> )*<number>"
+# i.e a a list of space separated numbers
+# Example input: "1.0 1.0; 1 2 3 4; 1 1 1 1;"
+# Example output: ("1.0 1.0" "1 2 3 4" "1 1 1 1") 
+parse_samples() {
+    local input_string="$1"
+    IFS=';' read -ra groups <<< "$input_string"
+    local samples=()
+    for group in "${groups[@]}"; do
+        # Trim leading/trailing whitespace
+        group=$(echo "$group" | xargs)
+        if [ -n "$group" ]; then
+            samples+=("$group")
+        fi
+    done
+    echo "${samples[@]}"
+}
+
+call_duaIterate() {
+    echo "Calling duaIterate.py with output directory: $1 and arguments: ${*:2}"
+    local out_dir="$1"
+    shift
+    python "$SUMO_HOME"/tools/assign/duaIterate.py "$@"
+}
+
 
 # --- Parse command line arguments ---
 while [[ $# -gt 0 ]]; do
@@ -70,11 +101,13 @@ while [[ $# -gt 0 ]]; do
         ;;
         --fast-dta)
         routing_algorithms+=("fastdta")
-        shift
+        fastdta_samples="$2"
+        shift 2
         ;;
         --sumo)
         routing_algorithms+=("sumo-sample")
-        shift
+        sumo_samples="$2"
+        shift 2
         ;;
         --ch)
         routing_algorithms+=("CH")
@@ -183,7 +216,7 @@ cp ~/rust_road_router/fastdta/duaIterate.py "$SUMO_HOME"/tools/assign
 
 # --- Run experiments ---
 line_index=0
-while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation convergence_deviation convergence_relgap last_iter seed samples || [[ -n "$in_dir" ]]; do
+while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation convergence_deviation convergence_relgap last_iter seed || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
 
@@ -195,9 +228,6 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
         # Use lowercase for directory name
         algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
         out_dir="$experiment_out_dir/$algo_dir_name"
-
-        echo "Processing with algorithm: $algorithm, aggregation: $aggregation"
-        echo "Output directory: $out_dir"
 
         mkdir -p "$out_dir"
         # run commands in a subshell to not change the script's working directory
@@ -246,42 +276,6 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                     dijkstra-router--seed $seed
                 )
             fi
-            # Add preprocessor args only for fastdta
-            if [ "$algorithm" = "fastdta" ]; then
-                dua_args+=(
-                    fastdta-preprocessor--input-prefix "$prefix"
-                    fastdta-preprocessor--input-dir "$in_dir"
-                    fastdta-router--seed $seed
-                )
-                # Use samples from CSV if provided, otherwise use default "1 1"
-                if [ -n "$samples" ]; then
-                    dua_args+=(
-                        fastdta-router--samples "$samples"
-                    )
-                else
-                    dua_args+=(
-                        fastdta-router--samples "1 1"
-                    )
-                fi
-            fi
-             # Add preprocessor args only for sumo
-            if [ "$algorithm" = "sumo" ]; then
-                dua_args+=(
-                    sample-preprocessor--input-prefix "$prefix"
-                    sample-preprocessor--input-dir "$in_dir"
-                    sample-router--seed $seed
-                )
-                # Use samples from CSV if provided, otherwise use default "1 1"
-                if [ -n "$samples" ]; then
-                    dua_args+=(
-                        sample-router--samples "$samples"
-                    )
-                else
-                    dua_args+=(
-                        sample-router--samples "1 1"
-                    )
-                fi
-            fi
 
             # any other algorithm uses relative-gap-calculator: 
             if [ "$algorithm" != "fastdta" ] && [ "$algorithm" != "CCH" ] && [ "$algorithm" != "dijkstra-rust" ]; then
@@ -291,7 +285,43 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 )
             fi
 
-            python "$SUMO_HOME"/tools/assign/duaIterate.py "${dua_args[@]}"
+            # Add preprocessor args only for fastdta
+            if [ "$algorithm" = "fastdta" ]; then
+
+                dua_args+=(
+                    fastdta-preprocessor--input-prefix "$prefix"
+                    fastdta-preprocessor--input-dir "$in_dir"
+                    fastdta-router--seed $seed
+                )
+                
+                # create a list of samples from the fastdta_samples string
+                # iterate over the list and call call_duaIterate for each sample set
+
+                for sample_set in $(parse_samples "$fastdta_samples"); do
+                    call_duaIterate "$out_dir" "${dua_args[@]}" fastdta-router--samples "$sample_set"
+                done
+
+                continue
+            fi 
+
+            # Add preprocessor args only for sumo-sample
+            if [ "$algorithm" = "sumo-sample" ]; then
+                dua_args+=(
+                    sample-preprocessor--input-prefix "$prefix"
+                    sample-preprocessor--input-dir "$in_dir"
+                    sample-router--seed $seed
+                    sample-router--aggregation "$aggregation"
+                )
+                
+                for sample_set in $(parse_samples "$fastdta_samples"); do
+                    call_duaIterate "$out_dir" "${dua_args[@]}" sample-router--samples "$sample_set"
+                done
+
+                continue
+
+            fi
+
+            call_duaIterate "$out_dir" "${dua_args[@]}"
         )
     done
     ((line_index++))
