@@ -73,7 +73,7 @@ while [[ $# -gt 0 ]]; do
         shift
         ;;
         --sumo)
-        routing_algorithms+=("sumo")
+        routing_algorithms+=("sumo-sample")
         shift
         ;;
         --ch)
