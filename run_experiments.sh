@@ -64,10 +64,14 @@ parse_samples() {
 }
 
 call_duaIterate() {
-    echo "Calling duaIterate.py with output directory: $1 and arguments: ${*:2}"
     local out_dir="$1"
     shift
-    python "$SUMO_HOME"/tools/assign/duaIterate.py "$@"
+    mkdir -p "$out_dir"
+    (
+        cd "$out_dir" || exit
+        echo "Calling duaIterate.py with output directory: $out_dir and arguments: $*"
+        python "$SUMO_HOME"/tools/assign/duaIterate.py "$@"
+    )
 }
 
 
@@ -156,16 +160,28 @@ cp "$experiment" "$base_output_dir/"
 
 # --- Write README.md with experiment info ---
 (
-    
     # Get git info
     git_hash=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
     git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-    # Get CPU info (first line of lscpu output)
+    # Get CPU info with Ghz, Cores, Threads and Model name
     cpu_info=$(lscpu | grep 'Model name' | head -n1 | sed 's/Model name:[ ]*//')
+    cpu_ghz=$(lscpu | grep 'CPU MHz' | head -n1 | sed 's/CPU MHz:[ ]*//')
+    cpu_cores=$(lscpu | grep 'Core(s) per socket' | head -n1 | sed 's/Core(s) per socket:[ ]*//')
+    cpu_sockets=$(lscpu | grep 'Socket(s)' | head -n1 | sed 's/Socket(s):[ ]*//')
+    cpu_threads=$(lscpu | grep 'Thread(s) per core' | head -n1 | sed 's/Thread(s) per core:[ ]*//')
+    cpu_info="${cpu_info} | ${cpu_ghz} MHz | Cores: $((cpu_cores * cpu_sockets)) | Threads: $((cpu_cores * cpu_sockets * cpu_threads))" 
+    
     # Get RAM info (total in GB)
     ram_info=$(free -g | awk '/^Mem:/ {print $2 " GB"}')
     # List algorithms
     algos="${routing_algorithms[*]}"
+    ## if there are samples in sumo or in fastdta, append that info to algos
+    if [ -n "$fastdta_samples" ]; then
+        algos+=" (fastdta samples: $fastdta_samples)"
+    fi
+    if [ -n "$sumo_samples" ]; then
+        algos+=" (sumo samples: $sumo_samples)"
+    fi
     
     cd "$base_output_dir" || exit 1
     # Write README.md
@@ -229,100 +245,101 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
         algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
         out_dir="$experiment_out_dir/$algo_dir_name"
 
-        mkdir -p "$out_dir"
-        # run commands in a subshell to not change the script's working directory
-        (
-            cd "$out_dir" || exit
 
-            # Common arguments for duaIterate.py
-            declare -a dua_args=(
-                -n "$net_file"
-                -t "$trips_file"
-                --mesosim --aggregation "$aggregation" --begin $begin --end $end -l $last_iter
-                --routing-algorithm "$algorithm"
-                --max-convergence-deviation "$convergence_deviation"
-                --relative-gap "$convergence_relgap"
-                --logit
-                --logitbeta
-                1.0
-                --logitgamma
-                1.0
-                --logittheta
-                1.0
-                -s
-                duarouter--weights.interpolate
-                duarouter--seed $seed
-                sumo--ignore-route-errors
-                sumo--aggregate-warnings 5
-                sumo--time-to-teleport.disconnected 0
-                sumo--seed $seed
-                sumo--step-length 0.1
-                sumo--threads $(nproc)
-            )
-
-            # Add preprocessor args only for CCH
-            if [ "$algorithm" = "CCH" ]; then
-                dua_args+=(
-                    cch-preprocessor--input-prefix "$prefix"
-                    cch-preprocessor--input-dir "$in_dir"
-                    cch-router--seed $seed
-                )
-            fi
-            # Add preprocessor args only for dijkstra-rust
-            if [ "$algorithm" = "dijkstra-rust" ]; then
-                dua_args+=(
-                    dijkstra-preprocessor--input-prefix "$prefix"
-                    dijkstra-preprocessor--input-dir "$in_dir"
-                    dijkstra-router--seed $seed
-                )
-            fi
-
-            # any other algorithm uses relative-gap-calculator: 
-            if [ "$algorithm" != "fastdta" ] && [ "$algorithm" != "CCH" ] && [ "$algorithm" != "dijkstra-rust" ]; then
-                dua_args+=(
-                    relative-gap--net-prefix "$prefix"
-                    relative-gap--net-dir "$in_dir"
-                )
-            fi
-
-            # Add preprocessor args only for fastdta
-            if [ "$algorithm" = "fastdta" ]; then
-
-                dua_args+=(
-                    fastdta-preprocessor--input-prefix "$prefix"
-                    fastdta-preprocessor--input-dir "$in_dir"
-                    fastdta-router--seed $seed
-                )
-                
-                # create a list of samples from the fastdta_samples string
-                # iterate over the list and call call_duaIterate for each sample set
-
-                for sample_set in $(parse_samples "$fastdta_samples"); do
-                    call_duaIterate "$out_dir" "${dua_args[@]}" fastdta-router--samples "$sample_set"
-                done
-
-                continue
-            fi 
-
-            # Add preprocessor args only for sumo-sample
-            if [ "$algorithm" = "sumo-sample" ]; then
-                dua_args+=(
-                    sample-preprocessor--input-prefix "$prefix"
-                    sample-preprocessor--input-dir "$in_dir"
-                    sample-router--seed $seed
-                    sample-router--aggregation "$aggregation"
-                )
-                
-                for sample_set in $(parse_samples "$fastdta_samples"); do
-                    call_duaIterate "$out_dir" "${dua_args[@]}" sample-router--samples "$sample_set"
-                done
-
-                continue
-
-            fi
-
-            call_duaIterate "$out_dir" "${dua_args[@]}"
+        # Common arguments for duaIterate.py
+        declare -a dua_args=(
+            -n "$net_file"
+            -t "$trips_file"
+            --mesosim --aggregation "$aggregation" --begin $begin --end $end -l $last_iter
+            --routing-algorithm "$algorithm"
+            --max-convergence-deviation "$convergence_deviation"
+            --relative-gap "$convergence_relgap"
+            --logit
+            --logitbeta
+            1.0
+            --logitgamma
+            1.0
+            --logittheta
+            1.0
+            -s
+            duarouter--weights.interpolate
+            duarouter--seed $seed
+            sumo--ignore-route-errors
+            sumo--aggregate-warnings 5
+            sumo--time-to-teleport.disconnected 0
+            sumo--seed $seed
+            sumo--step-length 0.1
+            sumo--threads $(nproc)
         )
+
+        # Add preprocessor args only for CCH
+        if [ "$algorithm" = "CCH" ]; then
+            dua_args+=(
+                cch-preprocessor--input-prefix "$prefix"
+                cch-preprocessor--input-dir "$in_dir"
+                cch-router--seed $seed
+            )
+        fi
+        # Add preprocessor args only for dijkstra-rust
+        if [ "$algorithm" = "dijkstra-rust" ]; then
+            dua_args+=(
+                dijkstra-preprocessor--input-prefix "$prefix"
+                dijkstra-preprocessor--input-dir "$in_dir"
+                dijkstra-router--seed $seed
+            )
+        fi
+
+        # any other algorithm uses relative-gap-calculator: 
+        if [ "$algorithm" != "fastdta" ] && [ "$algorithm" != "CCH" ] && [ "$algorithm" != "dijkstra-rust" ]; then
+            dua_args+=(
+                relative-gap--net-prefix "$prefix"
+                relative-gap--net-dir "$in_dir"
+            )
+        fi
+
+        # Add preprocessor args only for fastdta
+        if [ "$algorithm" = "fastdta" ]; then
+
+            dua_args+=(
+                fastdta-preprocessor--input-prefix "$prefix"
+                fastdta-preprocessor--input-dir "$in_dir"
+                fastdta-router--seed $seed
+            )
+            
+            # create a list of samples from the fastdta_samples string
+            # iterate over the list and call call_duaIterate for each sample set
+
+            for sample_set in $(parse_samples "$fastdta_samples"); do
+                sample_out_dir="$out_dir_$(echo "$sample_set" | tr ' ' '_')"
+
+                call_duaIterate "$sample_out_dir" "${dua_args[@]}" fastdta-router--samples "$sample_set"
+            done
+
+            continue
+        fi 
+
+        # Add preprocessor args only for sumo-sample
+        if [ "$algorithm" = "sumo-sample" ]; then
+            dua_args+=(
+                sample-preprocessor--input-prefix "$prefix"
+                sample-preprocessor--input-dir "$in_dir"
+                sample-router--seed $seed
+                sample-router--aggregation "$aggregation"
+            )
+            
+            for sample_set in $(parse_samples "$fastdta_samples"); do
+                # out_dir should be suffixed with sample_set such that out dirs do not overlap
+                # sample_set's spaces are replaced with underscores
+                sample_out_dir="$out_dir_$(echo "$sample_set" | tr ' ' '_')"
+
+                call_duaIterate "$sample_out_dir" "${dua_args[@]}" sample-router--samples "$sample_set"
+            done
+
+            continue
+
+        fi
+        
+        call_duaIterate "$out_dir" "${dua_args[@]}"
     done
     ((line_index++))
 done < "$experiment"
