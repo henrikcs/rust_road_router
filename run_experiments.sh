@@ -45,22 +45,22 @@ usage() {
 
 # parse_sample_string is a function which is given a string in the format (<number>+;?)+ 
 # where number is a positive float or integer and numbers are separated by spaces and groups are separated by semicolons
-# returns a list of strings, each item in the form of "(<number> )*<number>"
-# i.e a a list of space separated numbers
+# Populates the array variable passed as the second argument with the parsed samples
 # Example input: "1.0 1.0; 1 2 3 4; 1 1 1 1;"
-# Example output: ("1.0 1.0" "1 2 3 4" "1 1 1 1") 
+# Example output in array: ("1.0 1.0" "1 2 3 4" "1 1 1 1") 
 parse_samples() {
     local input_string="$1"
+    local -n result_array="$2"
+    
     IFS=';' read -ra groups <<< "$input_string"
-    local samples=()
+    result_array=()
     for group in "${groups[@]}"; do
         # Trim leading/trailing whitespace
         group=$(echo "$group" | xargs)
         if [ -n "$group" ]; then
-            samples+=("$group")
+            result_array+=("$group")
         fi
     done
-    echo "${samples[@]}"
 }
 
 call_duaIterate() {
@@ -307,7 +307,9 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 fastdta-router--seed $seed
             )
 
-            for sample_set in $(parse_samples "$fastdta_samples"); do
+            declare -a fastdta_sample_sets
+            parse_samples "$fastdta_samples" fastdta_sample_sets
+            for sample_set in "${fastdta_sample_sets[@]}"; do
                 # out_dir should be suffixed with sample_set such that out dirs do not overlap
                 # sample_set's spaces are replaced with underscores
                 sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
@@ -326,7 +328,9 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 sample-router--aggregation "$aggregation"
             )
             
-            for sample_set in $(parse_samples "$sumo_samples"); do
+            declare -a sumo_sample_sets
+            parse_samples "$sumo_samples" sumo_sample_sets
+            for sample_set in "${sumo_sample_sets[@]}"; do
                 # out_dir should be suffixed with sample_set such that out dirs do not overlap
                 # sample_set's spaces are replaced with underscores
                 sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
