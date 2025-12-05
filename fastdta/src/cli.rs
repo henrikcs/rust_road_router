@@ -441,7 +441,7 @@ pub struct FastDtaArgs {
     pub calibration_data_points_threshold: usize,
 
     /// use "keep_route" during sampling (true) or after sampling (false)
-    #[arg(long = "keep-route-in-sampling", default_value_t = false)]
+    #[arg(long = "keep-route-in-sampling", default_value_t = true)]
     pub keep_route_in_sampling: bool,
 }
 
