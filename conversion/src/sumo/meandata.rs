@@ -34,6 +34,8 @@ pub struct Edge {
     pub id: String,
     #[serde(rename = "@traveltime")]
     pub traveltime: Option<SumoTravelTime>,
+    #[serde(rename = "@overlapTraveltime")]
+    pub overlap_traveltime: Option<SumoTravelTime>,
     #[serde(rename = "@density")]
     pub density: Option<f64>,
     #[serde(rename = "@speed")]
@@ -58,19 +60,8 @@ pub struct Edge {
 }
 
 impl Edge {
-    // pub fn get_traffic_volume(&self, period: f64) -> f64 {
-    //     if self.traveltime.is_none() || self.sampled_seconds.is_none() {
-    //         return 0.0;
-    //     }
-    //     if self.traveltime == Some(0.0) || self.sampled_seconds == Some(0.0) {
-    //         return 0.0;
-    //     }
-
-    //     3600.0 * self.sampled_seconds.unwrap() / (period * self.traveltime.unwrap())
-    // }
-
     pub fn get_density(&self, period: f64, length: f64) -> f64 {
-        if self.sampled_seconds.is_none() || self.traveltime.is_none() {
+        if self.sampled_seconds.is_none() || self.overlap_traveltime.is_none() {
             return 0.0;
         }
         if self.sampled_seconds == Some(0.0) || length == 0.0 {
@@ -82,21 +73,6 @@ impl Edge {
     pub fn get_lane_density(&self, period: f64, length: f64, lanes: u32) -> f64 {
         self.get_density(period, length) / lanes as f64
     }
-
-    // pub fn get_estimated_travel_time(&self, period: f64, length: f64, lanes: u32, free_flow_tt: f64) -> f64 {
-    //     // try out greenshields model:
-    //     let free_flow_speed = length / free_flow_tt; // in m/s
-    //     let jam_density = 133.33; // vehicles per km per lane
-    //     let density = self.get_density(period, length) / lanes as f64;
-
-    //     let velocity = free_flow_speed * (1.0 - density / jam_density);
-
-    //     if velocity <= 0.0 {
-    //         return SUMO_MAX_TRAVEL_TIME;
-    //     }
-    //     // in m/s
-    //     f64::max(length / velocity, free_flow_tt) // in seconds
-    // }
 }
 
 impl Interval {

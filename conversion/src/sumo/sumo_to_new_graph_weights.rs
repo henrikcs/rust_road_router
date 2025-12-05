@@ -107,7 +107,7 @@ fn preprocess_tt<'a>(
 
                 let mut tt = edge_tts
                     .get(&timestamp)
-                    .and_then(|edge| edge.traveltime)
+                    .and_then(|edge| edge.overlap_traveltime) // travel time in seconds
                     // should not go lower than the default travel time
                     .map(|val| (u32::max((val * 1000.0) as u32, default_travel_time)) as SerializedTravelTime)
                     .unwrap_or(default_travel_time);
@@ -226,12 +226,12 @@ pub mod tests {
                     vec![
                         meandata::Edge {
                             id: "edge1".to_string(),
-                            traveltime: Some(4.0),
+                            overlap_traveltime: Some(4.0),
                             ..Default::default()
                         },
                         meandata::Edge {
                             id: "edge2".to_string(),
-                            traveltime: None, // will use default travel time
+                            overlap_traveltime: None, // will use default travel time
                             ..Default::default()
                         },
                     ],
@@ -242,7 +242,7 @@ pub mod tests {
                     20.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(6.0),
+                        overlap_traveltime: Some(6.0),
                         ..Default::default()
                     }],
                 ),
@@ -300,12 +300,12 @@ pub mod tests {
                     vec![
                         meandata::Edge {
                             id: "edge1".to_string(),
-                            traveltime: Some(20.0),
+                            overlap_traveltime: Some(20.0),
                             ..Default::default()
                         },
                         meandata::Edge {
                             id: "edge2".to_string(),
-                            traveltime: None, // will use default travel time
+                            overlap_traveltime: None, // will use default travel time
                             ..Default::default()
                         },
                     ],
@@ -316,7 +316,7 @@ pub mod tests {
                     20.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(6.0),
+                        overlap_traveltime: Some(6.0),
                         ..Default::default()
                     }],
                 ),
@@ -373,7 +373,7 @@ pub mod tests {
                     100.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(1100.0),
+                        overlap_traveltime: Some(1100.0),
                         ..Default::default()
                     }],
                 ),
@@ -383,7 +383,7 @@ pub mod tests {
                     200.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(1000.0),
+                        overlap_traveltime: Some(1000.0),
                         ..Default::default()
                     }],
                 ),
@@ -393,7 +393,7 @@ pub mod tests {
                     250.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(150.0),
+                        overlap_traveltime: Some(150.0),
                         ..Default::default()
                     }],
                 ),
@@ -443,7 +443,7 @@ pub mod tests {
                     86_400.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(70_874.95),
+                        overlap_traveltime: Some(70_874.95),
                         ..Default::default()
                     }],
                 ),
@@ -453,7 +453,7 @@ pub mod tests {
                     86_460.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(70_643.718),
+                        overlap_traveltime: Some(70_643.718),
                         ..Default::default()
                     }],
                 ),
@@ -504,7 +504,7 @@ pub mod tests {
                     100.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(50.0),
+                        overlap_traveltime: Some(50.0),
                         ..Default::default()
                     }],
                 ),
@@ -514,7 +514,7 @@ pub mod tests {
                     200.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(1000.0),
+                        overlap_traveltime: Some(1000.0),
                         ..Default::default()
                     }],
                 ),
@@ -524,7 +524,7 @@ pub mod tests {
                     250.0,
                     vec![meandata::Edge {
                         id: "edge1".to_string(),
-                        traveltime: Some(200.0),
+                        overlap_traveltime: Some(200.0),
                         ..Default::default()
                     }],
                 ),
