@@ -166,7 +166,7 @@ fn process_path<G: TravelTimeGraph>(
 
                 interval.get_edge_mut(edge_ids[edge_id as usize].as_str()).map(|edge| {
                     let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
-                    let previous_tt = edge.traveltime;
+                    let previous_tt = edge.overlap_traveltime;
                     let previous_density = edge.lane_density.unwrap_or(edge.density.unwrap_or(0.0));
                     let previous_estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
                     edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
@@ -207,7 +207,7 @@ fn process_path<G: TravelTimeGraph>(
                     }
 
                     graph.set_weight_for_edge_at_time(edge_id, Timestamp::new(interval_begin), FlWeight::new(estimated_tt));
-                    edge.traveltime = Some(estimated_tt);
+                    edge.overlap_traveltime = Some(estimated_tt);
                 });
             }
             // Move to the next period boundary for the next iteration
