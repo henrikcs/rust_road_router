@@ -38,7 +38,7 @@ usage() {
     echo "  --a-star                               Run all experiments with A* routing."
     echo ""
     echo "Other options:"
-    echo "  --output <path>        Specify the base output directory (default: current directory)."
+    echo "  --output <path>        Specify the base output directory (default: current directory). \"[TIME]\" is replaced with timestamp."
     echo "  --message, -m <text>   Add a custom message to the experiment README.md file."
     echo "  --debug                Build and use the debug target instead of release."
     echo "  --repeat <N >= 1>           Repeat each experiment N times using a different seed. (default: 1)"
@@ -156,7 +156,10 @@ fi
 
 # --- Set up environment ---
 spack env activate "$spack_env"
-declare base_output_dir="${output_dir%/}/$timestamp"
+# Create base output directory, replacing [TIME] with timestamp if present
+output_dir="${output_dir//\[TIME\]/$timestamp}"
+# the following syntax removes trailing slash if present
+declare base_output_dir="${output_dir%/}"
 
 
 echo "Base output directory: $base_output_dir"
@@ -261,7 +264,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
 
             # Use lowercase for directory name
             algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
-            out_dir="$experiment_out_dir/$algo_dir_name/$repetion_count"
+            out_dir="$experiment_out_dir/$algo_dir_name/"
 
             # Common arguments for duaIterate.py
             declare -a dua_args=(
@@ -329,7 +332,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                     # out_dir should be suffixed with sample_set such that out dirs do not overlap
                     # sample_set's spaces are replaced with underscores
                     sample_out_dir="${out_dir}/$(echo "$sample_set" | tr ' ' '_')"
-                    call_duaIterate "$sample_out_dir" "${dua_args[@]}" fastdta-router--samples "$sample_set"
+                    call_duaIterate "$sample_out_dir/$repetion_count" "${dua_args[@]}" fastdta-router--samples "$sample_set"
                 done
 
                 continue
@@ -351,14 +354,14 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                     # sample_set's spaces are replaced with underscores
                     sample_out_dir="${out_dir}/$(echo "$sample_set" | tr ' ' '_')"
 
-                    call_duaIterate "$sample_out_dir" "${dua_args[@]}" sample-router--samples "$sample_set"
+                    call_duaIterate "$sample_out_dir/$repetion_count" "${dua_args[@]}" sample-router--samples "$sample_set"
                 done
 
                 continue
 
             fi
             
-            call_duaIterate "$out_dir" "${dua_args[@]}"
+            call_duaIterate "$out_dir/$repetion_count" "${dua_args[@]}"
 
         done
     done
