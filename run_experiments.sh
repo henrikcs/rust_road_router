@@ -330,8 +330,9 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 parse_samples "$fastdta_samples" fastdta_sample_sets
                 for sample_set in "${fastdta_sample_sets[@]}"; do
                     # out_dir should be suffixed with sample_set such that out dirs do not overlap
+                    # and to mark that this is a new algorithm
                     # sample_set's spaces are replaced with underscores
-                    sample_out_dir="${out_dir}/$(echo "$sample_set" | tr ' ' '_')"
+                    sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
                     call_duaIterate "$sample_out_dir/$repetion_count" "${dua_args[@]}" fastdta-router--samples "$sample_set"
                 done
 
@@ -350,9 +351,10 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 declare -a sumo_sample_sets
                 parse_samples "$sumo_samples" sumo_sample_sets
                 for sample_set in "${sumo_sample_sets[@]}"; do
-                    # out_dir should be suffixed with sample_set such that out dirs do not overlap
+                    # out_dir should be suffixed with sample_set such that out dirs do not overlap 
+                    # and to mark that this is a new algorithm
                     # sample_set's spaces are replaced with underscores
-                    sample_out_dir="${out_dir}/$(echo "$sample_set" | tr ' ' '_')"
+                    sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
 
                     call_duaIterate "$sample_out_dir/$repetion_count" "${dua_args[@]}" sample-router--samples "$sample_set"
                 done
