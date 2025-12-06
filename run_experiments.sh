@@ -15,6 +15,7 @@ start_time=$(date '+%Y-%m-%d %H:%M:%S')
 declare message=""
 declare fastdta_samples=""
 declare sumo_samples=""
+declare repetitions=1
 
 # --- Function to display usage ---
 usage() {
@@ -23,7 +24,7 @@ usage() {
     echo "Required arguments:"
     echo "  --spack-env <env>      Specify the spack environment to use."
     echo "  --experiment <file>    Specify the experiment file to run."
-    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<begin>;<end>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>;<seed>\n]"
+    echo "                         Format: [<input_dir>;<prefix>;<trip_file_name>;<begin>;<end>;<aggregation>;<begin>;<end>;<convergence_deviation>;<convergence_relative-gap>;<last_iter>\n]"
     echo ""
     echo "Routing algorithm options (at least one is required):"
     echo "  --cch                                  Run all experiments with CCH routing."
@@ -40,6 +41,7 @@ usage() {
     echo "  --output <path>        Specify the base output directory (default: current directory)."
     echo "  --message, -m <text>   Add a custom message to the experiment README.md file."
     echo "  --debug                Build and use the debug target instead of release."
+    echo "  --repeat <N >= 1>           Repeat each experiment N times using a different seed. (default: 1)"
     exit 1
 }
 
@@ -129,6 +131,10 @@ while [[ $# -gt 0 ]]; do
         --a-star)
         routing_algorithms+=("astar")
         shift
+        ;;
+         --repeat)
+        repetitions="$2"
+        shift 2
         ;;
         *)
         echo "Unknown option: $1"
@@ -234,116 +240,125 @@ cp ~/rust_road_router/fastdta/duaIterate.py "$SUMO_HOME"/tools/assign
 
 # --- Run experiments ---
 line_index=0
-while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation convergence_deviation convergence_relgap last_iter seed || [[ -n "$in_dir" ]]; do
+while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation convergence_deviation convergence_relgap last_iter || [[ -n "$in_dir" ]]; do
     # Skip empty or commented lines
     [[ -z "$in_dir" || "$in_dir" =~ ^#.* ]] && continue
 
+    
     net_file="$in_dir/$prefix.net.xml"
     trips_file="$in_dir/$trip_file_name"
-    experiment_out_dir="$base_output_dir/$line_index"
+    
+    repetion_count=1
 
-    for algorithm in "${routing_algorithms[@]}"; do
-        # Use lowercase for directory name
-        algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
-        out_dir="$experiment_out_dir/$algo_dir_name"
+    while [ $repetion_count -le $repetitions ]; do
+
+        experiment_out_dir="$base_output_dir/$line_index_$repetion_count"
+        seed=$repetion_count
+
+        for algorithm in "${routing_algorithms[@]}"; do
+            # Use lowercase for directory name
+            algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
+            out_dir="$experiment_out_dir/$algo_dir_name"
 
 
-        # Common arguments for duaIterate.py
-        declare -a dua_args=(
-            -n "$net_file"
-            -t "$trips_file"
-            --mesosim --aggregation "$aggregation" --begin $begin --end $end -l $last_iter
-            --routing-algorithm "$algorithm"
-            --max-convergence-deviation "$convergence_deviation"
-            --relative-gap "$convergence_relgap"
-            --logit
-            --logitbeta
-            1.0
-            --logitgamma
-            1.0
-            --logittheta
-            1.0
-            -s
-            duarouter--weights.interpolate
-            duarouter--seed $seed
-            sumo--ignore-route-errors
-            sumo--aggregate-warnings 5
-            sumo--time-to-teleport.disconnected 0
-            sumo--seed $seed
-            sumo--step-length 0.1
-            sumo--threads $(nproc)
-        )
-
-        # Add preprocessor args only for CCH
-        if [ "$algorithm" = "CCH" ]; then
-            dua_args+=(
-                cch-preprocessor--input-prefix "$prefix"
-                cch-preprocessor--input-dir "$in_dir"
-                cch-router--seed $seed
-            )
-        fi
-        # Add preprocessor args only for dijkstra-rust
-        if [ "$algorithm" = "dijkstra-rust" ]; then
-            dua_args+=(
-                dijkstra-preprocessor--input-prefix "$prefix"
-                dijkstra-preprocessor--input-dir "$in_dir"
-                dijkstra-router--seed $seed
-            )
-        fi
-
-        # any other algorithm uses relative-gap-calculator: 
-        if [ "$algorithm" != "fastdta" ] && [ "$algorithm" != "CCH" ] && [ "$algorithm" != "dijkstra-rust" ]; then
-            dua_args+=(
-                relative-gap--net-prefix "$prefix"
-                relative-gap--net-dir "$in_dir"
-            )
-        fi
-
-        # Add preprocessor args only for fastdta
-        if [ "$algorithm" = "fastdta" ]; then
-
-            dua_args+=(
-                fastdta-preprocessor--input-prefix "$prefix"
-                fastdta-preprocessor--input-dir "$in_dir"
-                fastdta-router--seed $seed
+            # Common arguments for duaIterate.py
+            declare -a dua_args=(
+                -n "$net_file"
+                -t "$trips_file"
+                --mesosim --aggregation "$aggregation" --begin $begin --end $end -l $last_iter
+                --routing-algorithm "$algorithm"
+                --max-convergence-deviation "$convergence_deviation"
+                --relative-gap "$convergence_relgap"
+                --logit
+                --logitbeta
+                1.0
+                --logitgamma
+                1.0
+                --logittheta
+                1.0
+                -s
+                duarouter--weights.interpolate
+                duarouter--seed $seed
+                sumo--ignore-route-errors
+                sumo--aggregate-warnings 5
+                sumo--time-to-teleport.disconnected 0
+                sumo--seed $seed
+                sumo--step-length 0.1
+                sumo--threads $(nproc)
             )
 
-            declare -a fastdta_sample_sets
-            parse_samples "$fastdta_samples" fastdta_sample_sets
-            for sample_set in "${fastdta_sample_sets[@]}"; do
-                # out_dir should be suffixed with sample_set such that out dirs do not overlap
-                # sample_set's spaces are replaced with underscores
-                sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
-                call_duaIterate "$sample_out_dir" "${dua_args[@]}" fastdta-router--samples "$sample_set"
-            done
+            # Add preprocessor args only for CCH
+            if [ "$algorithm" = "CCH" ]; then
+                dua_args+=(
+                    cch-preprocessor--input-prefix "$prefix"
+                    cch-preprocessor--input-dir "$in_dir"
+                    cch-router--seed $seed
+                )
+            fi
+            # Add preprocessor args only for dijkstra-rust
+            if [ "$algorithm" = "dijkstra-rust" ]; then
+                dua_args+=(
+                    dijkstra-preprocessor--input-prefix "$prefix"
+                    dijkstra-preprocessor--input-dir "$in_dir"
+                    dijkstra-router--seed $seed
+                )
+            fi
 
-            continue
-        fi 
+            # any other algorithm uses relative-gap-calculator: 
+            if [ "$algorithm" != "fastdta" ] && [ "$algorithm" != "CCH" ] && [ "$algorithm" != "dijkstra-rust" ]; then
+                dua_args+=(
+                    relative-gap--net-prefix "$prefix"
+                    relative-gap--net-dir "$in_dir"
+                )
+            fi
 
-        # Add preprocessor args only for sumo-sample
-        if [ "$algorithm" = "sumo-sample" ]; then
-            dua_args+=(
-                sample-preprocessor--input-prefix "$prefix"
-                sample-preprocessor--input-dir "$in_dir"
-                sample-router--seed $seed
-                sample-router--aggregation "$aggregation"
-            )
+            # Add preprocessor args only for fastdta
+            if [ "$algorithm" = "fastdta" ]; then
+
+                dua_args+=(
+                    fastdta-preprocessor--input-prefix "$prefix"
+                    fastdta-preprocessor--input-dir "$in_dir"
+                    fastdta-router--seed $seed
+                )
+
+                declare -a fastdta_sample_sets
+                parse_samples "$fastdta_samples" fastdta_sample_sets
+                for sample_set in "${fastdta_sample_sets[@]}"; do
+                    # out_dir should be suffixed with sample_set such that out dirs do not overlap
+                    # sample_set's spaces are replaced with underscores
+                    sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
+                    call_duaIterate "$sample_out_dir" "${dua_args[@]}" fastdta-router--samples "$sample_set"
+                done
+
+                continue
+            fi 
+
+            # Add preprocessor args only for sumo-sample
+            if [ "$algorithm" = "sumo-sample" ]; then
+                dua_args+=(
+                    sample-preprocessor--input-prefix "$prefix"
+                    sample-preprocessor--input-dir "$in_dir"
+                    sample-router--seed $seed
+                    sample-router--aggregation "$aggregation"
+                )
+                
+                declare -a sumo_sample_sets
+                parse_samples "$sumo_samples" sumo_sample_sets
+                for sample_set in "${sumo_sample_sets[@]}"; do
+                    # out_dir should be suffixed with sample_set such that out dirs do not overlap
+                    # sample_set's spaces are replaced with underscores
+                    sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
+
+                    call_duaIterate "$sample_out_dir" "${dua_args[@]}" sample-router--samples "$sample_set"
+                done
+
+                continue
+
+            fi
             
-            declare -a sumo_sample_sets
-            parse_samples "$sumo_samples" sumo_sample_sets
-            for sample_set in "${sumo_sample_sets[@]}"; do
-                # out_dir should be suffixed with sample_set such that out dirs do not overlap
-                # sample_set's spaces are replaced with underscores
-                sample_out_dir="${out_dir}_$(echo "$sample_set" | tr ' ' '_')"
-
-                call_duaIterate "$sample_out_dir" "${dua_args[@]}" sample-router--samples "$sample_set"
-            done
-
-            continue
-
-        fi
-        
-        call_duaIterate "$out_dir" "${dua_args[@]}"
+            call_duaIterate "$out_dir" "${dua_args[@]}"
+        done
+        ((repetion_count++))
     done
     ((line_index++))
 done < "$experiment"
