@@ -264,7 +264,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
 
             # Use lowercase for directory name
             algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
-            out_dir="$experiment_out_dir/$algo_dir_name/"
+            out_dir="$experiment_out_dir/$algo_dir_name"
 
             # Common arguments for duaIterate.py
             declare -a dua_args=(
