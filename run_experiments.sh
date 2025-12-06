@@ -252,14 +252,13 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
 
     while [ $repetion_count -le $repetitions ]; do
 
-        experiment_out_dir="$base_output_dir/$line_index_$repetion_count"
+        experiment_out_dir="$base_output_dir/$line_index/$repetion_count"
         seed=$repetion_count
 
         for algorithm in "${routing_algorithms[@]}"; do
             # Use lowercase for directory name
             algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
             out_dir="$experiment_out_dir/$algo_dir_name"
-
 
             # Common arguments for duaIterate.py
             declare -a dua_args=(
