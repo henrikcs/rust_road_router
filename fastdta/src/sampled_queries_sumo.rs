@@ -54,8 +54,6 @@ pub fn get_paths_by_samples_with_sumo_keep_routes(
     let cch = get_cch(input_dir, &graph);
 
     for (batch_idx, sample) in samples.iter().enumerate() {
-        logger.log(&format!("Processing batch {}/{}", batch_idx + 1, samples.len()), 0);
-
         // Customize and route current sample
         let (customized_graph, duration) = measure(|| customize(&cch, &graph));
         logger.log(&format!("cch customization (batch {batch_idx})"), duration.as_nanos());
