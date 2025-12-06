@@ -248,17 +248,20 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
     net_file="$in_dir/$prefix.net.xml"
     trips_file="$in_dir/$trip_file_name"
     
-    repetion_count=1
 
-    while [ $repetion_count -le $repetitions ]; do
+    for algorithm in "${routing_algorithms[@]}"; do
 
-        experiment_out_dir="$base_output_dir/$line_index/$repetion_count"
-        seed=$repetion_count
+        repetion_count=0
 
-        for algorithm in "${routing_algorithms[@]}"; do
+        while [ $repetion_count -lt $repetitions ]; do
+            ((repetion_count++))
+
+            experiment_out_dir="$base_output_dir/$line_index"
+            seed=$repetion_count
+
             # Use lowercase for directory name
             algo_dir_name=$(echo "$algorithm" | tr '[:upper:]' '[:lower:]')
-            out_dir="$experiment_out_dir/$algo_dir_name"
+            out_dir="$experiment_out_dir/$algo_dir_name/$repetion_count"
 
             # Common arguments for duaIterate.py
             declare -a dua_args=(
@@ -356,8 +359,8 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
             fi
             
             call_duaIterate "$out_dir" "${dua_args[@]}"
+
         done
-        ((repetion_count++))
     done
     ((line_index++))
 done < "$experiment"
