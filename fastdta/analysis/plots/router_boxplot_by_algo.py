@@ -1,7 +1,8 @@
-# plots/simulation_boxplot.py
+# plots/router_boxplot_by_algo.py
 """
-For each instance: boxplot of simulation times over all repetitions/iterations,
+For each instance: boxplot of routing times over all repetitions/iterations,
 one boxplot per algorithm.
+First iteration is ignored in routing time measurements.
 """
 from __future__ import annotations
 from typing import Dict, List
@@ -10,25 +11,25 @@ import matplotlib.pyplot as plt
 from common import (
     DataModel,
     get_experiments_by_instance,
-    get_simulation_times,
+    get_routing_times,
 )
 from .base import Plot, register_plot, ensure_outdir
 from .styles import style_for_algo, get_all_algorithm_colors
 
 
 @register_plot
-class SimulationBoxplot(Plot):
+class RouterBoxplotByAlgo(Plot):
     @staticmethod
     def key() -> str:
-        return "simulation-boxplot"
+        return "router-boxplot-by-algo"
 
     @staticmethod
     def display_name() -> str:
-        return "Simulation duration by algorithm (boxplot per instance)"
+        return "Router duration by algorithm (boxplot per instance)"
 
     @staticmethod
     def filename_suffix() -> str:
-        return "simulation-boxplot"
+        return "router-boxplot-by-algo"
 
     def run(self, dm: DataModel, out_dir: str) -> None:
         ensure_outdir(out_dir)
@@ -42,10 +43,10 @@ class SimulationBoxplot(Plot):
             if not instance:
                 continue
 
-            # Collect simulation times per algorithm (all repetitions combined)
+            # Collect routing times per algorithm (all repetitions combined)
             algo_times: Dict[str, List[float]] = {}
             for exp in exps:
-                times = get_simulation_times(exp, skip_first=True)
+                times = get_routing_times(exp, skip_first=True)
                 if times:
                     algo_times.setdefault(exp.algorithm, []).extend(times)
 
@@ -69,9 +70,9 @@ class SimulationBoxplot(Plot):
 
             # Style
             ax.set_title(
-                f"Simulation Duration by Algorithm\n{instance.prefix} - {instance.trip_file_name}")
+                f"Router Duration by Algorithm\n{instance.prefix} - {instance.trip_file_name}")
             ax.set_xlabel("Algorithm")
-            ax.set_ylabel("Simulation Duration (s)")
+            ax.set_ylabel("Router Duration (s)")
             ax.set_xticks(range(1, len(algos) + 1))
             ax.set_xticklabels(algos, rotation=45, ha="right")
             ax.grid(True, axis="y", linestyle="--", alpha=0.4)

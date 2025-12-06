@@ -1,7 +1,7 @@
-# plots/rel_dev_lines.py
+# plots/rel_gap_averaged.py
 """
-For each instance: plot relative travel time deviation over iterations,
-one line per algorithm (averaged over repetitions).
+For each instance: plot relative gap progress over iterations,
+averaged over repetitions, one line per algorithm.
 """
 from __future__ import annotations
 from typing import Dict, List
@@ -12,33 +12,25 @@ import numpy as np
 from common import (
     DataModel,
     get_experiments_by_instance,
+    get_relative_gaps,
 )
 from .base import Plot, register_plot, ensure_outdir
 from .styles import style_for_algo, get_all_algorithm_colors, MS, LW
 
 
-def get_rel_deviations(exp) -> Dict[int, float]:
-    """Get relative travel time deviations by iteration."""
-    devs = {}
-    for step in exp.steps:
-        if step.relative_travel_time_deviation is not None:
-            devs[step.iteration] = step.relative_travel_time_deviation
-    return devs
-
-
 @register_plot
-class RelDevLines(Plot):
+class RelGapAveraged(Plot):
     @staticmethod
     def key() -> str:
-        return "rel-dev-lines"
+        return "rel-gap-averaged"
 
     @staticmethod
     def display_name() -> str:
-        return "Relative travel time deviation (averaged over repetitions)"
+        return "Relative gap by iteration (averaged over repetitions, per algorithm)"
 
     @staticmethod
     def filename_suffix() -> str:
-        return "rel-dev-lines"
+        return "rel-gap-averaged"
 
     def run(self, dm: DataModel, out_dir: str) -> None:
         ensure_outdir(out_dir)
@@ -52,28 +44,29 @@ class RelDevLines(Plot):
             if not instance:
                 continue
 
-            # Collect deviations per algorithm -> iteration -> list of values (for averaging)
-            algo_iter_devs: Dict[str, Dict[int, List[float]]
+            # Collect gaps per algorithm -> iteration -> list of values (for averaging)
+            algo_iter_gaps: Dict[str, Dict[int, List[float]]
                                  ] = defaultdict(lambda: defaultdict(list))
 
             for exp in exps:
-                devs = get_rel_deviations(exp)
-                for iteration, dev in devs.items():
-                    algo_iter_devs[exp.algorithm][iteration].append(dev)
+                gaps = get_relative_gaps(exp)
+                for iteration, gap in gaps.items():
+                    algo_iter_gaps[exp.algorithm][iteration].append(gap)
 
-            if not algo_iter_devs:
+            if not algo_iter_gaps:
                 continue
 
             # Create figure
             fig, ax = plt.subplots(figsize=(8, 5))
 
             max_iter = 0
-            for algorithm in sorted(algo_iter_devs.keys()):
-                iter_devs = algo_iter_devs[algorithm]
+            for algorithm in sorted(algo_iter_gaps.keys()):
+                iter_gaps = algo_iter_gaps[algorithm]
 
-                # Calculate average for each iteration
-                iters = sorted(iter_devs.keys())
-                avg_values = [np.mean(iter_devs[i]) for i in iters]
+                # Calculate average and std for each iteration
+                iters = sorted(iter_gaps.keys())
+                avg_values = [np.mean(iter_gaps[i]) for i in iters]
+                std_values = [np.std(iter_gaps[i]) for i in iters]
 
                 max_iter = max(max_iter, max(iters) if iters else 0)
 
@@ -81,6 +74,7 @@ class RelDevLines(Plot):
                 color = algo_style["color"]
                 marker = algo_style["marker"]
 
+                # Plot mean line
                 ax.plot(
                     iters, avg_values,
                     label=algorithm,
@@ -90,14 +84,21 @@ class RelDevLines(Plot):
                     linewidth=LW,
                 )
 
-            # Use log scale for y-axis
-            ax.set_yscale("log")
+                # Plot std deviation as shaded area
+                if len(avg_values) > 0:
+                    ax.fill_between(
+                        iters,
+                        [a - s for a, s in zip(avg_values, std_values)],
+                        [a + s for a, s in zip(avg_values, std_values)],
+                        alpha=0.2,
+                        color=color
+                    )
 
             # Style
             ax.set_title(
-                f"Relative Travel Time Deviation\n{instance.prefix} - {instance.trip_file_name}")
+                f"Relative Gap Progress (averaged)\n{instance.prefix} - {instance.trip_file_name}")
             ax.set_xlabel("Iteration")
-            ax.set_ylabel("Relative Travel Time Deviation")
+            ax.set_ylabel("Relative Gap")
             ax.set_xlim(0, max(1, max_iter))
             ax.grid(True, linestyle="--", alpha=0.4)
             ax.legend(title="Algorithm", fontsize=8, loc='best')
