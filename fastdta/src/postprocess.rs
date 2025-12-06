@@ -121,8 +121,13 @@ fn postprocess(
         let old_alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
 
         if !skip_relative_gap {
+            let new_travel_times: Vec<FlWeight> = shortest_paths
+                .iter()
+                .enumerate()
+                .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
+                .collect();
             // get choices from old_alternative_paths to calculate relative gap
-            set_relative_gap_with_previous_paths(&old_alternative_paths.get_chosen_paths(), graph, &input_dir, travel_times, departures);
+            set_relative_gap_with_previous_paths(&old_alternative_paths.get_chosen_paths(), graph, &input_dir, &new_travel_times, departures);
         }
 
         // merge previous alternatives with current shortest paths

@@ -69,7 +69,7 @@ fn main() {
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
         let cch = get_cch(&temp_cch_dir, &graph);
         let customized_graph = customize(&cch, &graph);
-        let (best_paths, best_travel_times, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
+        let (best_paths, _best_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
         println!("Reading routes from file {}", routes_path.display());
@@ -77,7 +77,14 @@ fn main() {
 
         let experienced_tt = get_experienced_travel_times_from_routes(&routes_document_root, &query_ids, &graph, &edge_id_to_index);
 
-        let best_tt: Vec<SumoTravelTime> = best_travel_times.par_iter().map(|&tt| tt.into()).collect();
+        let best_tt: Vec<SumoTravelTime> = best_paths
+            .par_iter()
+            .enumerate()
+            .map(|(i, path)| {
+                let tt = graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path); // departure time does not matter for best path travel time
+                tt.into()
+            })
+            .collect();
 
         print_network_travel_time(&experienced_tt);
         print_highest_differences(&best_tt, &experienced_tt, &best_paths, &routes_document_root.vehicles, &query_ids, &edge_ids);

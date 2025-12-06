@@ -14,6 +14,7 @@ use fastdta::sampled_queries::{get_paths_by_samples, get_paths_by_samples_with_k
 use fastdta::sampler::sample;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
+use rust_road_router::datastr::graph::floating_time_dependent::{FlWeight, Timestamp};
 use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
 
@@ -106,7 +107,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let (_, graph, cch) = get_graph_data_for_cch(input_dir, iteration);
             let customized_graph = customize(&cch, &graph);
 
-            let (_, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
+            let (shortest_paths, _, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
+
+            let shortest_travel_times: Vec<FlWeight> = shortest_paths
+                .iter()
+                .enumerate()
+                .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
+                .collect();
 
             let query_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
 
