@@ -183,7 +183,6 @@ impl AlternativePathsForDTA {
     }
 
     /// merges the previous alternatives with the current shortest paths
-    /// adds new paths without computing travel times yet (will be done in perform_choice_model)
     pub fn update_alternatives_with_new_paths(
         &self,
         shortest_paths: &Vec<Vec<EdgeId>>,
