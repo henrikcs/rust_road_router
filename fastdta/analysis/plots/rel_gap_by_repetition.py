@@ -84,6 +84,7 @@ class RelGapByRepetition(Plot):
                 f"Relative Gap Progress\n{instance.prefix} - {algorithm}")
             ax.set_xlabel("Iteration")
             ax.set_ylabel("Relative Gap")
+            ax.set_yscale('log')
             ax.set_xlim(0, max(1, max_iter))
             ax.grid(True, linestyle="--", alpha=0.4)
             ax.legend(title="Repetition", fontsize=8)
