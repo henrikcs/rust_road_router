@@ -143,7 +143,7 @@ fn process_path<G: TravelTimeGraph>(
             }
         }
 
-        for (interval_idx, interval) in intervals.iter_mut().skip(bin_search_res).enumerate() {
+        for (_interval_idx, interval) in intervals.iter_mut().skip(bin_search_res).enumerate() {
             // Skip periods that start after or at our travel ends
             if current_time >= arrival_time || interval.begin >= f64::from(arrival_time) {
                 if let Some(interval) = intervals.get_mut(bin_search_res) {
@@ -165,10 +165,10 @@ fn process_path<G: TravelTimeGraph>(
                 let interval_begin = interval.begin;
 
                 interval.get_edge_mut(edge_ids[edge_id as usize].as_str()).map(|edge| {
-                    let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
-                    let previous_tt = edge.overlap_traveltime;
-                    let previous_density = edge.lane_density.unwrap_or(edge.density.unwrap_or(0.0));
-                    let previous_estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
+                    // let previous_sampled = edge.sampled_seconds.unwrap_or(0.0);
+                    // let previous_tt = edge.overlap_traveltime;
+                    // let previous_density = edge.lane_density.unwrap_or(edge.density.unwrap_or(0.0));
+                    // let previous_estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
                     edge.sampled_seconds = Some(f64::max(edge.sampled_seconds.unwrap_or(0.0) + sign * overlap_duration, 0.0));
 
                     let estimated_density = edge.get_lane_density(interval_duration, edge_lengths[edge_id as usize], lanes[edge_id as usize]);
@@ -185,26 +185,26 @@ fn process_path<G: TravelTimeGraph>(
                         f64::min(tt, SUMO_MAX_TRAVEL_TIME)
                     });
 
-                    if edge_ids[edge_id as usize] == "a2" && interval_begin == 1550.0 {
-                        println!(
-                            "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} (est.: {}) -> {}",
-                            edge_ids[edge_id as usize],
-                            edge_lengths[edge_id as usize],
-                            interval_begin,
-                            previous_sampled,
-                            edge.sampled_seconds,
-                            previous_tt,
-                            estimated_tt,
-                            previous_density,
-                            previous_estimated_density,
-                            estimated_density
-                        );
-                        if estimated_tt < 0.0 {
-                            let tm = traffic_models.get(edge_id as usize).unwrap();
-                            tm.debug();
-                            panic!("Estimated travel time for edge {} is negative: {}", edge_ids[edge_id as usize], estimated_tt);
-                        }
-                    }
+                    // if edge_ids[edge_id as usize] == "a2" && interval_begin == 1550.0 {
+                    //     println!(
+                    //         "Update edge {} (l={}) at time {}: sampled_seconds: {:?} -> {:?}, traveltime: {:?} -> {:?}, density: {} (est.: {}) -> {}",
+                    //         edge_ids[edge_id as usize],
+                    //         edge_lengths[edge_id as usize],
+                    //         interval_begin,
+                    //         previous_sampled,
+                    //         edge.sampled_seconds,
+                    //         previous_tt,
+                    //         estimated_tt,
+                    //         previous_density,
+                    //         previous_estimated_density,
+                    //         estimated_density
+                    //     );
+                    //     if estimated_tt < 0.0 {
+                    //         let tm = traffic_models.get(edge_id as usize).unwrap();
+                    //         tm.debug();
+                    //         panic!("Estimated travel time for edge {} is negative: {}", edge_ids[edge_id as usize], estimated_tt);
+                    //     }
+                    // }
 
                     graph.set_weight_for_edge_at_time(edge_id, Timestamp::new(interval_begin), FlWeight::new(estimated_tt));
                     edge.overlap_traveltime = Some(estimated_tt);
@@ -217,7 +217,6 @@ fn process_path<G: TravelTimeGraph>(
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,7 +267,7 @@ mod tests {
 
     #[test]
     fn test_same_paths_zero_deltas() {
-        // Test case 1: old_paths = new_paths -> all deltas should be zero
+        // Test case 1: old_paths = new_paths -> all sampled_seconds should remain unchanged
         let mut mock_graph = MockTravelTimeGraph::new(3);
         mock_graph.set_travel_time(0, FlWeight::new(5.0));
         mock_graph.set_travel_time(1, FlWeight::new(3.0));
@@ -278,17 +277,42 @@ mod tests {
         let old_paths: Vec<&Vec<u32>> = old_paths_owned.iter().collect();
         let new_paths = vec![vec![0], vec![1], vec![2]]; // Same as old_paths
         let departures = vec![Timestamp::new(0.0), Timestamp::new(10.0), Timestamp::new(20.0)];
-        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let free_flow_tts = vec![1.0, 1.0, 1.0];
         let edge_lanes = vec![1, 1, 1];
+
+        // Create edges for each interval with initial sampled_seconds values
+        use conversion::sumo::meandata::Edge;
+        let edges0 = vec![Edge {
+            id: "edge0".to_string(),
+            sampled_seconds: Some(10.0),
+            ..Default::default()
+        }];
+        let edges1 = vec![Edge {
+            id: "edge1".to_string(),
+            sampled_seconds: Some(10.0),
+            ..Default::default()
+        }];
+        let edges2 = vec![Edge {
+            id: "edge2".to_string(),
+            sampled_seconds: Some(10.0),
+            ..Default::default()
+        }];
+
         let mut intervals = vec![
-            Interval::create("0".to_string(), 0.0, 10.0, vec![]),
-            Interval::create("1".to_string(), 10.0, 20.0, vec![]),
-            Interval::create("2".to_string(), 20.0, 30.0, vec![]),
+            Interval::create("0".to_string(), 0.0, 10.0, edges0),
+            Interval::create("1".to_string(), 10.0, 20.0, edges1),
+            Interval::create("2".to_string(), 20.0, 30.0, edges2),
         ];
         let edge_ids = vec!["edge0".to_string(), "edge1".to_string(), "edge2".to_string()];
         let edge_lengths = vec![100.0, 150.0, 200.0];
+        let traffic_models: Vec<Box<dyn TrafficModel>> = vec![];
 
-        let result = get_edge_occupancy_deltas(
+        // Record initial sampled_seconds values
+        let initial_sampled0 = intervals[0].get_edge_mut("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let initial_sampled1 = intervals[1].get_edge_mut("edge1").unwrap().sampled_seconds.unwrap_or(0.0);
+        let initial_sampled2 = intervals[2].get_edge_mut("edge2").unwrap().sampled_seconds.unwrap_or(0.0);
+
+        adjust_weights_in_graph_by_following_paths(
             &mut mock_graph,
             &old_paths,
             &new_paths,
@@ -297,20 +321,38 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &traffic_models,
             &edge_lanes,
         );
 
-        // All deltas should be zero since we subtract and add the same values
-        for period_deltas in result {
-            for delta in period_deltas {
-                assert!((delta.abs()) < 1e-10, "Expected zero delta, got {}", delta);
-            }
-        }
+        // All sampled_seconds should be unchanged since we subtract and add the same values
+        let final_sampled0 = intervals[0].get_edge_mut("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let final_sampled1 = intervals[1].get_edge_mut("edge1").unwrap().sampled_seconds.unwrap_or(0.0);
+        let final_sampled2 = intervals[2].get_edge_mut("edge2").unwrap().sampled_seconds.unwrap_or(0.0);
+
+        assert!(
+            (final_sampled0 - initial_sampled0).abs() < 1e-10,
+            "Edge 0 sampled_seconds should be unchanged: {} -> {}",
+            initial_sampled0,
+            final_sampled0
+        );
+        assert!(
+            (final_sampled1 - initial_sampled1).abs() < 1e-10,
+            "Edge 1 sampled_seconds should be unchanged: {} -> {}",
+            initial_sampled1,
+            final_sampled1
+        );
+        assert!(
+            (final_sampled2 - initial_sampled2).abs() < 1e-10,
+            "Edge 2 sampled_seconds should be unchanged: {} -> {}",
+            initial_sampled2,
+            final_sampled2
+        );
     }
 
     #[test]
     fn test_different_paths_nonzero_deltas() {
-        // Test case 2: old_paths != new_paths -> deltas sum up accordingly
+        // Test case 2: old_paths != new_paths -> sampled_seconds changes accordingly
         let mut mock_graph = MockTravelTimeGraph::new(3);
         mock_graph.set_travel_time(0, FlWeight::new(5.0));
         mock_graph.set_travel_time(1, FlWeight::new(3.0));
@@ -329,8 +371,9 @@ mod tests {
                 traveltime: None,
                 density: None,
                 speed: None,
-                sampled_seconds: Some(0.0),
-                lanedensity: None,
+                sampled_seconds: Some(5.0), // Pre-populate with value equal to travel time
+                lane_density: None,
+                ..Default::default()
             },
             Edge {
                 id: "edge1".to_string(),
@@ -338,7 +381,8 @@ mod tests {
                 density: None,
                 speed: None,
                 sampled_seconds: Some(0.0),
-                lanedensity: None,
+                lane_density: None,
+                ..Default::default()
             },
             Edge {
                 id: "edge2".to_string(),
@@ -346,16 +390,18 @@ mod tests {
                 density: None,
                 speed: None,
                 sampled_seconds: Some(0.0),
-                lanedensity: None,
+                lane_density: None,
+                ..Default::default()
             },
         ];
-        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let free_flow_tts = vec![1.0, 1.0, 1.0];
         let mut intervals = vec![Interval::create("0".to_string(), 0.0, 10.0, edges)];
         let edge_ids = vec!["edge0".to_string(), "edge1".to_string(), "edge2".to_string()];
         let edge_lengths = vec![100.0, 150.0, 200.0];
         let edge_lanes = vec![1, 1, 1];
+        let traffic_models: Vec<Box<dyn TrafficModel>> = vec![];
 
-        let result = get_edge_occupancy_deltas(
+        adjust_weights_in_graph_by_following_paths(
             &mut mock_graph,
             &old_paths,
             &new_paths,
@@ -364,15 +410,21 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &traffic_models,
             &edge_lanes,
         );
 
-        // Edge 0 should have negative delta (old path removed)
-        assert!(result[0][0] < 0.0, "Edge 0 should have negative delta");
-        // Edge 1 should have positive delta (new path added)
-        assert!(result[0][1] > 0.0, "Edge 1 should have positive delta");
-        // Edge 2 should have zero delta (not used)
-        assert!((result[0][2].abs()) < 1e-10, "Edge 2 should have zero delta");
+        // Edge 0 should have decreased sampled_seconds (old path removed)
+        let edge0_sampled = intervals[0].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        assert!(edge0_sampled < 5.0, "Edge 0 should have decreased sampled_seconds, got {}", edge0_sampled);
+
+        // Edge 1 should have increased sampled_seconds (new path added)
+        let edge1_sampled = intervals[0].get_edge("edge1").unwrap().sampled_seconds.unwrap_or(0.0);
+        assert!(edge1_sampled > 0.0, "Edge 1 should have positive sampled_seconds, got {}", edge1_sampled);
+
+        // Edge 2 should have zero sampled_seconds (not used)
+        let edge2_sampled = intervals[0].get_edge("edge2").unwrap().sampled_seconds.unwrap_or(0.0);
+        assert!(edge2_sampled.abs() < 1e-10, "Edge 2 should have zero sampled_seconds, got {}", edge2_sampled);
     }
 
     #[test]
@@ -394,9 +446,10 @@ mod tests {
         let edge_ids = vec!["edge0".to_string()];
         let edge_lengths = vec![100.0];
         let edge_lanes = vec![1];
+        let traffic_models: Vec<Box<dyn TrafficModel>> = vec![];
 
         // This should panic due to the assertion
-        get_edge_occupancy_deltas(
+        adjust_weights_in_graph_by_following_paths(
             &mut mock_graph,
             &old_paths,
             &new_paths,
@@ -405,6 +458,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &traffic_models,
             &edge_lanes,
         );
     }
@@ -428,7 +482,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
         let edges1 = vec![Edge {
             id: "edge0".to_string(),
@@ -436,7 +491,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
         let edges2 = vec![Edge {
             id: "edge0".to_string(),
@@ -444,7 +500,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
 
         let mut intervals = vec![
@@ -454,11 +511,11 @@ mod tests {
         ];
         let edge_ids = vec!["edge0".to_string()];
         let edge_lengths = vec![100.0];
-        let free_flow_tts = vec![0.0, 0.0, 0.0];
-
+        let free_flow_tts = vec![1.0];
         let edge_lanes = vec![1];
+        let traffic_models: Vec<Box<dyn TrafficModel>> = vec![];
 
-        let result = get_edge_occupancy_deltas(
+        adjust_weights_in_graph_by_following_paths(
             &mut mock_graph,
             &old_paths,
             &new_paths,
@@ -467,17 +524,26 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &traffic_models,
             &edge_lanes,
         );
 
-        // Edge 0 should have positive deltas in first two periods due to overlap
-        assert!(result[0][0] > 0.0, "Period 0 should have positive delta");
-        assert!(result[1][0] > 0.0, "Period 1 should have positive delta");
-        assert!((result[2][0].abs()) < 1e-10, "Period 2 should have zero delta");
+        // Edge 0 should have positive sampled_seconds in first two periods due to overlap
+        let sampled0 = intervals[0].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let sampled1 = intervals[1].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let sampled2 = intervals[2].get_edge("edge0").map(|e| e.sampled_seconds.unwrap_or(0.0)).unwrap_or(0.0);
 
-        // The total delta should equal the travel time
-        let total_delta = result[0][0] + result[1][0] + result[2][0];
-        assert!((total_delta - 15.0).abs() < 1e-10, "Total delta should equal travel time");
+        assert!(sampled0 > 0.0, "Period 0 should have positive sampled_seconds, got {}", sampled0);
+        assert!(sampled1 > 0.0, "Period 1 should have positive sampled_seconds, got {}", sampled1);
+        assert!(sampled2.abs() < 1e-10, "Period 2 should have zero sampled_seconds, got {}", sampled2);
+
+        // The total sampled_seconds should equal the travel time
+        let total_sampled = sampled0 + sampled1 + sampled2;
+        assert!(
+            (total_sampled - 15.0).abs() < 1e-10,
+            "Total sampled_seconds should equal travel time, got {}",
+            total_sampled
+        );
     }
 
     #[test]
@@ -499,7 +565,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
         let edges1 = vec![Edge {
             id: "edge0".to_string(),
@@ -507,7 +574,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
         let edges2 = vec![Edge {
             id: "edge0".to_string(),
@@ -515,10 +583,11 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
 
-        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let free_flow_tts = vec![1.0];
         let mut intervals = vec![
             Interval::create("0".to_string(), 0.0, 10.0, edges0),
             Interval::create("1".to_string(), 10.0, 20.0, edges1),
@@ -527,8 +596,9 @@ mod tests {
         let edge_ids = vec!["edge0".to_string()];
         let edge_lengths = vec![100.0];
         let edge_lanes = vec![1];
+        let traffic_models: Vec<Box<dyn TrafficModel>> = vec![];
 
-        let result = get_edge_occupancy_deltas(
+        adjust_weights_in_graph_by_following_paths(
             &mut mock_graph,
             &old_paths,
             &new_paths,
@@ -537,6 +607,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &traffic_models,
             &edge_lanes,
         );
 
@@ -545,16 +616,20 @@ mod tests {
         // Period 1 (10-20): overlap from t=10 to t=13 = 3 seconds
         // Period 2 (20-30): no overlap = 0 seconds
 
-        assert!((result[0][0] - 3.0).abs() < 1e-10, "Period 0 should have 3.0 delta, got {}", result[0][0]);
-        assert!((result[1][0] - 3.0).abs() < 1e-10, "Period 1 should have 3.0 delta, got {}", result[1][0]);
-        assert!((result[2][0].abs()) < 1e-10, "Period 2 should have zero delta, got {}", result[2][0]);
+        let sampled0 = intervals[0].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let sampled1 = intervals[1].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let sampled2 = intervals[2].get_edge("edge0").map(|e| e.sampled_seconds.unwrap_or(0.0)).unwrap_or(0.0);
+
+        assert!((sampled0 - 3.0).abs() < 1e-10, "Period 0 should have 3.0 sampled_seconds, got {}", sampled0);
+        assert!((sampled1 - 3.0).abs() < 1e-10, "Period 1 should have 3.0 sampled_seconds, got {}", sampled1);
+        assert!(sampled2.abs() < 1e-10, "Period 2 should have zero sampled_seconds, got {}", sampled2);
 
         // Total should equal travel time
-        let total_delta = result[0][0] + result[1][0] + result[2][0];
+        let total_sampled = sampled0 + sampled1 + sampled2;
         assert!(
-            (total_delta - 6.0).abs() < 1e-10,
-            "Total delta should equal travel time of 6.0, got {}",
-            total_delta
+            (total_sampled - 6.0).abs() < 1e-10,
+            "Total sampled_seconds should equal travel time of 6.0, got {}",
+            total_sampled
         );
     }
 
@@ -577,7 +652,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
         let edges1 = vec![Edge {
             id: "edge0".to_string(),
@@ -585,7 +661,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
         let edges2 = vec![Edge {
             id: "edge0".to_string(),
@@ -593,7 +670,8 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
         let edges3 = vec![Edge {
             id: "edge0".to_string(),
@@ -601,10 +679,11 @@ mod tests {
             density: None,
             speed: None,
             sampled_seconds: Some(0.0),
-            lanedensity: None,
+            lane_density: None,
+            ..Default::default()
         }];
 
-        let free_flow_tts = vec![0.0, 0.0, 0.0];
+        let free_flow_tts = vec![1.0];
         let mut intervals = vec![
             Interval::create("0".to_string(), 0.0, 10.0, edges0),
             Interval::create("1".to_string(), 10.0, 15.0, edges1),
@@ -614,8 +693,9 @@ mod tests {
         let edge_ids = vec!["edge0".to_string()];
         let edge_lengths = vec![100.0];
         let edge_lanes = vec![1];
+        let traffic_models: Vec<Box<dyn TrafficModel>> = vec![];
 
-        let result = get_edge_occupancy_deltas(
+        adjust_weights_in_graph_by_following_paths(
             &mut mock_graph,
             &old_paths,
             &new_paths,
@@ -624,6 +704,7 @@ mod tests {
             &edge_ids,
             &edge_lengths,
             &free_flow_tts,
+            &traffic_models,
             &edge_lanes,
         );
 
@@ -633,18 +714,22 @@ mod tests {
         // Period 2 (15-25): overlap from t=15 to t=22 = 7 seconds
         // Period 3 (25-35): no overlap = 0 seconds
 
-        assert!((result[0][0] - 6.0).abs() < 1e-10, "Period 0 should have 6.0 delta, got {}", result[0][0]);
-        assert!((result[1][0] - 5.0).abs() < 1e-10, "Period 1 should have 5.0 delta, got {}", result[1][0]);
-        assert!((result[2][0] - 7.0).abs() < 1e-10, "Period 2 should have 7.0 delta, got {}", result[2][0]);
-        assert!((result[3][0].abs()) < 1e-10, "Period 3 should have zero delta, got {}", result[3][0]);
+        let sampled0 = intervals[0].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let sampled1 = intervals[1].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let sampled2 = intervals[2].get_edge("edge0").unwrap().sampled_seconds.unwrap_or(0.0);
+        let sampled3 = intervals[3].get_edge("edge0").map(|e| e.sampled_seconds.unwrap_or(0.0)).unwrap_or(0.0);
+
+        assert!((sampled0 - 6.0).abs() < 1e-10, "Period 0 should have 6.0 sampled_seconds, got {}", sampled0);
+        assert!((sampled1 - 5.0).abs() < 1e-10, "Period 1 should have 5.0 sampled_seconds, got {}", sampled1);
+        assert!((sampled2 - 7.0).abs() < 1e-10, "Period 2 should have 7.0 sampled_seconds, got {}", sampled2);
+        assert!(sampled3.abs() < 1e-10, "Period 3 should have zero sampled_seconds, got {}", sampled3);
 
         // Total should equal travel time
-        let total_delta = result[0][0] + result[1][0] + result[2][0] + result[3][0];
+        let total_sampled = sampled0 + sampled1 + sampled2 + sampled3;
         assert!(
-            (total_delta - 18.0).abs() < 1e-10,
-            "Total delta should equal travel time of 18.0, got {}",
-            total_delta
+            (total_sampled - 18.0).abs() < 1e-10,
+            "Total sampled_seconds should equal travel time of 18.0, got {}",
+            total_sampled
         );
     }
 }
-*/
