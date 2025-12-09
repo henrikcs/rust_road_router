@@ -373,6 +373,7 @@
     },
     {
       "label": "Run DTA (capa; SUMO)",
+      "hide": true,
       "type": "shell",
       "command": "python",
       "dependsOn": [
@@ -871,6 +872,7 @@
     },
     {
       "label": "Run DTA (capa2; SUMO)",
+      "hide": true,
       "type": "shell",
       "command": "python",
       "dependsOn": [
