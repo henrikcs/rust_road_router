@@ -6,7 +6,7 @@ use conversion::{
 };
 use rand::{
     SeedableRng,
-    distr::{Bernoulli, Distribution, weighted::WeightedIndex},
+    distr::{Distribution, weighted::WeightedIndex},
     rngs::StdRng,
 };
 use rust_road_router::{
