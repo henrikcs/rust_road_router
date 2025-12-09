@@ -159,6 +159,22 @@ impl AlternativePathsForDTA {
         }
     }
 
+    /// Initialize an empty AlternativePathsForDTA with no alternatives for each query.
+    /// This is useful when starting from scratch (iteration 0) and paths will be added
+    /// via update_alternatives_with_new_paths.
+    pub fn init_empty(num_queries: usize) -> Self {
+        AlternativePathsForDTA {
+            alternatives_in_query: (0..num_queries)
+                .map(|_| AlternativePaths {
+                    paths: vec![],
+                    costs: vec![],
+                    probabilities: vec![],
+                    choice: 0,
+                })
+                .collect(),
+        }
+    }
+
     pub fn init(shortest_paths: &Vec<Vec<u32>>, travel_times: &Vec<FlWeight>) -> Self {
         debug_assert_eq!(
             shortest_paths.len(),
@@ -241,9 +257,15 @@ impl AlternativePathsForDTA {
         let mut chosen_paths = vec![];
 
         for alternatives in self.alternatives_in_query.iter() {
-            let choice_index = alternatives.choice;
-            let chosen_path = &alternatives.paths[choice_index];
-            chosen_paths.push(&chosen_path.edges);
+            if alternatives.paths.is_empty() {
+                // Return reference to a static empty vec for empty alternatives
+                static EMPTY_VEC: Vec<EdgeId> = Vec::new();
+                chosen_paths.push(&EMPTY_VEC);
+            } else {
+                let choice_index = alternatives.choice;
+                let chosen_path = &alternatives.paths[choice_index];
+                chosen_paths.push(&chosen_path.edges);
+            }
         }
 
         chosen_paths

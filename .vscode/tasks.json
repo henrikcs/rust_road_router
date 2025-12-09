@@ -372,6 +372,69 @@
       ]
     },
     {
+      "label": "Run DTA (capa; ksp)",
+      "type": "shell",
+      "command": "python",
+      "dependsOn": [
+        "Build (debug)",
+        "Copy duaIterate.py to SUMO",
+        "Clean capa-ksp"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo/capa-ksp",
+        "env": {
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
+          "RUST_BACKTRACE": "1"
+        }
+      },
+      "args": [
+        "${workspaceFolder}/lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py",
+        "-n",
+        "${workspaceFolder}/import/sumo/capa/capa.net.xml",
+        "-t",
+        "${workspaceFolder}/import/sumo/capa/capa.sb.modified.trips.xml",
+        "--routing-algorithm",
+        "ksp",
+        "--mesosim",
+        "--aggregation",
+        "60",
+        "--begin",
+        "0",
+        "--end",
+        "3600",
+        "--relative-gap",
+        "0.0001",
+        "--max-convergence-deviation",
+        "0.0000001",
+        "--logit",
+        "--logitbeta",
+        "1.0",
+        "--logitgamma",
+        "1.0",
+        "--logittheta",
+        "1.0",
+        "-s",
+        "duarouter--precision",
+        "6",
+        "sumo--step-length",
+        "0.1",
+        "sumo--precision",
+        "6",
+        "ksp-preprocessor--input-prefix",
+        "capa",
+        "ksp-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/capa",
+        "ksp-router--samples",
+        "1 1 1",
+        "ksp-router--seed",
+        "42",
+        "relative-gap--net-prefix",
+        "capa",
+        "relative-gap--net-dir",
+        "${workspaceFolder}/import/sumo/capa"
+      ]
+    },
+    {
       "label": "Run DTA (capa; SUMO)",
       "hide": true,
       "type": "shell",
@@ -439,6 +502,7 @@
     },
     {
       "label": "Run DTA (capa; dijkstra)",
+      "hide": true,
       "type": "shell",
       "command": "python",
       "dependsOn": [
@@ -543,6 +607,72 @@
         "cch-preprocessor--input-prefix",
         "leopoldshafen",
         "cch-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/leopoldshafen"
+      ]
+    },
+    {
+      "label": "Run DTA (lh; ksp)",
+      "type": "shell",
+      "command": "python",
+      "dependsOn": [
+        "Build (debug)",
+        "Copy duaIterate.py to SUMO",
+        "Clean leopoldshafen-ksp"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo/leopoldshafen-ksp",
+        "env": {
+          "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
+          "RUST_BACKTRACE": "1"
+        }
+      },
+      "args": [
+        "${workspaceFolder}/lib/libsumo/lib/python3.12/site-packages/sumo/tools/assign/duaIterate.py",
+        "-n",
+        "${workspaceFolder}/import/sumo/leopoldshafen/leopoldshafen.net.xml",
+        "-t",
+        "${workspaceFolder}/import/sumo/leopoldshafen/leopoldshafen.am.trips.xml",
+        "--routing-algorithm",
+        "ksp",
+        "--mesosim",
+        "--aggregation",
+        "60",
+        "--begin",
+        "21600",
+        "--end",
+        "43200",
+        "--relative-gap",
+        "0.0001",
+        "--max-convergence-deviation",
+        "0.0000001",
+        "--logit",
+        "--logitbeta",
+        "1.0",
+        "--logitgamma",
+        "1.0",
+        "--logittheta",
+        "1.0",
+        "-s",
+        "duarouter--precision",
+        "6",
+        "sumo--step-length",
+        "0.1",
+        "sumo--precision",
+        "6",
+        "sumo--threads",
+        "8",
+        "sumo--ignore-route-errors",
+        "sumo--time-to-teleport.disconnected",
+        "0",
+        "ksp-preprocessor--input-prefix",
+        "leopoldshafen",
+        "ksp-preprocessor--input-dir",
+        "${workspaceFolder}/import/sumo/leopoldshafen",
+        "ksp-router--seed",
+        "42",
+        "relative-gap--net-prefix",
+        "leopoldshafen",
+        "relative-gap--net-dir",
         "${workspaceFolder}/import/sumo/leopoldshafen"
       ]
     },
@@ -1578,6 +1708,16 @@
       "hide": true
     },
     {
+      "label": "Clean capa-ksp",
+      "type": "shell",
+      "command": "rm",
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo"
+      },
+      "args": ["-rf", "capa-ksp/*"],
+      "hide": true
+    },
+    {
       "label": "Clean capa-sumo",
       "type": "shell",
       "command": "rm",
@@ -1605,6 +1745,16 @@
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
       "args": ["-rf", "leopoldshafen/*"],
+      "hide": true
+    },
+    {
+      "label": "Clean leopoldshafen-ksp",
+      "type": "shell",
+      "command": "rm",
+      "options": {
+        "cwd": "${workspaceFolder}/data/imported/sumo"
+      },
+      "args": ["-rf", "leopoldshafen-ksp/*"],
       "hide": true
     },
     {

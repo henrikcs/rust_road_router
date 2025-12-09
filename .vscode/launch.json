@@ -36,17 +36,17 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug Preprocess (example data)",
+      "name": "Debug Preprocess (capa-ksp)",
       "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
       "args": [
         "--input-dir",
-        "./import/sumo/example-data",
+        "./import/sumo/capa",
         "--input-prefix",
-        "example-data",
+        "capa",
         "--output-dir",
-        "./data/imported/sumo/example-data",
+        "./data/imported/sumo/capa-ksp",
         "--trips-file",
-        "${workspaceFolder}/import/sumo/example-data/example-data.trips.xml"
+        "${workspaceFolder}/import/sumo/capa/capa.sb.modified.trips.xml"
       ],
       "cwd": "${workspaceFolder}",
       "env": {
@@ -115,17 +115,15 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug Preprocess DTA (capa)",
-      "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
+      "name": "Debug Router DTA (capa-ksp)",
+      "program": "${workspaceFolder}/target/debug/sumo-ksp-router",
       "args": [
         "--input-dir",
-        "./import/sumo/capa",
+        "./data/imported/sumo/capa-ksp",
         "--input-prefix",
         "capa",
-        "--output-dir",
-        "./data/imported/sumo/capa",
-        "--trips-file",
-        "${workspaceFolder}/import/sumo/capa/capa.sb.modified.trips.xml"
+        "--iteration",
+        "0"
       ],
       "cwd": "${workspaceFolder}",
       "env": {
@@ -145,12 +143,8 @@
         "capa",
         "--iteration",
         "0",
-        "--vdf",
-        "bpr",
         "--samples",
-        "1",
-        "--samples",
-        "1999"
+        "1 1999"
       ],
       "cwd": "${workspaceFolder}",
       "env": {

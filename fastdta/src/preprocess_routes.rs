@@ -100,3 +100,68 @@ fn get_edge_ids(input_dir: &Path) -> Vec<String> {
         )
     })
 }
+
+/// Get graph data for KSP routing
+/// Similar to get_graph_data_for_fast_dta but specifically for KSP router
+/// In iteration 0: initializes traffic model with default values
+/// In iteration > 0: loads previous alternatives and traffic model data
+pub fn get_graph_data_for_ksp(
+    input_dir: &Path,
+    iteration: u32,
+    traffic_model_type: TrafficModelType,
+    keep_route_probability: f64,
+) -> (
+    Vec<String>,
+    (Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
+    MeandataDocumentRoot,
+    AlternativePathsForDTA,
+    TrafficModelData,
+    Vec<bool>,
+) {
+    let edge_ids = get_edge_ids(input_dir);
+    let query_data = read_queries(input_dir);
+    let number_of_queries = query_data.0.len();
+
+    // Load meandata from previous iteration (if available)
+    let meandata = if iteration > 0 {
+        let iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
+        SumoMeandataReader::read(&get_meandata_file(&iteration_dir)).expect("Failed to read SUMO meandata")
+    } else {
+        MeandataDocumentRoot::empty()
+    };
+
+    if iteration == 0 {
+        // Initialize with default values for iteration 0
+        let free_flow_speeds: Vec<f64> = Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_SPEEDS))
+            .unwrap()
+            .iter()
+            .map(|ffs| *ffs * 3.6 * GLOBAL_FREE_FLOW_SPEED_FACTOR)
+            .collect();
+
+        return (
+            edge_ids,
+            query_data,
+            MeandataDocumentRoot::empty(),
+            AlternativePathsForDTA::init_empty(number_of_queries),
+            TrafficModelData::init(&free_flow_speeds, traffic_model_type),
+            vec![false; number_of_queries],
+        );
+    }
+
+    let iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
+
+    // Load previous alternative paths
+    let alternative_paths = AlternativePathsForDTA::reconstruct(&iteration_dir.join(DIR_DTA));
+
+    // Load traffic model data (might be empty if no calibration was done before)
+    let traffic_model_data = TrafficModelData::reconstruct(&input_dir, traffic_model_type);
+
+    (
+        edge_ids,
+        query_data,
+        meandata,
+        alternative_paths,
+        traffic_model_data,
+        calculate_keep_routes(number_of_queries, keep_route_probability, rand::random::<i32>()),
+    )
+}

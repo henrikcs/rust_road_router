@@ -1,6 +1,6 @@
 use conversion::SUMO_MAX_TRAVEL_TIME;
 use conversion::sumo::meandata::{Edge, Interval};
-use rust_road_router::datastr::graph::floating_time_dependent::{TDGraph, TTFPoint};
+use rust_road_router::datastr::graph::floating_time_dependent::{EPSILON, TDGraph, TTFPoint};
 use rust_road_router::datastr::graph::{
     Graph,
     floating_time_dependent::{FlWeight, Timestamp},
@@ -177,6 +177,11 @@ fn process_path<G: TravelTimeGraph>(
 
                     let estimated_tt = traffic_models.get(edge_id as usize).map_or(edge_free_flow_tts[edge_id as usize], |tm| {
                         let speed = tm.get_speed(estimated_density) / 3.6;
+
+                        if speed.abs() < EPSILON {
+                            return SUMO_MAX_TRAVEL_TIME;
+                        }
+
                         edge.speed = Some(speed);
                         let tt = edge_lengths[edge_id as usize] / speed;
                         if tt < 0.0 {

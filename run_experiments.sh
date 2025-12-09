@@ -33,9 +33,10 @@ usage() {
     echo "  --dijkstra-rust                        Run all experiments with Dijkstra (Rust) routing."
     echo "  --fast-dta \"((<number> )+;)+\"        Run all experiments with Fast DTA routing with the given list of samples."
     echo "                                         Example: --fast-dta \"1.0 1.0; 1 2 3 4; 1 1 1 1;\""
-    echo "  --sumo \"(<number>+;)+\"            Run all experiments with SUMO Sampled routing (same as fast dta, only using SUMO as the traffic model)."
+    echo "  --sumo \"(<number>+;)+\"               Run all experiments with SUMO Sampled routing (same as fast dta, only using SUMO as the traffic model)."
     echo "                                         Example: --sumo \"1.0 1.0; 1 2 3 4; 1 1 1 1;\""
     echo "  --a-star                               Run all experiments with A* routing."
+    echo "  --fast-dta2                            Run all experiments with Fast DTA v2 routing."
     echo ""
     echo "Other options:"
     echo "  --output <path>        Specify the base output directory (default: current directory). \"[TIME]\" is replaced with timestamp."
@@ -110,6 +111,10 @@ while [[ $# -gt 0 ]]; do
         routing_algorithms+=("fastdta")
         fastdta_samples="$2"
         shift 2
+        ;;
+        --fast-dta2)
+        routing_algorithms+=("ksp")
+        shift
         ;;
         --sumo)
         routing_algorithms+=("sumo-sample")
@@ -298,6 +303,14 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                     cch-preprocessor--input-prefix "$prefix"
                     cch-preprocessor--input-dir "$in_dir"
                     cch-router--seed $seed
+                )
+            fi
+            # Add preprocessor args only for fastdta2 (ksp)
+            if [ "$algorithm" = "ksp" ]; then
+                dua_args+=(
+                    ksp-preprocessor--input-prefix "$prefix"
+                    ksp-preprocessor--input-dir "$in_dir"
+                    ksp-router--seed $seed
                 )
             fi
             # Add preprocessor args only for dijkstra-rust

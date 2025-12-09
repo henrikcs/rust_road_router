@@ -47,6 +47,7 @@ ROUTING_ALGORITHM_CCH = "CCH"
 ROUTING_ALGORITHM_DIJKSTRA_RUST = "dijkstra-rust"
 ROUTING_ALGORITHM_FASTDTA = "fastdta"
 ROUTING_ALGORITHM_SUMO_SAMPLE = "sumo-sample"
+ROUTING_ALGORITHM_KSP = "ksp"
 
 CCH_PREPROCESS_BINARY = "sumo-tdcch-preprocessor"
 """Binary used for conversion from Sumo input to CCH Preprocessing
@@ -87,6 +88,11 @@ make sure the the binary is in PATH
 SUMO_SAMPLE_PREPROCESS_BINARY = "sumo-fastdta-preprocessor"
 
 SUMO_SAMPLE_ROUTER_BINARY = "sumo-sample-router"
+
+""" uses the same preprocessor as fastdta router """
+KSP_PREPROCESS_BINARY = "sumo-fastdta-preprocessor"
+
+KSP_ROUTER_BINARY = "sumo-ksp-router"
 
 RELATIVE_GAP_BINARY = "sumo-relative-gap-calculator"
 """ Binary used for calculating the relative gap.
@@ -658,6 +664,10 @@ def main(args=None):
         SUMO_SAMPLE_PREPROCESS_BINARY, 'sample-preprocessor', options.remaining_args)
     sumo_routing_args = assign_remaining_args(
         SUMO_SAMPLE_ROUTER_BINARY, 'sample-router', options.remaining_args)
+    ksp_preprocessing_args = assign_remaining_args(
+        KSP_PREPROCESS_BINARY, 'ksp-preprocessor', options.remaining_args)
+    ksp_routing_args = assign_remaining_args(
+        KSP_ROUTER_BINARY, 'ksp-router', options.remaining_args)
     relative_gap_args = assign_remaining_args(
         RELATIVE_GAP_BINARY, 'relative-gap', options.remaining_args)
     sys.stdout = sumolib.TeeFile(sys.stdout, open(options.log, "w+"))
@@ -700,9 +710,10 @@ def main(args=None):
     # do a preprocessing if one of the new routing algorithms is selected
 
     if ROUTING_ALGORITHM_CCH in options.routing_algorithm or \
-        ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm or \
+            ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm or \
             ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm or \
-        ROUTING_ALGORITHM_SUMO_SAMPLE in options.routing_algorithm:
+            ROUTING_ALGORITHM_SUMO_SAMPLE in options.routing_algorithm or \
+            ROUTING_ALGORITHM_KSP in options.routing_algorithm:
 
         # note that the rust libraries only support a single demand file as an input.
         tik = datetime.now()
@@ -739,6 +750,16 @@ def main(args=None):
                               sumo_sample_preprocessing_args + ["--trips-file", input_demands[0]])
             if ret != 0:
                 sys.exit("Error: Sumo Sample preprocessing failed.")
+
+        if ROUTING_ALGORITHM_KSP in options.routing_algorithm:
+            print("> Preprocessing network for Ksp")
+            print(">> Begin time: %s" % tik)
+            print(">> Argumetns: %s" % " ".join(
+                ksp_preprocessing_args + ["--trips-file", input_demands[0]]))
+            ret = call_binary(KSP_PREPROCESS_BINARY,
+                              ksp_preprocessing_args + ["--trips-file", input_demands[0]])
+            if ret != 0:
+                sys.exit("Error: Ksp preprocessing failed.")
 
         tok = datetime.now()
         print(">> End time: %s" % tok)
@@ -808,6 +829,13 @@ def main(args=None):
                          "--input-prefix", get_basename(input_demands[0])]
                         + arguments_for_router
                         + sumo_routing_args)
+                elif ROUTING_ALGORITHM_KSP in options.routing_algorithm:
+                    ret = call_binary(
+                        KSP_ROUTER_BINARY,
+                        ["--iteration", str(step),
+                         "--input-prefix", get_basename(input_demands[0])]
+                        + arguments_for_router
+                        + ksp_routing_args)
                 else:
                     ret = call([duaBinary, "-c", cfgname], log)
 

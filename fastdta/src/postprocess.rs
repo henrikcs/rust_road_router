@@ -197,3 +197,56 @@ pub fn set_relative_gap_with_previous_paths(
 
     append_relative_gap_to_file(rel_gap, &input_dir);
 }
+
+/// Prepare next iteration for KSP routing
+/// This method takes an already-constructed AlternativePathsForDTA instance
+/// which has been populated with multiple rounds of shortest path calculations
+/// and choice model applications
+pub fn prepare_next_iteration_for_ksp(
+    input_dir: &Path,
+    input_prefix: &String,
+    iteration: u32,
+    alternative_paths: &AlternativePathsForDTA,
+    departures: &Vec<SerializedTimestamp>,
+    graph: &TDGraph,
+    write_sumo_alternatives: bool,
+    edge_indices_to_id: &Vec<String>,
+) {
+    let current_iteration_dir = input_dir.join(format!("{:0>3}", iteration));
+
+    // Calculate relative gap if iteration > 0
+    if iteration > 0 {
+        let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
+        let old_alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
+
+        // Get the shortest travel times from the current alternative paths (first alternative is typically the shortest)
+        let shortest_travel_times: Vec<FlWeight> = alternative_paths
+            .alternatives_in_query
+            .iter()
+            .map(|alt| {
+                // Find the minimum cost among all alternatives
+                let min_cost = alt.costs.iter().cloned().filter(|&c| c.is_finite() && c > 0.0).fold(f64::INFINITY, f64::min);
+                FlWeight::new(min_cost)
+            })
+            .collect();
+
+        set_relative_gap_with_previous_paths(&old_alternative_paths.get_chosen_paths(), graph, &input_dir, &shortest_travel_times, departures);
+    }
+
+    let (path_sets, costs, probabilities, choices) = transform_alternative_paths_for_dta_to_vectors(&alternative_paths);
+
+    write_paths_as_sumo_routes(
+        &input_dir,
+        &input_prefix,
+        iteration,
+        &path_sets,
+        &costs,
+        &probabilities,
+        &choices,
+        &departures,
+        &edge_indices_to_id,
+        write_sumo_alternatives,
+    );
+
+    alternative_paths.clone().deconstruct(&current_iteration_dir.join(DIR_DTA)).unwrap();
+}
