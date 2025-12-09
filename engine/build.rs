@@ -1,6 +1,9 @@
 use std::{env, fs::File, io::Write, path::Path};
 
 fn main() {
+    println!("cargo::rustc-check-cfg=cfg(override_traffic_max_query_time)");
+    println!("cargo::rustc-check-cfg=cfg(override_tdcch_approx_threshold)");
+    println!("cargo::rustc-check-cfg=cfg(override_tdcch_approx)");
     // write build time info
     built::write_built_file().expect("Failed to acquire build-time information");
     // unconditionally rerun this build script so build time info is always up to date

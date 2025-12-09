@@ -173,7 +173,7 @@ impl<'a, Graph: LinkIterable<NodeIdT>> ContractionGraph<'a, Graph> {
         ContractedGraph(self)
     }
 
-    fn partial_graph(&mut self) -> PartialContractionGraph {
+    fn partial_graph(&mut self) -> PartialContractionGraph<'_> {
         PartialContractionGraph {
             nodes: &mut self.nodes[..],
             id_offset: 0,

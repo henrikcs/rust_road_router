@@ -8,7 +8,7 @@ pub struct Server<'a> {
 }
 
 impl<'a> Server<'a> {
-    pub fn new(graph: &TDGraph) -> Server {
+    pub fn new(graph: &TDGraph) -> Server<'_> {
         Server {
             data: DijkstraData::new(graph.num_nodes()),
             graph,

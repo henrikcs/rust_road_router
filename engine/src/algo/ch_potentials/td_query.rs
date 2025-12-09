@@ -384,7 +384,7 @@ where
         &mut self,
         query: Q,
         cap: Weight,
-    ) -> QueryResult<BiconnectedPathServerWrapper<Graph, Ops, P, Q, SKIP_DEG_2, SKIP_DEG_3>, Weight> {
+    ) -> QueryResult<BiconnectedPathServerWrapper<'_, Graph, Ops, P, Q, SKIP_DEG_2, SKIP_DEG_3>, Weight> {
         QueryResult::new(self.distance(query, |_, _, _| (), cap), BiconnectedPathServerWrapper(self, query))
     }
 
@@ -472,7 +472,7 @@ where
         res
     }
 
-    pub fn one_to_all(&mut self, from: NodeId) -> BiconnectedPathServerWrapper<Graph, Ops, P, Query, SKIP_DEG_2, SKIP_DEG_3> {
+    pub fn one_to_all(&mut self, from: NodeId) -> BiconnectedPathServerWrapper<'_, Graph, Ops, P, Query, SKIP_DEG_2, SKIP_DEG_3> {
         let mut dijkstra =
             TopoDijkstraRun::<Graph, Ops, SKIP_DEG_2, SKIP_DEG_3>::query(&self.graph, &mut self.dijkstra_data, &mut self.ops, DijkstraInit::from(from));
         while dijkstra.next_step().is_some() {}

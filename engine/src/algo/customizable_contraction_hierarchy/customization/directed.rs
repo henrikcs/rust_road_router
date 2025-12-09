@@ -1,6 +1,6 @@
 use super::*;
 
-pub fn customize_directed_basic(cch: &DirectedCCH, mut upward_weights: Vec<Weight>, mut downward_weights: Vec<Weight>) -> CustomizedBasic<DirectedCCH> {
+pub fn customize_directed_basic(cch: &DirectedCCH, mut upward_weights: Vec<Weight>, mut downward_weights: Vec<Weight>) -> CustomizedBasic<'_, DirectedCCH> {
     let n = cch.num_nodes() as NodeId;
     let m_up = cch.forward_head().len() as EdgeId;
     let m_down = cch.backward_head().len() as EdgeId;

@@ -151,7 +151,7 @@ impl CCH {
     }
 
     #[inline]
-    pub fn neighbor_iter(&self, node: NodeId) -> std::iter::Cloned<std::slice::Iter<NodeId>> {
+    pub fn neighbor_iter(&self, node: NodeId) -> std::iter::Cloned<std::slice::Iter<'_, NodeId>> {
         let range = self.neighbor_edge_indices_usize(node);
         self.head[range].iter().cloned()
     }
@@ -319,11 +319,11 @@ pub trait CCHT {
     /// Reconstruct the separators of the nested dissection order.
     fn separators(&self) -> &SeparatorTree;
 
-    fn forward(&self) -> Slcs<EdgeId, NodeId> {
+    fn forward(&self) -> Slcs<'_, EdgeId, NodeId> {
         Slcs(self.forward_first_out(), self.forward_head())
     }
 
-    fn backward(&self) -> Slcs<EdgeId, NodeId> {
+    fn backward(&self) -> Slcs<'_, EdgeId, NodeId> {
         Slcs(self.backward_first_out(), self.backward_head())
     }
 }
@@ -418,8 +418,8 @@ impl CCHT for CCH {
 
 pub trait Customized {
     type CCH: CCHT;
-    fn forward_graph(&self) -> BorrowedGraph;
-    fn backward_graph(&self) -> BorrowedGraph;
+    fn forward_graph(&self) -> BorrowedGraph<'_>;
+    fn backward_graph(&self) -> BorrowedGraph<'_>;
     fn cch(&self) -> &Self::CCH;
 
     fn unpack_outgoing(&self, edge: EdgeIdT) -> Option<(EdgeIdT, EdgeIdT, NodeIdT)>;
@@ -463,10 +463,10 @@ impl<'a, C: CCHT> CustomizedBasic<'a, C> {
 }
 impl<'a, C: CCHT> Customized for CustomizedBasic<'a, C> {
     type CCH = C;
-    fn forward_graph(&self) -> BorrowedGraph {
+    fn forward_graph(&self) -> BorrowedGraph<'_> {
         FirstOutGraph::new(self.cch.forward_first_out(), self.cch.forward_head(), &self.upward)
     }
-    fn backward_graph(&self) -> BorrowedGraph {
+    fn backward_graph(&self) -> BorrowedGraph<'_> {
         FirstOutGraph::new(self.cch.backward_first_out(), self.cch.backward_head(), &self.downward)
     }
     fn cch(&self) -> &C {
@@ -529,10 +529,10 @@ impl<'a, C: CCHT> CustomizedPerfect<'a, C> {
 }
 impl<'a, C: CCHT> Customized for CustomizedPerfect<'a, C> {
     type CCH = C;
-    fn forward_graph(&self) -> BorrowedGraph {
+    fn forward_graph(&self) -> BorrowedGraph<'_> {
         self.upward.borrowed()
     }
-    fn backward_graph(&self) -> BorrowedGraph {
+    fn backward_graph(&self) -> BorrowedGraph<'_> {
         self.downward.borrowed()
     }
     fn cch(&self) -> &C {

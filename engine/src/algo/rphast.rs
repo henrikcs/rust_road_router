@@ -103,7 +103,7 @@ impl RPHASTQuery {
         }
     }
 
-    pub fn query<'a, GF: LinkIterGraph, GB>(&'a mut self, node: NodeId, selection: &'a RPHAST<GF, GB>) -> RPHASTResult<GF, GB> {
+    pub fn query<'a, GF: LinkIterGraph, GB>(&'a mut self, node: NodeId, selection: &'a RPHAST<GF, GB>) -> RPHASTResult<'a, GF, GB> {
         for dist in self.restricted_distances[0..selection.restricted_nodes.len()].iter_mut() {
             *dist = INFINITY;
         }
@@ -160,7 +160,7 @@ impl SSERPHASTQuery {
         }
     }
 
-    pub fn query<'a, GF: LinkIterable<Link>, GB: LinkIterable<Link>>(&'a mut self, nodes: &[NodeId], selection: &'a RPHAST<GF, GB>) -> SSERPHASTResult<GF, GB> {
+    pub fn query<'a, GF: LinkIterable<Link>, GB: LinkIterable<Link>>(&'a mut self, nodes: &[NodeId], selection: &'a RPHAST<GF, GB>) -> SSERPHASTResult<'a, GF, GB> {
         self.restricted_distances.resize(selection.restricted_nodes.len() * nodes.len(), INFINITY);
         for dist in self.restricted_distances.iter_mut() {
             *dist = INFINITY;

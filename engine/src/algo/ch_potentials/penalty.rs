@@ -795,7 +795,7 @@ impl<'a> PenaltyIterative<'a> {
         }
     }
 
-    pub fn potentials(&self) -> impl Iterator<Item = &PenaltyPot<BorrowedCCHPot>> {
+    pub fn potentials(&self) -> impl Iterator<Item = &PenaltyPot<BorrowedCCHPot<'_>>> {
         let pots = self.shortest_path_penalized.potentials();
         vec![pots.0.forward(), pots.0.backward(), pots.1.forward(), pots.1.backward()].into_iter()
     }

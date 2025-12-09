@@ -401,7 +401,7 @@ where
         &mut self,
         query: Q,
         cap: Weight,
-    ) -> QueryResult<BiconnectedPathServerWrapper<Graph, Ops, P, Q, SKIP_DEG_2, SKIP_DEG_3>, Weight> {
+    ) -> QueryResult<BiconnectedPathServerWrapper<'_, Graph, Ops, P, Q, SKIP_DEG_2, SKIP_DEG_3>, Weight> {
         QueryResult::new(self.distance(query, |_, _, _| (), cap), BiconnectedPathServerWrapper(self, query))
     }
 
@@ -489,7 +489,7 @@ where
         res
     }
 
-    pub fn one_to_all(&mut self, from: NodeId) -> BiconnectedPathServerWrapper<Graph, Ops, P, Query, SKIP_DEG_2, SKIP_DEG_3> {
+    pub fn one_to_all(&mut self, from: NodeId) -> BiconnectedPathServerWrapper<'_, Graph, Ops, P, Query, SKIP_DEG_2, SKIP_DEG_3> {
         let mut dijkstra =
             TopoDijkstraRun::<Graph, Ops, SKIP_DEG_2, SKIP_DEG_3>::query(&self.graph, &mut self.dijkstra_data, &mut self.ops, DijkstraInit::from(from));
         while let Some(_) = dijkstra.next_step() {}
@@ -769,7 +769,7 @@ impl<P: BiDirPotential, D: BidirChooseDir> BiDirCoreServer<P, D> {
         query: Q,
         cap: Weight,
         pot_cap: Option<Weight>,
-    ) -> QueryResult<BiDirCorePathServerWrapper<P, D, Q>, Weight> {
+    ) -> QueryResult<BiDirCorePathServerWrapper<'_, P, D, Q>, Weight> {
         QueryResult::new(self.runner.distance(query, cap, pot_cap), BiDirCorePathServerWrapper(self, query))
     }
 
@@ -1049,7 +1049,7 @@ impl<P: BiDirPotential + Clone + Send> MultiThreadedBiDirSkipLowDegServer<P> {
         query: Q,
         cap: Weight,
         pot_cap: Option<Weight>,
-    ) -> QueryResult<MultiThreadedBiDirCorePathServerWrapper<P, Q>, Weight> {
+    ) -> QueryResult<MultiThreadedBiDirCorePathServerWrapper<'_, P, Q>, Weight> {
         QueryResult::new(self.distance(query, cap, pot_cap), MultiThreadedBiDirCorePathServerWrapper(self, query))
     }
 

@@ -190,7 +190,7 @@ impl ContractionGraph {
     }
 
     // create partial graph with all nodes
-    fn partial_graph(&mut self) -> PartialContractionGraph {
+    fn partial_graph(&mut self) -> PartialContractionGraph<'_> {
         PartialContractionGraph {
             nodes: &mut self.nodes[..],
             id_offset: 0,

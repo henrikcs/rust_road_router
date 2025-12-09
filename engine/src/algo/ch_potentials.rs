@@ -32,11 +32,11 @@ impl<'a> CCHPotData<'a> {
         self.customized.forward_graph().num_nodes()
     }
 
-    pub fn forward_potential(&self) -> BorrowedCCHPot {
+    pub fn forward_potential(&self) -> BorrowedCCHPot<'_> {
         BorrowedCCHPot::new_from_customized(&self.customized)
     }
 
-    pub fn backward_potential(&self) -> BorrowedCCHPot {
+    pub fn backward_potential(&self) -> BorrowedCCHPot<'_> {
         let n = self.customized.forward_graph().num_nodes();
 
         CCHPotential {
@@ -50,7 +50,7 @@ impl<'a> CCHPotData<'a> {
         }
     }
 
-    pub fn ch_forward_potential(&self) -> CHPotential<BorrowedGraph, BorrowedGraph> {
+    pub fn ch_forward_potential(&self) -> CHPotential<BorrowedGraph<'_>, BorrowedGraph<'_>> {
         CHPotential::new(
             self.customized.forward_graph(),
             self.customized.backward_graph(),
@@ -58,7 +58,7 @@ impl<'a> CCHPotData<'a> {
         )
     }
 
-    pub fn forward_path_potential(&self) -> CCHPotentialWithPathUnpacking<false> {
+    pub fn forward_path_potential(&self) -> CCHPotentialWithPathUnpacking<'_, false> {
         let n = self.customized.forward_graph().num_nodes();
         let m = self.customized.forward_graph().num_arcs();
 
@@ -78,7 +78,7 @@ impl<'a> CCHPotData<'a> {
         }
     }
 
-    pub fn backward_path_potential(&self) -> CCHPotentialWithPathUnpacking<true> {
+    pub fn backward_path_potential(&self) -> CCHPotentialWithPathUnpacking<'_, true> {
         let n = self.customized.forward_graph().num_nodes();
         let m = self.customized.forward_graph().num_arcs();
 
@@ -329,11 +329,11 @@ impl<'a, const FLIP_UNPACKING: bool> CCHPotentialWithPathUnpacking<'a, FLIP_UNPA
         self.cch
     }
 
-    pub fn forward_cch_graph(&self) -> &BorrowedGraph {
+    pub fn forward_cch_graph(&self) -> &BorrowedGraph<'_> {
         &self.forward_cch_graph
     }
 
-    pub fn backward_cch_graph(&self) -> &BorrowedGraph {
+    pub fn backward_cch_graph(&self) -> &BorrowedGraph<'_> {
         &self.backward_cch_graph
     }
 }
@@ -459,11 +459,11 @@ impl Reconstruct for CHPotLoader {
 }
 
 impl CHPotLoader {
-    pub fn forward_graph(&self) -> BorrowedGraph {
+    pub fn forward_graph(&self) -> BorrowedGraph<'_> {
         FirstOutGraph::new(&self.forward_first_out[..], &self.forward_head[..], &self.forward_weight[..])
     }
 
-    pub fn backward_graph(&self) -> BorrowedGraph {
+    pub fn backward_graph(&self) -> BorrowedGraph<'_> {
         FirstOutGraph::new(&self.backward_first_out[..], &self.backward_head[..], &self.backward_weight[..])
     }
 
@@ -471,14 +471,14 @@ impl CHPotLoader {
         &self.order
     }
 
-    pub fn potentials(&self) -> (CHPotential<BorrowedGraph, BorrowedGraph>, CHPotential<BorrowedGraph, BorrowedGraph>) {
+    pub fn potentials(&self) -> (CHPotential<BorrowedGraph<'_>, BorrowedGraph<'_>>, CHPotential<BorrowedGraph<'_>, BorrowedGraph<'_>>) {
         (
             CHPotential::new(self.forward_graph(), self.backward_graph(), self.order.clone()),
             CHPotential::new(self.backward_graph(), self.forward_graph(), self.order.clone()),
         )
     }
 
-    pub fn bucket_ch_pot(&self) -> BucketCHPotential<BorrowedGraph, BorrowedGraph> {
+    pub fn bucket_ch_pot(&self) -> BucketCHPotential<BorrowedGraph<'_>, BorrowedGraph<'_>> {
         BucketCHPotential::new(self.forward_graph(), self.backward_graph(), self.order.clone())
     }
 }

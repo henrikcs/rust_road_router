@@ -67,7 +67,7 @@ impl Graph {
 
     /// Borrow an individual travel time function.
     #[inline(always)]
-    pub fn travel_time_function(&self, edge_id: EdgeId) -> PiecewiseLinearFunction {
+    pub fn travel_time_function(&self, edge_id: EdgeId) -> PiecewiseLinearFunction<'_> {
         let edge_id = edge_id as usize;
         PiecewiseLinearFunction::new(
             &self.ipp_departure_time[self.first_ipp_of_arc[edge_id] as usize..self.first_ipp_of_arc[edge_id + 1] as usize],

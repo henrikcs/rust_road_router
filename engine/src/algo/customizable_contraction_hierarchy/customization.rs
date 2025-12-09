@@ -55,7 +55,7 @@ pub use directed::customize_directed_perfect;
 /// Customize with zero metric.
 /// Edges that have weight infinity after customization will have this weight
 /// for every metric and can be removed.
-pub fn always_infinity(cch: &CCH) -> CustomizedBasic<CCH> {
+pub fn always_infinity(cch: &CCH) -> CustomizedBasic<'_, CCH> {
     let m = cch.num_arcs();
     // buffers for the customized weights
     let mut upward_weights = vec![INFINITY; m];
@@ -116,7 +116,7 @@ fn prepare_zero_weights(cch: &impl CCHT, upward_weights: &mut [Weight], downward
     });
 }
 
-fn customize_basic(cch: &CCH, mut upward_weights: Vec<Weight>, mut downward_weights: Vec<Weight>) -> CustomizedBasic<CCH> {
+fn customize_basic(cch: &CCH, mut upward_weights: Vec<Weight>, mut downward_weights: Vec<Weight>) -> CustomizedBasic<'_, CCH> {
     let n = cch.num_nodes() as NodeId;
     let m = cch.num_arcs() as EdgeId;
     report!("num_cch_edges", m);

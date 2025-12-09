@@ -208,7 +208,7 @@ impl ALTPotData {
         landmarks
     }
 
-    pub fn forward_potential(&self) -> ALTPotential {
+    pub fn forward_potential(&self) -> ALTPotential<'_> {
         ALTPotential {
             num_landmarks: self.num_landmarks,
             target: u32::MAX as NodeId,
@@ -217,7 +217,7 @@ impl ALTPotData {
         }
     }
 
-    pub fn backward_potential(&self) -> ALTPotential {
+    pub fn backward_potential(&self) -> ALTPotential<'_> {
         ALTPotential {
             num_landmarks: self.num_landmarks,
             target: u32::MAX as NodeId,

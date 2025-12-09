@@ -299,7 +299,7 @@ pub fn push_collection_context(key: &'static str) -> CollectionContextGuard {
 }
 
 impl CollectionContextGuard {
-    pub fn push_collection_item(&mut self) -> CollectionItemContextGuard {
+    pub fn push_collection_item(&mut self) -> CollectionItemContextGuard<'_> {
         REPORTER.with(|reporter| reporter.borrow_mut().as_mut().map(Reporter::create_collection_item));
         CollectionItemContextGuard(self)
     }

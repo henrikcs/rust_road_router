@@ -94,7 +94,7 @@ where
         }
     }
 
-    pub fn one_to_all(&mut self, from: NodeId) -> ServerWrapper<Graph, Ops, P, GraphBorrow> {
+    pub fn one_to_all(&mut self, from: NodeId) -> ServerWrapper<'_, Graph, Ops, P, GraphBorrow> {
         self.distance(Query {
             from,
             to: self.graph.borrow().num_nodes() as NodeId,
