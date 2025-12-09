@@ -7,7 +7,7 @@ use std::cmp::*;
 
 pub use crate::algo::customizable_contraction_hierarchy::ftd_cch::customize;
 
-mod floating_td_stepped_elimination_tree;
+pub mod floating_td_stepped_elimination_tree;
 pub mod partial_profiles;
 pub mod profiles;
 pub mod profiles_naive;
@@ -60,11 +60,25 @@ pub struct Server<'a> {
 
 impl<'a> Server<'a> {
     pub fn new(cch_graph: &'a CCH, customized_graph: &'a CustomizedGraph<'a>) -> Self {
+        let forward = FloatingTDSteppedEliminationTree::new(customized_graph.upward_bounds_graph(), cch_graph.elimination_tree());
+        let backward = FloatingTDSteppedEliminationTree::new(customized_graph.downward_bounds_graph(), cch_graph.elimination_tree());
+        Self::new_with_elimination_trees(cch_graph, customized_graph, forward, backward)
+    }
+
+    /// Create a new Server instance using pre-created elimination trees.
+    /// This is more efficient when creating multiple servers, as the elimination trees
+    /// can be cloned (which is cheaper than creating them from scratch).
+    pub fn new_with_elimination_trees(
+        cch_graph: &'a CCH,
+        customized_graph: &'a CustomizedGraph<'a>,
+        forward: FloatingTDSteppedEliminationTree<'a, 'a>,
+        backward: FloatingTDSteppedEliminationTree<'a, 'a>,
+    ) -> Self {
         let n = customized_graph.original_graph.num_nodes();
         let m = cch_graph.num_arcs();
         Self {
-            forward: FloatingTDSteppedEliminationTree::new(customized_graph.upward_bounds_graph(), cch_graph.elimination_tree()),
-            backward: FloatingTDSteppedEliminationTree::new(customized_graph.downward_bounds_graph(), cch_graph.elimination_tree()),
+            forward,
+            backward,
             cch_graph,
             meeting_nodes: Vec::new(),
             customized_graph,

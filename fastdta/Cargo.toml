@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = []
+default = ["queries-disable-par"]
 expand-sumo-nodes = ["conversion/expand-sumo-nodes"]
+queries-disable-par = []
 
 [dependencies]
 clap = { version = "4.5.38", features = ["derive"] }

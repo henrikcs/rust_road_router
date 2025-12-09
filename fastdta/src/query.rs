@@ -1,13 +1,20 @@
 use std::path::Path;
 
 use conversion::{
-    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES, MIN_EDGE_WEIGHT,
-    SerializedTimestamp,
+    FILE_QUERIES_DEPARTURE, FILE_QUERIES_FROM, FILE_QUERIES_TO, FILE_QUERY_ORIGINAL_FROM_EDGES, FILE_QUERY_ORIGINAL_TO_EDGES, SerializedTimestamp,
 };
 
+#[cfg(feature = "expand-sumo-nodes")]
+use conversion::MIN_EDGE_WEIGHT;
+
+#[cfg(not(feature = "queries-disable-par"))]
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
+#[cfg(not(feature = "queries-disable-par"))]
+use rust_road_router::algo::{catchup::floating_td_stepped_elimination_tree::FloatingTDSteppedEliminationTree, customizable_contraction_hierarchy::CCHT};
+
 use rust_road_router::algo::catchup::Server;
 use rust_road_router::algo::customizable_contraction_hierarchy::CCH;
+
 use rust_road_router::algo::dijkstra::query::floating_td_dijkstra;
 use rust_road_router::algo::{TDQuery, TDQueryServer};
 use rust_road_router::datastr::graph::floating_time_dependent::{CustomizedGraph, FlWeight, TDGraph, Timestamp};
@@ -43,63 +50,92 @@ pub fn get_paths_with_cch_queries(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    let mut server = Server::new(&cch, &customized_graph);
+    #[cfg(feature = "queries-disable-par")]
+    {
+        let mut server = Server::new(&cch, &customized_graph);
+        get_paths_from_queries(
+            |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
+                let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
-    get_paths_with_catchup_server(
-        &mut server,
-        queries_from,
-        queries_to,
-        queries_departure,
-        queries_original_from_edges,
-        queries_original_to_edges,
-        graph,
-    )
-}
+                if from_edge == to_edge {
+                    // special case: from and to are the same edge
+                    return Some((vec![from_edge], from_edge_tt));
+                }
 
-fn get_paths_with_catchup_server(
-    server: &mut Server,
-    queries_from: &Vec<u32>,
-    queries_to: &Vec<u32>,
-    queries_departure: &Vec<SerializedTimestamp>,
-    queries_original_from_edges: &Vec<u32>,
-    queries_original_to_edges: &Vec<u32>,
-    graph: &TDGraph,
-) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    get_paths_from_queries(
-        |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
-            let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
+                let delayed_departure = departure + from_edge_tt;
 
-            if from_edge == to_edge {
-                // special case: from and to are the same edge
-                return Some((vec![from_edge], from_edge_tt));
-            }
+                let result = server.td_query(TDQuery {
+                    from,
+                    to,
+                    departure: delayed_departure,
+                });
 
-            let delayed_departure = departure + from_edge_tt;
+                if let Some(mut result) = result.found() {
+                    let edge_path = result.edge_path();
 
-            let result = server.td_query(TDQuery {
-                from,
-                to,
-                departure: delayed_departure,
-            });
+                    let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
 
-            if let Some(mut result) = result.found() {
-                let edge_path = result.edge_path();
+                    Some((path, distance))
+                } else {
+                    println!("No path found from {} to {} at {departure:?}", from_edge, to_edge);
+                    None
+                }
+            },
+            queries_from,
+            queries_to,
+            queries_departure,
+            queries_original_from_edges,
+            queries_original_to_edges,
+            graph,
+        )
+    }
 
-                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
+    #[cfg(not(feature = "queries-disable-par"))]
+    {
+        // Create template elimination trees once
+        let forward_template = FloatingTDSteppedEliminationTree::new(customized_graph.upward_bounds_graph(), cch.elimination_tree());
+        let backward_template = FloatingTDSteppedEliminationTree::new(customized_graph.downward_bounds_graph(), cch.elimination_tree());
 
-                Some((path, distance))
-            } else {
-                println!("No path found from {} to {} at {departure:?}", from_edge, to_edge);
-                None
-            }
-        },
-        queries_from,
-        queries_to,
-        queries_departure,
-        queries_original_from_edges,
-        queries_original_to_edges,
-        graph,
-    )
+        get_paths_from_queries_par(
+            || {
+                // Clone the elimination trees for each thread (cheaper than creating from scratch)
+                Server::new_with_elimination_trees(&cch, &customized_graph, forward_template.clone(), backward_template.clone())
+            },
+            |server: &mut Server, from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
+                let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
+
+                if from_edge == to_edge {
+                    // special case: from and to are the same edge
+                    return Some((vec![from_edge], from_edge_tt));
+                }
+
+                let delayed_departure = departure + from_edge_tt;
+
+                let result = server.td_query(TDQuery {
+                    from,
+                    to,
+                    departure: delayed_departure,
+                });
+
+                if let Some(mut result) = result.found() {
+                    let edge_path = result.edge_path();
+
+                    let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
+
+                    Some((path, distance))
+                } else {
+                    println!("No path found from {} to {} at {departure:?}", from_edge, to_edge);
+                    None
+                }
+            },
+            queries_from,
+            queries_to,
+            queries_departure,
+            queries_original_from_edges,
+            queries_original_to_edges,
+            graph,
+        )
+    }
 }
 
 pub fn get_paths_with_dijkstra(input_dir: &Path, graph: &TDGraph) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
@@ -121,66 +157,92 @@ pub fn get_paths_with_dijkstra_queries(
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    let mut server = floating_td_dijkstra::Server::new(graph);
+    #[cfg(feature = "queries-disable-par")]
+    {
+        let mut server = floating_td_dijkstra::Server::new(graph);
 
-    get_paths_with_dijkstra_server(
-        &mut server,
-        queries_from,
-        queries_to,
-        queries_departure,
-        queries_original_from_edges,
-        queries_original_to_edges,
-        graph,
-    )
-}
+        get_paths_from_queries(
+            move |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
+                let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
 
-fn get_paths_with_dijkstra_server(
-    server: &mut floating_td_dijkstra::Server,
-    queries_from: &Vec<u32>,
-    queries_to: &Vec<u32>,
-    queries_departure: &Vec<SerializedTimestamp>,
-    queries_original_from_edges: &Vec<u32>,
-    queries_original_to_edges: &Vec<u32>,
-    graph: &TDGraph,
-) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    get_paths_from_queries(
-        move |from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
-            let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
+                if from_edge == to_edge {
+                    // special case: from and to are the same edge
+                    return Some((vec![from_edge], from_edge_tt));
+                }
 
-            if from_edge == to_edge {
-                // special case: from and to are the same edge
-                return Some((vec![from_edge], from_edge_tt));
-            }
+                let delayed_departure = departure + from_edge_tt;
 
-            let delayed_departure = departure + from_edge_tt;
+                let result = server.td_query(TDQuery {
+                    from,
+                    to,
+                    departure: delayed_departure,
+                });
 
-            let result = server.td_query(TDQuery {
-                from,
-                to,
-                departure: delayed_departure,
-            });
+                if let Some(mut result) = result.found() {
+                    let edge_path = result.edge_path();
 
-            if let Some(mut result) = result.found() {
-                let edge_path = result.edge_path();
+                    let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
 
-                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
+                    Some((path, distance))
+                } else {
+                    println!(
+                        "No path found from {} to {} at {departure:?}",
+                        queries_original_from_edges[from as usize], queries_original_to_edges[to as usize]
+                    );
+                    None
+                }
+            },
+            queries_from,
+            queries_to,
+            queries_departure,
+            queries_original_from_edges,
+            queries_original_to_edges,
+            graph,
+        )
+    }
 
-                Some((path, distance))
-            } else {
-                println!(
-                    "No path found from {} to {} at {departure:?}",
-                    queries_original_from_edges[from as usize], queries_original_to_edges[to as usize]
-                );
-                None
-            }
-        },
-        queries_from,
-        queries_to,
-        queries_departure,
-        queries_original_from_edges,
-        queries_original_to_edges,
-        graph,
-    )
+    #[cfg(not(feature = "queries-disable-par"))]
+    {
+        get_paths_from_queries_par(
+            || floating_td_dijkstra::Server::new(graph),
+            |server: &mut floating_td_dijkstra::Server, from_edge, to_edge, from: u32, to: u32, departure: Timestamp, graph: &TDGraph| {
+                let from_edge_tt = graph.get_travel_time_along_path(departure, &[from_edge]);
+
+                if from_edge == to_edge {
+                    // special case: from and to are the same edge
+                    return Some((vec![from_edge], from_edge_tt));
+                }
+
+                let delayed_departure = departure + from_edge_tt;
+
+                let result = server.td_query(TDQuery {
+                    from,
+                    to,
+                    departure: delayed_departure,
+                });
+
+                if let Some(mut result) = result.found() {
+                    let edge_path = result.edge_path();
+
+                    let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
+
+                    Some((path, distance))
+                } else {
+                    println!(
+                        "No path found from {} to {} at {departure:?}",
+                        queries_original_from_edges[from as usize], queries_original_to_edges[to as usize]
+                    );
+                    None
+                }
+            },
+            queries_from,
+            queries_to,
+            queries_departure,
+            queries_original_from_edges,
+            queries_original_to_edges,
+            graph,
+        )
+    }
 }
 
 pub fn read_queries(input_dir: &Path) -> (Vec<u32>, Vec<u32>, Vec<SerializedTimestamp>, Vec<u32>, Vec<u32>) {
@@ -202,9 +264,13 @@ pub fn read_queries(input_dir: &Path) -> (Vec<u32>, Vec<u32>, Vec<SerializedTime
     )
 }
 
-fn _get_paths_from_queries_par<
-    F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)> + std::marker::Sync + std::marker::Send + Clone,
+#[cfg(not(feature = "queries-disable-par"))]
+fn get_paths_from_queries_par<
+    ServerT,
+    InitF: Fn() -> ServerT + std::marker::Sync + std::marker::Send,
+    F: Fn(&mut ServerT, EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)> + std::marker::Sync + std::marker::Send,
 >(
+    server_init: InitF,
     path_collector: F,
     queries_from: &Vec<u32>,
     queries_to: &Vec<u32>,
@@ -215,13 +281,14 @@ fn _get_paths_from_queries_par<
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let mut pdds: Vec<(Vec<EdgeId>, FlWeight, SerializedTimestamp)> = vec![(vec![], FlWeight::INFINITY, 0); queries_from.len()];
 
-    pdds.par_iter_mut()
-        .enumerate()
-        .for_each_with(path_collector, |path_collector, (i, (path, tt, dep))| {
+    pdds.par_iter_mut().enumerate().for_each_init(
+        || server_init(),
+        |server, (i, (path, tt, dep))| {
             let departure = queries_departure[i];
             departure.clone_into(dep);
 
             if let Some((shortest_path, shortest_travel_time)) = path_collector(
+                server,
                 queries_original_from_edges[i],
                 queries_original_to_edges[i],
                 queries_from[i],
@@ -237,7 +304,8 @@ fn _get_paths_from_queries_par<
                     queries_original_from_edges[i], queries_original_to_edges[i], i
                 );
             }
-        });
+        },
+    );
 
     let mut paths = Vec::with_capacity(queries_from.len());
     let mut distances = Vec::with_capacity(queries_from.len());
@@ -252,6 +320,7 @@ fn _get_paths_from_queries_par<
     (paths, distances, departures)
 }
 
+#[cfg(feature = "queries-disable-par")]
 fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph) -> Option<(Vec<EdgeId>, FlWeight)>>(
     mut path_collector: F,
     queries_from: &Vec<u32>,
@@ -304,7 +373,7 @@ fn construct_path_and_time(
 ) -> (Vec<EdgeId>, FlWeight) {
     let mut path = Vec::with_capacity(remaining_path.len() + 2);
     path.push(from_edge);
-    let mut distance = FlWeight::ZERO;
+    let mut distance;
     #[cfg(feature = "expand-sumo-nodes")]
     {
         // With node expansion: the edge_path alternates between internal edges and normal edges
@@ -321,7 +390,8 @@ fn construct_path_and_time(
         path.extend(remaining_path.iter().map(|edge| edge.0));
 
         path.push(to_edge);
-        distance = from_edge_tt + remaining_path_tt + graph.get_travel_time_along_path(departure + distance, &[to_edge]);
+        distance = from_edge_tt + remaining_path_tt;
+        distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
     }
 
     #[cfg(feature = "expand-sumo-nodes")]
@@ -433,10 +503,7 @@ mod tests {
         let queries_original_from_edges = vec![0];
         let queries_original_to_edges = vec![1];
 
-        let mut server = floating_td_dijkstra::Server::new(&graph);
-
-        let (paths, distances, _departures) = get_paths_with_dijkstra_server(
-            &mut server,
+        let (paths, distances, _departures) = get_paths_with_dijkstra_queries(
             &queries_from,
             &queries_to,
             &queries_departure,
