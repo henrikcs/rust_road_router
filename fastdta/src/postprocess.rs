@@ -101,7 +101,7 @@ fn postprocess(
     input_prefix: &String,
     iteration: u32,
     shortest_paths: &Vec<Vec<EdgeId>>,
-    travel_times: &Vec<FlWeight>,
+    shortest_paths_tt: &Vec<FlWeight>,
     departures: &Vec<SerializedTimestamp>,
     graph: &TDGraph,
     choice_algorithm: ChoiceAlgorithm,
@@ -121,17 +121,12 @@ fn postprocess(
         let old_alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
 
         if !skip_relative_gap {
-            let new_travel_times: Vec<FlWeight> = shortest_paths
-                .iter()
-                .enumerate()
-                .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
-                .collect();
             // get choices from old_alternative_paths to calculate relative gap
-            set_relative_gap_with_previous_paths(&old_alternative_paths.get_chosen_paths(), graph, &input_dir, &new_travel_times, departures);
+            set_relative_gap_with_previous_paths(&old_alternative_paths.get_chosen_paths(), graph, &input_dir, &shortest_paths_tt, departures);
         }
 
         // merge previous alternatives with current shortest paths
-        let mut new_alternative_paths = old_alternative_paths.update_alternatives_with_new_paths(&shortest_paths, &travel_times, &departures, &graph);
+        let mut new_alternative_paths = old_alternative_paths.update_alternatives_with_new_paths(&shortest_paths, &shortest_paths_tt, &departures, &graph);
 
         new_alternative_paths.perform_choice_model(&old_alternative_paths, &choice_algorithm, max_alternatives, &keep_routes, seed);
 
@@ -141,7 +136,7 @@ fn postprocess(
             // initialize relative gap file with 0.0 for the first iteration
             append_relative_gap_to_file(0.0, &input_dir);
         }
-        AlternativePathsForDTA::init(shortest_paths, travel_times)
+        AlternativePathsForDTA::init(shortest_paths, shortest_paths_tt)
     };
 
     let (path_sets, costs, probabilities, choices) = transform_alternative_paths_for_dta_to_vectors(&alternative_paths);

@@ -3,6 +3,10 @@ name = "fastdta"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+expand-sumo-nodes = ["conversion/expand-sumo-nodes"]
+
 [dependencies]
 clap = { version = "4.5.38", features = ["derive"] }
 rust_road_router = { path = "../engine" }

@@ -7,7 +7,6 @@ use conversion::{
         sumo_to_new_graph_weights::get_graph_with_travel_times_from_previous_iteration,
     },
 };
-use rand::{Rng, SeedableRng, rngs};
 use rust_road_router::{
     algo::customizable_contraction_hierarchy::CCH,
     datastr::graph::floating_time_dependent::{FlWeight, TDGraph},

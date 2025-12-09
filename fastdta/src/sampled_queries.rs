@@ -39,6 +39,7 @@ pub fn get_paths_by_samples_with_keep_routes(
     //   customize the graph with the shortest routes using the density on the edges during a time window
 
     let mut routed_paths: Vec<Vec<u32>> = previous_paths.iter().map(|path| (*path).clone()).collect();
+    let mut routed_paths_tt = vec![FlWeight::INVALID; query_data.0.len()];
     let departures = query_data.2.clone();
 
     let free_flow_tts_ms = &Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
@@ -74,6 +75,7 @@ pub fn get_paths_by_samples_with_keep_routes(
 
         sample.iter().enumerate().for_each(|(i, &query_i)| {
             routed_paths[query_i] = sampled_new_paths[i].clone();
+            routed_paths_tt[query_i] = graph.get_travel_time_along_path(Timestamp::from_millis(departures[query_i]), &sampled_new_paths[i]);
             sampled_old_paths.push(previous_paths[query_i]);
         });
 
@@ -105,13 +107,7 @@ pub fn get_paths_by_samples_with_keep_routes(
         ipp_travel_time,
     );
 
-    let travel_times = routed_paths
-        .iter()
-        .enumerate()
-        .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
-        .collect();
-
-    (graph, routed_paths, travel_times, departures)
+    (graph, routed_paths, routed_paths_tt, departures)
 }
 
 fn _debug(meandata: &MeandataDocumentRoot, path: &Path, iteration: u32, sample: u32) {
@@ -164,7 +160,6 @@ pub fn get_sampled_queries_with_keep_routes(
     sampled_routes
 }
 
-/// legacy method kept for comparison
 pub fn get_paths_by_samples(
     input_dir: &Path,
     _iteration: u32,
@@ -182,7 +177,7 @@ pub fn get_paths_by_samples(
     //   find shortest routes for the sampled trips
     //   customize the graph with the shortest routes using the density on the edges during a time window
 
-    let mut shortest_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()]; // Vec::with_capacity(query_data.0.len());
+    let mut routed_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()]; // Vec::with_capacity(query_data.0.len());
     let mut travel_times = vec![FlWeight::INVALID; query_data.0.len()];
     let mut departures = vec![0; query_data.0.len()];
     let free_flow_tts_ms = &Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
@@ -229,7 +224,7 @@ pub fn get_paths_by_samples(
         let mut sampled_departures_seconds = Vec::with_capacity(sample.len());
 
         sample.iter().enumerate().for_each(|(i, &query_i)| {
-            shortest_paths[query_i] = sampled_shortest_paths[i].clone();
+            routed_paths[query_i] = sampled_shortest_paths[i].clone();
             travel_times[query_i] = sampled_travel_times[i];
             departures[query_i] = sampled_departures[i];
             sampled_old_paths.push(*previous_paths.get(query_i).unwrap_or(&&empty_vec));
@@ -264,11 +259,5 @@ pub fn get_paths_by_samples(
         ipp_travel_time,
     );
 
-    travel_times = shortest_paths
-        .iter()
-        .enumerate()
-        .map(|(i, path)| graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
-        .collect();
-
-    (graph, shortest_paths, travel_times, departures)
+    (graph, routed_paths, travel_times, departures)
 }

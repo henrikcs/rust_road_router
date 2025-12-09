@@ -85,13 +85,7 @@ fn get_paths_with_catchup_server(
             if let Some(mut result) = result.found() {
                 let edge_path = result.edge_path();
 
-                let mut path = Vec::with_capacity(edge_path.len() + 2);
-                path.push(from_edge);
-                path.extend(edge_path.iter().map(|edge| edge.0));
-                path.push(to_edge);
-
-                let mut distance = from_edge_tt + result.distance();
-                distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
+                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
 
                 Some((path, distance))
             } else {
@@ -169,13 +163,7 @@ fn get_paths_with_dijkstra_server(
             if let Some(mut result) = result.found() {
                 let edge_path = result.edge_path();
 
-                let mut path = Vec::with_capacity(edge_path.len() + 2);
-                path.push(from_edge);
-                path.extend(edge_path.iter().map(|edge| edge.0));
-                path.push(to_edge);
-
-                let mut distance = from_edge_tt + result.distance();
-                distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
+                let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
 
                 Some((path, distance))
             } else {
@@ -305,31 +293,227 @@ fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph
     (paths, distances, departures)
 }
 
-fn _construct_path_and_time(
+fn construct_path_and_time(
     graph: &TDGraph,
     from_edge: EdgeId,
     from_edge_tt: FlWeight,
     to_edge: EdgeId,
     departure: Timestamp,
     remaining_path: Vec<EdgeIdT>,
-    remaining_path_distance: FlWeight,
+    remaining_path_tt: FlWeight,
 ) -> (Vec<EdgeId>, FlWeight) {
     let mut path = Vec::with_capacity(remaining_path.len() + 2);
     path.push(from_edge);
+    let mut distance = FlWeight::ZERO;
+    #[cfg(feature = "expand-sumo-nodes")]
+    {
+        // With node expansion: the edge_path alternates between internal edges and normal edges
+        // The first edge is an internal connection edge, so we skip it and take every second edge
+        path.extend(remaining_path.iter().skip(1).step_by(2).map(|edge| edge.0));
+        path.push(to_edge);
 
-    // the edge_path alternates between internal edges and normal edges, the first edge being internal
-    // we only want the normal edges, so we skip every second edge
+        distance = graph.get_travel_time_along_path(departure, &path);
+    }
 
-    path.extend(remaining_path.iter().skip(1).step_by(2).map(|edge| edge.0));
+    #[cfg(not(feature = "expand-sumo-nodes"))]
+    {
+        // Without node expansion: all edges in the path are normal edges
+        path.extend(remaining_path.iter().map(|edge| edge.0));
 
-    // path.extend(edge_path.iter().map(|edge| edge.0));
-    path.push(to_edge);
+        path.push(to_edge);
+        distance = from_edge_tt + remaining_path_tt + graph.get_travel_time_along_path(departure + distance, &[to_edge]);
+    }
 
-    let mut distance = from_edge_tt + remaining_path_distance;
-    distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
-
-    // remaining_path starts and ends with connection edges, which we do not want to count towards the total distance
-    distance = distance - FlWeight::new(MIN_EDGE_WEIGHT * ((remaining_path.len() + 1) / 2) as f64); // subtract connection edge weights
+    #[cfg(feature = "expand-sumo-nodes")]
+    {
+        // remaining_path starts and ends with connection edges, which we do not want to count towards the total distance
+        distance = distance - FlWeight::new(MIN_EDGE_WEIGHT * ((remaining_path.len() + 1) / 2) as f64);
+    }
 
     (path, distance)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use conversion::sumo::{
+        edges::{Edge, EdgesDocumentRoot},
+        nodes::NodesDocumentRoot,
+    };
+    use rust_road_router::datastr::graph::{Graph, floating_time_dependent::TDGraph};
+
+    fn create_simple_test_graph() -> (NodesDocumentRoot, EdgesDocumentRoot, TDGraph) {
+        let nodes = NodesDocumentRoot {
+            nodes: vec![
+                conversion::sumo::nodes::Node {
+                    id: String::from("n1"),
+                    x: 0.0,
+                    y: 0.0,
+                },
+                conversion::sumo::nodes::Node {
+                    id: String::from("n2"),
+                    x: 1.0,
+                    y: 0.0,
+                },
+                conversion::sumo::nodes::Node {
+                    id: String::from("n3"),
+                    x: 2.0,
+                    y: 0.0,
+                },
+            ],
+            location: None,
+        };
+
+        let edges = EdgesDocumentRoot {
+            edges: vec![
+                Edge {
+                    id: String::from("e1"),
+                    from: String::from("n1"),
+                    to: String::from("n2"),
+                    num_lanes: Some(1),
+                    speed: Some(10.0),
+                    length: Some(100.0),
+                    lanes: vec![],
+                    params: vec![],
+                    priority: Some(-1),
+                },
+                Edge {
+                    id: String::from("e2"),
+                    from: String::from("n2"),
+                    to: String::from("n3"),
+                    num_lanes: Some(1),
+                    speed: Some(10.0),
+                    length: Some(100.0),
+                    lanes: vec![],
+                    params: vec![],
+                    priority: Some(-1),
+                },
+            ],
+        };
+
+        #[cfg(feature = "expand-sumo-nodes")]
+        let connections = conversion::sumo::connections::ConnectionsDocumentRoot {
+            connections: vec![conversion::sumo::connections::Connection {
+                from: String::from("e1"),
+                to: String::from("e2"),
+                from_lane: Some(String::from("0")),
+                to_lane: Some(String::from("0")),
+            }],
+        };
+
+        #[cfg(feature = "expand-sumo-nodes")]
+        let (routing_kit_graph, _, _, _) = conversion::sumo::sumo_to_td_graph_converter::get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+
+        #[cfg(not(feature = "expand-sumo-nodes"))]
+        let (routing_kit_graph, _, _) = conversion::sumo::sumo_to_td_graph_converter::get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+
+        let graph = TDGraph::new(
+            routing_kit_graph.0,
+            routing_kit_graph.1,
+            routing_kit_graph.2,
+            routing_kit_graph.3,
+            routing_kit_graph.4,
+        );
+
+        (nodes, edges, graph)
+    }
+
+    #[test]
+    fn test_query_basic_path_without_expansion() {
+        let (_nodes, _edges, graph) = create_simple_test_graph();
+
+        // Verify graph was created correctly
+        assert!(graph.num_nodes() > 0);
+        assert!(graph.num_arcs() > 0);
+
+        // Test that we can query the graph
+        let queries_from = vec![0];
+        let queries_to = vec![1];
+        let queries_departure = vec![0];
+        let queries_original_from_edges = vec![0];
+        let queries_original_to_edges = vec![1];
+
+        let mut server = floating_td_dijkstra::Server::new(&graph);
+
+        let (paths, distances, _departures) = get_paths_with_dijkstra_server(
+            &mut server,
+            &queries_from,
+            &queries_to,
+            &queries_departure,
+            &queries_original_from_edges,
+            &queries_original_to_edges,
+            &graph,
+        );
+
+        assert_eq!(paths.len(), 1);
+        assert_eq!(distances.len(), 1);
+        assert!(distances[0] < FlWeight::INFINITY);
+    }
+
+    #[cfg(feature = "expand-sumo-nodes")]
+    mod expanded_tests {
+        use super::*;
+
+        #[test]
+        fn test_query_with_node_expansion() {
+            let (_nodes, _edges, graph) = create_simple_test_graph();
+
+            // With node expansion, we should have internal nodes
+            // The number of nodes should be 2 * number_of_edges = 2 * 2 = 4
+            assert!(graph.num_nodes() >= 4, "Expected at least 4 nodes with expansion, got {}", graph.num_nodes());
+
+            // The number of arcs should include connection edges
+            // 2 original edges + at least 1 connection edge = at least 3
+            assert!(graph.num_arcs() >= 3, "Expected at least 3 arcs with expansion, got {}", graph.num_arcs());
+        }
+
+        #[test]
+        fn test_query_path_with_expansion() {
+            let (_nodes, _edges, graph) = create_simple_test_graph();
+
+            let queries_from = vec![0];
+            let queries_to = vec![2]; // Internal node indices will be different
+            let queries_departure = vec![0];
+            let queries_original_from_edges = vec![0];
+            let queries_original_to_edges = vec![1];
+
+            let mut server = floating_td_dijkstra::Server::new(&graph);
+
+            let (paths, distances, _departures) = get_paths_with_dijkstra_server(
+                &mut server,
+                &queries_from,
+                &queries_to,
+                &queries_departure,
+                &queries_original_from_edges,
+                &queries_original_to_edges,
+                &graph,
+            );
+
+            assert_eq!(paths.len(), 1);
+            assert_eq!(distances.len(), 1);
+
+            // Path should include the from edge, connection edges, and to edge
+            if !paths[0].is_empty() {
+                assert!(paths[0].len() >= 2, "Expected path with at least 2 edges (from + to)");
+            }
+        }
+    }
+
+    #[cfg(not(feature = "expand-sumo-nodes"))]
+    mod non_expanded_tests {
+        use super::*;
+
+        #[test]
+        fn test_query_without_node_expansion() {
+            let (_nodes, _edges, graph) = create_simple_test_graph();
+
+            // Without node expansion, we should have the original nodes count
+            // 3 nodes from the test setup
+            assert_eq!(graph.num_nodes(), 3, "Expected 3 nodes without expansion, got {}", graph.num_nodes());
+
+            // The number of arcs should be just the original edges (no connections)
+            // 2 original edges
+            assert_eq!(graph.num_arcs(), 2, "Expected 2 arcs without expansion, got {}", graph.num_arcs());
+        }
+    }
 }

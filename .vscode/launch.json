@@ -115,6 +115,27 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Debug Preprocess DTA (capa)",
+      "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
+      "args": [
+        "--input-dir",
+        "./import/sumo/capa",
+        "--input-prefix",
+        "capa",
+        "--output-dir",
+        "./data/imported/sumo/capa",
+        "--trips-file",
+        "${workspaceFolder}/import/sumo/capa/capa.sb.modified.trips.xml"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}"
+      },
+      "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Debug FastDTA Router (capa)",
       "program": "${workspaceFolder}/target/debug/sumo-fastdta-router",
       "args": [
