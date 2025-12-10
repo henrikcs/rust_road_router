@@ -244,6 +244,7 @@ export PATH=$SUMO_HOME/bin:$PATH
 
 # --- Compile the project ---
 if [ "$release_type" = "debug" ]; then
+    export RUST_BACKTRACE=1
     cargo build
 else
     cargo build --release
