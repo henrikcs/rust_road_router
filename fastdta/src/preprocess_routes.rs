@@ -101,11 +101,11 @@ fn get_edge_ids(input_dir: &Path) -> Vec<String> {
     })
 }
 
-/// Get graph data for KSP routing
-/// Similar to get_graph_data_for_fast_dta but specifically for KSP router
+/// Get graph data for FastDTA2 routing
+/// Similar to get_graph_data_for_fast_dta but specifically for FastDTA2 router
 /// In iteration 0: initializes traffic model with default values
 /// In iteration > 0: loads previous alternatives and traffic model data
-pub fn get_graph_data_for_ksp(
+pub fn get_graph_data_for_fastdta2(
     input_dir: &Path,
     iteration: u32,
     traffic_model_type: TrafficModelType,

@@ -115,7 +115,7 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
         --fast-dta2)
-        routing_algorithms+=("ksp")
+        routing_algorithms+=("fastdta2")
         shift
         ;;
         --sumo)
@@ -320,12 +320,12 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                     cch-router--seed $seed
                 )
             fi
-            # Add preprocessor args only for fastdta2 (ksp)
-            if [ "$algorithm" = "ksp" ]; then
-                dua_args+=(
-                    ksp-preprocessor--input-prefix "$prefix"
-                    ksp-preprocessor--input-dir "$in_dir"
-                    ksp-router--seed $seed
+            # Add preprocessor args only for fastdta2
+            if [ "$algorithm" = "fastdta2" ]; then
+                duaiterate_args+=(
+                    fastdta2-preprocessor--input-prefix "$prefix"
+                    fastdta2-preprocessor--input-dir "$in_dir"
+                    fastdta2-router--seed $seed
                 )
             fi
             # Add preprocessor args only for dijkstra-rust

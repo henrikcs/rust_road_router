@@ -198,11 +198,11 @@ pub fn set_relative_gap_with_previous_paths(
     append_relative_gap_to_file(rel_gap, &input_dir);
 }
 
-/// Prepare next iteration for KSP routing
+/// Prepare next iteration for FastDTA2 routing
 /// This method takes an already-constructed AlternativePathsForDTA instance
 /// which has been populated with multiple rounds of shortest path calculations
 /// and choice model applications
-pub fn prepare_next_iteration_for_ksp(
+pub fn prepare_next_iteration_for_fastdta2(
     input_dir: &Path,
     input_prefix: &String,
     iteration: u32,

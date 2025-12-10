@@ -372,16 +372,16 @@
       ]
     },
     {
-      "label": "Run DTA (capa; ksp)",
+      "label": "Run DTA (capa; fastdta2)",
       "type": "shell",
       "command": "python",
       "dependsOn": [
         "Build (debug)",
         "Copy duaIterate.py to SUMO",
-        "Clean capa-ksp"
+        "Clean capa-fastdta2"
       ],
       "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/capa-ksp",
+        "cwd": "${workspaceFolder}/data/imported/sumo/capa-fastdta2",
         "env": {
           "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
           "RUST_BACKTRACE": "1"
@@ -394,7 +394,7 @@
         "-t",
         "${workspaceFolder}/import/sumo/capa/capa.sb.modified.trips.xml",
         "--routing-algorithm",
-        "ksp",
+        "fastdta2",
         "--mesosim",
         "--aggregation",
         "60",
@@ -420,13 +420,13 @@
         "0.1",
         "sumo--precision",
         "6",
-        "ksp-preprocessor--input-prefix",
+        "fastdta2-preprocessor--input-prefix",
         "capa",
-        "ksp-preprocessor--input-dir",
+        "fastdta2-preprocessor--input-dir",
         "${workspaceFolder}/import/sumo/capa",
-        "ksp-router--samples",
+        "fastdta2-router--samples",
         "1 1 1",
-        "ksp-router--seed",
+        "fastdta2-router--seed",
         "42",
         "relative-gap--net-prefix",
         "capa",
@@ -611,16 +611,16 @@
       ]
     },
     {
-      "label": "Run DTA (lh; ksp)",
+      "label": "Run DTA (lh; fastdta2)",
       "type": "shell",
       "command": "python",
       "dependsOn": [
         "Build (debug)",
         "Copy duaIterate.py to SUMO",
-        "Clean leopoldshafen-ksp"
+        "Clean leopoldshafen-fastdta2"
       ],
       "options": {
-        "cwd": "${workspaceFolder}/data/imported/sumo/leopoldshafen-ksp",
+        "cwd": "${workspaceFolder}/data/imported/sumo/leopoldshafen-fastdta2",
         "env": {
           "PATH": "${workspaceFolder}:${workspaceFolder}/lib/InertialFlowCutter/build:${workspaceFolder}/target/debug/:${workspaceFolder}/lib/libsumo/bin/:${env:PATH}",
           "RUST_BACKTRACE": "1"
@@ -633,7 +633,7 @@
         "-t",
         "${workspaceFolder}/import/sumo/leopoldshafen/leopoldshafen.am.trips.xml",
         "--routing-algorithm",
-        "ksp",
+        "fastdta2",
         "--mesosim",
         "--aggregation",
         "60",
@@ -664,11 +664,11 @@
         "sumo--ignore-route-errors",
         "sumo--time-to-teleport.disconnected",
         "0",
-        "ksp-preprocessor--input-prefix",
+        "fastdta2-preprocessor--input-prefix",
         "leopoldshafen",
-        "ksp-preprocessor--input-dir",
+        "fastdta2-preprocessor--input-dir",
         "${workspaceFolder}/import/sumo/leopoldshafen",
-        "ksp-router--seed",
+        "fastdta2-router--seed",
         "42",
         "relative-gap--net-prefix",
         "leopoldshafen",
@@ -1708,13 +1708,13 @@
       "hide": true
     },
     {
-      "label": "Clean capa-ksp",
+      "label": "Clean capa-fastdta2",
       "type": "shell",
       "command": "rm",
       "options": {
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
-      "args": ["-rf", "capa-ksp/*"],
+      "args": ["-rf", "capa-fastdta2/*"],
       "hide": true
     },
     {
@@ -1748,13 +1748,13 @@
       "hide": true
     },
     {
-      "label": "Clean leopoldshafen-ksp",
+      "label": "Clean leopoldshafen-fastdta2",
       "type": "shell",
       "command": "rm",
       "options": {
         "cwd": "${workspaceFolder}/data/imported/sumo"
       },
-      "args": ["-rf", "leopoldshafen-ksp/*"],
+      "args": ["-rf", "leopoldshafen-fastdta2/*"],
       "hide": true
     },
     {

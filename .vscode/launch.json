@@ -36,7 +36,7 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug Preprocess (capa-ksp)",
+      "name": "Debug Preprocess (capa-fastdta2)",
       "program": "${workspaceFolder}/target/debug/sumo-tdcch-preprocessor",
       "args": [
         "--input-dir",
@@ -44,7 +44,7 @@
         "--input-prefix",
         "capa",
         "--output-dir",
-        "./data/imported/sumo/capa-ksp",
+        "./data/imported/sumo/capa-fastdta2",
         "--trips-file",
         "${workspaceFolder}/import/sumo/capa/capa.sb.modified.trips.xml"
       ],
@@ -115,11 +115,11 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug Router DTA (capa-ksp)",
-      "program": "${workspaceFolder}/target/debug/sumo-ksp-router",
+      "name": "Debug Router DTA (capa-fastdta2)",
+      "program": "${workspaceFolder}/target/debug/sumo-fastdta2-router",
       "args": [
         "--input-dir",
-        "./data/imported/sumo/capa-ksp",
+        "./data/imported/sumo/capa-fastdta2",
         "--input-prefix",
         "capa",
         "--iteration",

@@ -10,9 +10,9 @@ use fastdta::cli::Parser;
 use fastdta::customize::customize;
 use fastdta::logger::Logger;
 use fastdta::path_processor::adjust_weights_in_graph_by_following_paths;
-use fastdta::postprocess::prepare_next_iteration_for_ksp;
+use fastdta::postprocess::prepare_next_iteration_for_fastdta2;
 use fastdta::preprocess::get_cch;
-use fastdta::preprocess_routes::get_graph_data_for_ksp;
+use fastdta::preprocess_routes::get_graph_data_for_fastdta2;
 use fastdta::query::get_paths_with_cch_queries;
 use fastdta::relative_gap::append_relative_gap_to_file;
 use rust_road_router::datastr::graph::floating_time_dependent::{FlWeight, TDGraph, Timestamp};
@@ -32,11 +32,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
-    let logger = Logger::new("sumo-ksp-router", &input_dir.display().to_string(), iteration as i32);
+    let logger = Logger::new("sumo-fastdta2-router", &input_dir.display().to_string(), iteration as i32);
 
     // Load graph data including meandata, traffic models, and alternative paths from previous iteration
     let ((edge_ids, query_data, mut meandata, alternative_paths_from_dta, mut traffic_model_data, keep_routes), duration) =
-        measure(|| get_graph_data_for_ksp(input_dir, iteration, traffic_model_type, keep_route_probability));
+        measure(|| get_graph_data_for_fastdta2(input_dir, iteration, traffic_model_type, keep_route_probability));
 
     logger.log("preprocessing", duration.as_nanos());
 
@@ -112,7 +112,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let previous_paths = alternative_paths_from_dta.get_chosen_paths();
 
     // STEP 4: Temporarily calculate weights w_i' by following paths P on N using traffic model
-    let ((ksp_paths, ksp_travel_times_on_original), duration) = measure(|| {
+    let ((fastdta2_paths, fastdta2_travel_times_on_original), duration) = measure(|| {
         // Clone meandata for temporary weight calculation
         let mut temp_meandata = meandata.clone();
 
@@ -137,7 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // STEP 5: Compute shortest paths P' for all vehicles on N with weights w_i'
         let customized_graph_prime = customize(&cch, &graph);
 
-        let (ksp_paths, _ksp_travel_times, _) = get_paths_with_cch_queries(
+        let (fastdta2_paths, _fastdta2_travel_times, _) = get_paths_with_cch_queries(
             &cch,
             &customized_graph_prime,
             &query_data.0,
@@ -162,17 +162,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
 
-        // Calculate travel times of KSP paths on original graph
-        let ksp_travel_times_on_original: Vec<FlWeight> = ksp_paths
+        // Calculate travel times of FastDTA2 paths on original graph
+        let fastdta2_travel_times_on_original: Vec<FlWeight> = fastdta2_paths
             .iter()
             .enumerate()
             .map(|(i, path)| original_graph.get_travel_time_along_path(Timestamp::from_millis(departures[i]), path))
             .collect();
 
-        (ksp_paths, ksp_travel_times_on_original)
+        (fastdta2_paths, fastdta2_travel_times_on_original)
     });
 
-    logger.log("ksp_routing", duration.as_nanos());
+    logger.log("fastdta2_routing", duration.as_nanos());
 
     // STEP 7: Add P' to alternative paths
     let (alternative_paths, duration) = measure(|| {
@@ -189,12 +189,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
 
-        // Add KSP paths to alternatives
+        // Add FastDTA2 paths to alternatives
         let mut alternative_paths =
-            alternative_paths.update_alternatives_with_new_paths(&ksp_paths, &ksp_travel_times_on_original, &departures, &original_graph);
+            alternative_paths.update_alternatives_with_new_paths(&fastdta2_paths, &fastdta2_travel_times_on_original, &departures, &original_graph);
 
         // STEP 8: Perform choice model again with updated alternatives
-        // For the second choice model, we use the state before adding KSP as "previous"
+        // For the second choice model, we use the state before adding FastDTA2 as "previous"
         let previous_for_second_choice = alternative_paths.clone();
         alternative_paths.perform_choice_model(
             &previous_for_second_choice,
@@ -224,7 +224,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
 
-        prepare_next_iteration_for_ksp(
+        prepare_next_iteration_for_fastdta2(
             input_dir,
             input_prefix,
             iteration,
