@@ -187,7 +187,7 @@ cp "$experiment" "$base_output_dir/"
     # Get CPU info with Ghz, Cores, Threads and Model name
     cpu_info=$(lscpu | grep 'Model name' | head -n1 | sed 's/Model name:[ ]*//')
     cpu_max_mhz=$(lscpu | grep 'CPU max MHz' | head -n1 | sed 's/CPU max MHz:[ ]*//' | sed 's/,/\./')
-    cpu_ghz=$(echo "scale=2; $cpu_max_mhz / 1000" | bc 2>/dev/null || echo "N/A")
+    cpu_ghz=$(awk "BEGIN {printf \"%.2f\", $cpu_max_mhz / 1000}" 2>/dev/null || echo "N/A")
     cpu_cores=$(lscpu | grep 'Core(s) per socket' | head -n1 | sed 's/Core(s) per socket:[ ]*//')
     cpu_sockets=$(lscpu | grep 'Socket(s)' | head -n1 | sed 's/Socket(s):[ ]*//')
     cpu_threads=$(lscpu | grep 'Thread(s) per core' | head -n1 | sed 's/Thread(s) per core:[ ]*//')
