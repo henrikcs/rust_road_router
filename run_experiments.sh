@@ -16,6 +16,7 @@ declare message=""
 declare fastdta_samples=""
 declare sumo_samples=""
 declare repetitions=1
+declare use_logit=false
 
 # --- Function to display usage ---
 usage() {
@@ -43,6 +44,7 @@ usage() {
     echo "  --message, -m <text>   Add a custom message to the experiment README.md file."
     echo "  --debug                Build and use the debug target instead of release."
     echo "  --repeat <N >= 1>           Repeat each experiment N times using a different seed. (default: 1)"
+    echo "  --logit                Use logit choice model with default parameters."
     exit 1
 }
 
@@ -140,6 +142,10 @@ while [[ $# -gt 0 ]]; do
          --repeat)
         repetitions="$2"
         shift 2
+        ;;
+        --logit)
+        use_logit=true
+        shift
         ;;
         *)
         echo "Unknown option: $1"
@@ -279,14 +285,23 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 --routing-algorithm "$algorithm"
                 --max-convergence-deviation "$convergence_deviation"
                 --relative-gap "$convergence_relgap"
-                --logit
-                --logitbeta
-                1.0
-                --logitgamma
-                1.0
-                --logittheta
-                1.0
-                -s
+            )
+            
+            # Add logit args, if --logit is provided
+            if [ "$use_logit" = true ]; then
+                dua_args+=(
+                    --logit
+                    --logitbeta
+                    1.0
+                    --logitgamma
+                    1.0
+                    --logittheta
+                    1.0
+                    -s
+                )
+            fi
+            
+            dua_args+=(
                 duarouter--weights.interpolate
                 duarouter--seed $seed
                 sumo--ignore-route-errors
