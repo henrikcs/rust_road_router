@@ -13,7 +13,7 @@ use crate::{
         nodes_reader::SumoNodesReader,
         trips::TripsDocumentRoot,
         trips_reader::SumoTripsReader,
-        FileReader, RoutingKitTDGraph, SumoTravelTime, EDG_XML, NOD_XML,
+        FileReader, RoutingKitTDGraph, SumoTimestamp, SumoTravelTime, EDG_XML, NOD_XML,
     },
     SerializedPosition, SerializedTimestamp, SerializedTravelTime, FILE_EDGE_CAPACITIES, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID,
     FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_EDGE_SPEEDS, FILE_FIRST_IPP_OF_ARC, FILE_FIRST_OUT, FILE_HEAD, FILE_IPP_DEPARTURE_TIME, FILE_IPP_TRAVEL_TIME,
@@ -104,18 +104,21 @@ pub fn convert_sumo_to_routing_kit_and_queries(
     input_prefix: &String,
     trips_file: &Path,
     output_dir: &Path,
+    begin: Option<SumoTimestamp>,
+    end: Option<SumoTimestamp>,
+    interval: Option<SumoTimestamp>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "expand-sumo-nodes")]
     let (nodes, edges, connections, trips) = read_nodes_edges_connections_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
     #[cfg(feature = "expand-sumo-nodes")]
-    let (g, expanded_nodes, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+    let (g, expanded_nodes, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections, begin, end, interval);
     #[cfg(feature = "expand-sumo-nodes")]
     let all_nodes = expanded_nodes;
 
     #[cfg(not(feature = "expand-sumo-nodes"))]
     let (nodes, edges, trips) = read_nodes_edges_connections_and_trips_from_plain_xml(input_dir, &input_prefix, &trips_file);
     #[cfg(not(feature = "expand-sumo-nodes"))]
-    let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+    let (g, edge_ids_to_index, edge_indices_to_id) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, begin, end, interval);
     #[cfg(not(feature = "expand-sumo-nodes"))]
     let all_nodes = nodes.nodes;
 
@@ -326,6 +329,9 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
     connections_document_root: &'a ConnectionsDocumentRoot,
+    begin: Option<SumoTimestamp>,
+    end: Option<SumoTimestamp>,
+    interval: Option<SumoTimestamp>,
 ) -> (RoutingKitTDGraph, Vec<Node>, HashMap<String, (usize, FlattenedSumoEdge)>, Vec<String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
@@ -338,8 +344,12 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     let connections = &connections_document_root.connections;
     let (expanded_nodes, edges_sorted_by_node_index) = initialize_edges_for_td_graph_with_expansion(&nodes, &edges, &connections);
 
-    let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
-        create_implicit_td_graph(expanded_nodes.len(), edges_sorted_by_node_index.len(), &edges_sorted_by_node_index);
+    let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(
+        expanded_nodes.len(),
+        edges_sorted_by_node_index.len(),
+        &edges_sorted_by_node_index,
+        get_departure_times(begin, end, interval).as_ref(),
+    );
 
     // with the edge_ids we can write a file containing the edge ids in the order of the edges_sorted_by_node_index
     // this will be used for reconstructing the edges in the TDGraph
@@ -363,6 +373,9 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
 pub fn get_routing_kit_td_graph_from_sumo<'a>(
     node_document_root: &'a NodesDocumentRoot,
     edges_document_root: &'a EdgesDocumentRoot,
+    begin: Option<SumoTimestamp>,
+    end: Option<SumoTimestamp>,
+    interval: Option<SumoTimestamp>,
 ) -> (RoutingKitTDGraph, HashMap<String, (usize, FlattenedSumoEdge)>, Vec<String>) {
     // create a floating-td-graph
     // edges should be sorted by node index
@@ -374,8 +387,12 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     let edges = &edges_document_root.edges;
     let edges_sorted_by_node_index = initialize_edges_for_td_graph(&nodes, &edges);
 
-    let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) =
-        create_implicit_td_graph(nodes.len(), edges_sorted_by_node_index.len(), &edges_sorted_by_node_index);
+    let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(
+        nodes.len(),
+        edges_sorted_by_node_index.len(),
+        &edges_sorted_by_node_index,
+        get_departure_times(begin, end, interval).as_ref(),
+    );
 
     // with the edge_ids we can write a file containing the edge ids in the order of the edges_sorted_by_node_index
     // this will be used for reconstructing the edges in the TDGraph
@@ -394,6 +411,21 @@ pub fn get_routing_kit_td_graph_from_sumo<'a>(
     )
 }
 
+fn get_departure_times(begin: Option<SumoTimestamp>, end: Option<SumoTimestamp>, interval: Option<SumoTimestamp>) -> Vec<u32> {
+    let begin = begin.unwrap_or(0.0);
+    let end = end.unwrap_or(86400.0); // default end is end of day in seconds
+    let interval = interval.unwrap_or(end - begin); // default interval is the whole time span
+
+    let mut departure_times = Vec::new();
+    let mut current_time = begin;
+    while current_time < end {
+        departure_times.push(current_time as u32);
+        current_time += interval;
+    }
+
+    departure_times
+}
+
 fn get_lan_lon_from_nodes(nodes: &Vec<Node>) -> (Vec<SerializedPosition>, Vec<SerializedPosition>) {
     let lat: Vec<SerializedPosition> = nodes.iter().map(|n| n.y as SerializedPosition).collect();
     let lon: Vec<SerializedPosition> = nodes.iter().map(|n| n.x as SerializedPosition).collect();
@@ -401,13 +433,18 @@ fn get_lan_lon_from_nodes(nodes: &Vec<Node>) -> (Vec<SerializedPosition>, Vec<Se
     (lat, lon)
 }
 
-fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edges_sorted_by_node_index: &Vec<FlattenedSumoEdge>) -> RoutingKitTDGraph {
+fn create_implicit_td_graph(
+    number_of_nodes: usize,
+    number_of_edges: usize,
+    edges_sorted_by_node_index: &Vec<FlattenedSumoEdge>,
+    departure_times: &Vec<u32>,
+) -> RoutingKitTDGraph {
     // ipp_departure time is 0 for each edge, and ipp_travel_time is the weight of the edge
     let mut first_out = Vec::with_capacity(number_of_nodes + 1);
     let mut head = Vec::with_capacity(number_of_edges);
     let mut first_ipp_of_arc = Vec::with_capacity(number_of_edges + 1);
-    let mut ipp_departure_time = Vec::with_capacity(number_of_edges);
-    let mut ipp_travel_time = Vec::with_capacity(number_of_edges);
+    let mut ipp_departure_time = Vec::with_capacity(number_of_edges * departure_times.len());
+    let mut ipp_travel_time = Vec::with_capacity(number_of_edges * departure_times.len());
 
     for edge in edges_sorted_by_node_index {
         // skip nodes which do not have outgoing edges
@@ -423,9 +460,12 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
         head.push(edge.to_node_index);
 
         // add the ipp departure time and travel time
-        ipp_departure_time.push(0); // departure time is 0 for all edges
-        ipp_travel_time.push((edge.weight * 1000.0) as SerializedTravelTime); // convert seconds to milliseconds
-                                                                              // travel time in milliseconds
+        for departure_time in departure_times {
+            ipp_departure_time.push(*departure_time);
+            // set initial weight in all departure times to the default weight of the edge
+            // convert seconds to milliseconds
+            ipp_travel_time.push((edge.weight * 1000.0) as SerializedTravelTime);
+        }
     }
 
     // a loop is necessary in the case that the last node has no outgoing edges
@@ -434,7 +474,7 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
     }
 
     // it should not be necessary do a loop because the last edge is guaranteed to have been added
-    first_ipp_of_arc.push(number_of_edges as u32);
+    first_ipp_of_arc.push(ipp_departure_time.len() as u32);
 
     assert_correct_number_of_vec_items(
         number_of_nodes,
@@ -444,6 +484,7 @@ fn create_implicit_td_graph(number_of_nodes: usize, number_of_edges: usize, edge
         &first_ipp_of_arc,
         &ipp_departure_time,
         &ipp_travel_time,
+        departure_times,
     );
 
     (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time)
@@ -457,6 +498,7 @@ fn assert_correct_number_of_vec_items(
     first_ipp_of_arc: &[u32],
     ipp_departure_time: &[SerializedTimestamp],
     ipp_travel_time: &[SerializedTravelTime],
+    departure_times: &[u32],
 ) {
     assert!(
         first_out.len() == number_of_nodes + 1,
@@ -474,12 +516,12 @@ fn assert_correct_number_of_vec_items(
     );
 
     assert!(
-        ipp_departure_time.len() == number_of_edges,
+        ipp_departure_time.len() == number_of_edges * departure_times.len(),
         "The length of ipp_departure_time does not match the number of edges. This is a bug.",
     );
 
     assert!(
-        ipp_travel_time.len() == number_of_edges,
+        ipp_travel_time.len() == number_of_edges * departure_times.len(),
         "The length of ipp_travel_time does not match the number of edges. This is a bug.",
     );
 }
@@ -684,7 +726,7 @@ mod tests {
             ],
         };
 
-        let (td_graph, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+        let (td_graph, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, Some(0.0), Some(86400.0), Some(86400.0));
 
         assert_eq!(td_graph.0.len(), 3); // 2 nodes + 1 for the end
         assert_eq!(td_graph.1.len(), 2); // 2 edges
@@ -742,7 +784,7 @@ mod tests {
             ],
         };
 
-        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, Some(0.0), Some(86400.0), Some(86400.0));
 
         // Without expansion: 2 original edges only
         assert_eq!(td_graph.1.len(), 2);
@@ -802,7 +844,7 @@ mod tests {
             ],
         };
 
-        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+        let (td_graph, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, Some(0.0), Some(86400.0), Some(86400.0));
 
         // Without expansion: 2 original edges only
         assert_eq!(td_graph.1.len(), 2);
@@ -868,7 +910,7 @@ mod tests {
 
             let connections = ConnectionsDocumentRoot { connections: vec![] };
 
-            let (td_graph, _, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+            let (td_graph, _, _, _) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections, None, None, None);
 
             assert_eq!(td_graph.0.len(), 5); // 4 internal nodes + 1 for the end
             assert_eq!(td_graph.1.len(), 2); // 2 edges
@@ -930,7 +972,7 @@ mod tests {
                 }],
             };
 
-            let (td_graph, _, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+            let (td_graph, _, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections, None, None, None);
 
             // 2 original edges + 1 connection edge
             assert_eq!(td_graph.1.len(), 3);
@@ -1003,7 +1045,7 @@ mod tests {
                 ],
             };
 
-            let (td_graph, _, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+            let (td_graph, _, _, edge_ids) = get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections, None, None, None);
 
             // 2 original edges + 2 connection edges
             assert_eq!(td_graph.1.len(), 4);
@@ -1016,6 +1058,317 @@ mod tests {
             for conn in expected_connections {
                 assert!(edge_ids.iter().any(|id| id.contains(&conn)), "Missing connection edge id: {}", conn);
             }
+        }
+    }
+
+    #[test]
+    fn test_get_departure_times_default_values() {
+        // Test with all None values - should use defaults
+        let result = get_departure_times(None, None, None);
+
+        // Default is from 0 to 86400 (one day) with a single interval
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], 0);
+    }
+
+    #[test]
+    fn test_get_departure_times_explicit_single_interval() {
+        // Test with explicit values covering the whole time span
+        let result = get_departure_times(Some(0.0), Some(86400.0), Some(86400.0));
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], 0);
+    }
+
+    #[test]
+    fn test_get_departure_times_multiple_intervals() {
+        // Test with multiple intervals throughout the day
+        let result = get_departure_times(Some(0.0), Some(3600.0), Some(900.0));
+
+        // From 0 to 3600 with 900s intervals: 0, 900, 1800, 2700
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], 0);
+        assert_eq!(result[1], 900);
+        assert_eq!(result[2], 1800);
+        assert_eq!(result[3], 2700);
+    }
+
+    #[test]
+    fn test_get_departure_times_custom_begin_and_end() {
+        // Test with custom begin and end times (e.g., rush hour)
+        let result = get_departure_times(Some(21600.0), Some(25200.0), Some(1800.0));
+
+        // From 21600 (6am) to 25200 (7am) with 1800s (30min) intervals: 21600, 23400
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], 21600);
+        assert_eq!(result[1], 23400);
+    }
+
+    #[test]
+    fn test_get_departure_times_small_intervals() {
+        // Test with very small intervals
+        let result = get_departure_times(Some(0.0), Some(10.0), Some(2.0));
+
+        // From 0 to 10 with 2s intervals: 0, 2, 4, 6, 8
+        assert_eq!(result.len(), 5);
+        assert_eq!(result[0], 0);
+        assert_eq!(result[1], 2);
+        assert_eq!(result[2], 4);
+        assert_eq!(result[3], 6);
+        assert_eq!(result[4], 8);
+    }
+
+    #[test]
+    fn test_get_departure_times_interval_larger_than_span() {
+        // Test when interval is larger than the time span
+        let result = get_departure_times(Some(0.0), Some(100.0), Some(200.0));
+
+        // Should only have one departure time at the beginning
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], 0);
+    }
+
+    #[test]
+    fn test_get_departure_times_partial_interval_at_end() {
+        // Test when the last interval doesn't complete before end
+        let result = get_departure_times(Some(0.0), Some(100.0), Some(30.0));
+
+        // From 0 to 100 with 30s intervals: 0, 30, 60, 90 (100 is excluded)
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], 0);
+        assert_eq!(result[1], 30);
+        assert_eq!(result[2], 60);
+        assert_eq!(result[3], 90);
+    }
+
+    #[test]
+    fn test_get_departure_times_exact_multiple() {
+        // Test when end is exact multiple of interval
+        let result = get_departure_times(Some(0.0), Some(100.0), Some(25.0));
+
+        // From 0 to 100 with 25s intervals: 0, 25, 50, 75
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], 0);
+        assert_eq!(result[1], 25);
+        assert_eq!(result[2], 50);
+        assert_eq!(result[3], 75);
+    }
+
+    #[test]
+    fn test_get_departure_times_non_zero_begin() {
+        // Test with non-zero begin time
+        let result = get_departure_times(Some(1000.0), Some(3000.0), Some(500.0));
+
+        // From 1000 to 3000 with 500s intervals: 1000, 1500, 2000, 2500
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0], 1000);
+        assert_eq!(result[1], 1500);
+        assert_eq!(result[2], 2000);
+        assert_eq!(result[3], 2500);
+    }
+
+    #[test]
+    fn test_get_departure_times_empty_when_begin_equals_end() {
+        // Test edge case where begin equals end
+        let result = get_departure_times(Some(100.0), Some(100.0), Some(10.0));
+
+        // Should return empty vector as begin < end is false from the start
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_create_implicit_td_graph_single_departure_time() {
+        // Test with a single departure time - each edge should have 1 IPP
+        let edges = vec![
+            FlattenedSumoEdge::new(0, 1, String::from("e1"), 10.0, 100.0, 1.0, 1, 10.0),
+            FlattenedSumoEdge::new(0, 2, String::from("e2"), 20.0, 200.0, 1.0, 1, 10.0),
+        ];
+        let departure_times = vec![0];
+
+        let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(3, 2, &edges, &departure_times);
+
+        // Check basic structure
+        assert_eq!(first_out.len(), 4); // 3 nodes + 1
+        assert_eq!(head.len(), 2); // 2 edges
+        assert_eq!(first_ipp_of_arc.len(), 3); // 2 edges + 1
+
+        // Check IPPs: 2 edges * 1 departure time = 2 IPPs
+        assert_eq!(ipp_departure_time.len(), 2);
+        assert_eq!(ipp_travel_time.len(), 2);
+
+        // Verify IPP content for each edge
+        assert_eq!(ipp_departure_time[0], 0);
+        assert_eq!(ipp_travel_time[0], 10000); // 10.0 seconds * 1000 = 10000 ms
+
+        assert_eq!(ipp_departure_time[1], 0);
+        assert_eq!(ipp_travel_time[1], 20000); // 20.0 seconds * 1000 = 20000 ms
+    }
+
+    #[test]
+    fn test_create_implicit_td_graph_multiple_departure_times() {
+        // Test with multiple departure times - each edge should have multiple IPPs
+        let edges = vec![FlattenedSumoEdge::new(0, 1, String::from("e1"), 10.0, 100.0, 1.0, 1, 10.0)];
+        let departure_times = vec![0, 100, 200];
+
+        let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(2, 1, &edges, &departure_times);
+
+        // Check basic structure
+        assert_eq!(first_out.len(), 3); // 2 nodes + 1
+        assert_eq!(head.len(), 1); // 1 edge
+        assert_eq!(first_ipp_of_arc.len(), 2); // 1 edge + 1
+
+        // Check IPPs: 1 edge * 3 departure times = 3 IPPs
+        assert_eq!(ipp_departure_time.len(), 3);
+        assert_eq!(ipp_travel_time.len(), 3);
+
+        // Verify IPP content: [(0, 10000), (100, 10000), (200, 10000)]
+        assert_eq!(ipp_departure_time[0], 0);
+        assert_eq!(ipp_travel_time[0], 10000);
+
+        assert_eq!(ipp_departure_time[1], 100);
+        assert_eq!(ipp_travel_time[1], 10000);
+
+        assert_eq!(ipp_departure_time[2], 200);
+        assert_eq!(ipp_travel_time[2], 10000);
+    }
+
+    #[test]
+    fn test_create_implicit_td_graph_multiple_edges_multiple_ipps() {
+        // Test with multiple edges and multiple departure times
+        let edges = vec![
+            FlattenedSumoEdge::new(0, 1, String::from("e1"), 10.0, 100.0, 1.0, 1, 10.0),
+            FlattenedSumoEdge::new(0, 2, String::from("e2"), 20.0, 200.0, 1.0, 1, 10.0),
+            FlattenedSumoEdge::new(1, 2, String::from("e3"), 15.0, 150.0, 1.0, 1, 10.0),
+        ];
+        let departure_times = vec![0, 100, 200];
+
+        let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(3, 3, &edges, &departure_times);
+
+        // Check basic structure
+        assert_eq!(first_out.len(), 4); // 3 nodes + 1
+        assert_eq!(head.len(), 3); // 3 edges
+        assert_eq!(first_ipp_of_arc.len(), 4); // 3 edges + 1
+
+        // Check IPPs: 3 edges * 3 departure times = 9 IPPs
+        assert_eq!(ipp_departure_time.len(), 9);
+        assert_eq!(ipp_travel_time.len(), 9);
+
+        // Verify first edge IPPs: e1 has IPPs at indices 0, 1, 2
+        assert_eq!(ipp_departure_time[0], 0);
+        assert_eq!(ipp_travel_time[0], 10000);
+        assert_eq!(ipp_departure_time[1], 100);
+        assert_eq!(ipp_travel_time[1], 10000);
+        assert_eq!(ipp_departure_time[2], 200);
+        assert_eq!(ipp_travel_time[2], 10000);
+
+        // Verify second edge IPPs: e2 has IPPs at indices 3, 4, 5
+        assert_eq!(ipp_departure_time[3], 0);
+        assert_eq!(ipp_travel_time[3], 20000);
+        assert_eq!(ipp_departure_time[4], 100);
+        assert_eq!(ipp_travel_time[4], 20000);
+        assert_eq!(ipp_departure_time[5], 200);
+        assert_eq!(ipp_travel_time[5], 20000);
+
+        // Verify third edge IPPs: e3 has IPPs at indices 6, 7, 8
+        assert_eq!(ipp_departure_time[6], 0);
+        assert_eq!(ipp_travel_time[6], 15000);
+        assert_eq!(ipp_departure_time[7], 100);
+        assert_eq!(ipp_travel_time[7], 15000);
+        assert_eq!(ipp_departure_time[8], 200);
+        assert_eq!(ipp_travel_time[8], 15000);
+
+        // Verify first_ipp_of_arc points to correct IPP indices
+        assert_eq!(first_ipp_of_arc[0], 0); // e1 starts at IPP 0
+        assert_eq!(first_ipp_of_arc[1], 3); // e2 starts at IPP 3
+        assert_eq!(first_ipp_of_arc[2], 6); // e3 starts at IPP 6
+        assert_eq!(first_ipp_of_arc[3], 9); // end marker (total number of IPPs)
+    }
+
+    #[test]
+    fn test_create_implicit_td_graph_node_without_outgoing_edges() {
+        // Test graph where some nodes have no outgoing edges
+        let edges = vec![
+            FlattenedSumoEdge::new(0, 1, String::from("e1"), 10.0, 100.0, 1.0, 1, 10.0),
+            // Node 1 has no outgoing edges
+            FlattenedSumoEdge::new(2, 1, String::from("e2"), 20.0, 200.0, 1.0, 1, 10.0),
+        ];
+        let departure_times = vec![0, 100];
+
+        let (first_out, head, _first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(3, 2, &edges, &departure_times);
+
+        // Check basic structure
+        assert_eq!(first_out.len(), 4); // 3 nodes + 1
+        assert_eq!(head.len(), 2); // 2 edges
+
+        // Node 0 has 1 outgoing edge (to index 0)
+        assert_eq!(first_out[0], 0);
+        // Node 1 has no outgoing edges (same index as next node)
+        assert_eq!(first_out[1], 1);
+        // Node 2 has 1 outgoing edge (to index 1)
+        assert_eq!(first_out[2], 1);
+        // End marker
+        assert_eq!(first_out[3], 2);
+
+        // Check IPPs: 2 edges * 2 departure times = 4 IPPs
+        assert_eq!(ipp_departure_time.len(), 4);
+        assert_eq!(ipp_travel_time.len(), 4);
+    }
+
+    #[test]
+    fn test_create_implicit_td_graph_empty_graph() {
+        // Test with no edges
+        let edges = vec![];
+        let departure_times = vec![0, 100, 200];
+
+        let (first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(2, 0, &edges, &departure_times);
+
+        // Check basic structure
+        assert_eq!(first_out.len(), 3); // 2 nodes + 1
+        assert_eq!(head.len(), 0); // no edges
+        assert_eq!(first_ipp_of_arc.len(), 1); // 0 edges + 1
+
+        // No edges means no IPPs
+        assert_eq!(ipp_departure_time.len(), 0);
+        assert_eq!(ipp_travel_time.len(), 0);
+
+        // All nodes point to index 0 (no edges)
+        assert_eq!(first_out[0], 0);
+        assert_eq!(first_out[1], 0);
+        assert_eq!(first_out[2], 0);
+
+        assert_eq!(first_ipp_of_arc[0], 0);
+    }
+
+    #[test]
+    fn test_create_implicit_td_graph_ipp_indexing() {
+        // Test to verify correct IPP indexing with varying departure times
+        let edges = vec![
+            FlattenedSumoEdge::new(0, 1, String::from("e1"), 5.0, 50.0, 1.0, 1, 10.0),
+            FlattenedSumoEdge::new(1, 2, String::from("e2"), 10.0, 100.0, 1.0, 1, 10.0),
+        ];
+        let departure_times = vec![0, 300, 600, 900, 1200];
+
+        let (_first_out, _head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time) = create_implicit_td_graph(3, 2, &edges, &departure_times);
+
+        // Check IPPs: 2 edges * 5 departure times = 10 IPPs
+        assert_eq!(ipp_departure_time.len(), 10);
+        assert_eq!(ipp_travel_time.len(), 10);
+
+        // Verify first_ipp_of_arc indices
+        assert_eq!(first_ipp_of_arc[0], 0); // e1 starts at IPP 0
+        assert_eq!(first_ipp_of_arc[1], 5); // e2 starts at IPP 5 (after 5 IPPs of e1)
+        assert_eq!(first_ipp_of_arc[2], 10); // end marker (total number of IPPs)
+
+        // Verify e1 IPPs (indices 0-4)
+        for i in 0..5 {
+            assert_eq!(ipp_departure_time[i], departure_times[i]);
+            assert_eq!(ipp_travel_time[i], 5000); // 5.0 * 1000
+        }
+
+        // Verify e2 IPPs (indices 5-9)
+        for i in 0..5 {
+            assert_eq!(ipp_departure_time[5 + i], departure_times[i]);
+            assert_eq!(ipp_travel_time[5 + i], 10000); // 10.0 * 1000
         }
     }
 }

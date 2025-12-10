@@ -715,13 +715,19 @@ def main(args=None):
             ROUTING_ALGORITHM_SUMO_SAMPLE == options.routing_algorithm or \
             ROUTING_ALGORITHM_FASTDTA2 == options.routing_algorithm:
 
+        common_args = [
+            "--trips-file", input_demands[0],
+            "--begin", str(options.begin),
+            "--end", str(options.end),
+            "--interval", str(options.aggregation)]
+
         # note that the rust libraries only support a single demand file as an input.
         tik = datetime.now()
         if ROUTING_ALGORITHM_CCH == options.routing_algorithm:
             print("> Preprocessing network for CCH")
             print(">> Begin time: %s" % tik)
             ret = call_binary(CCH_PREPROCESS_BINARY,
-                              cch_preprocessing_args + ["--trips-file", input_demands[0]])
+                              cch_preprocessing_args + common_args)
             if ret != 0:
                 sys.exit("Error: CCH preprocessing failed.")
 
@@ -729,7 +735,7 @@ def main(args=None):
             print("> Preprocessing network for Dijkstra Rust")
             print(">> Begin time: %s" % tik)
             ret = call_binary(DIJKSTRA_PREPROCESS_BINARY,
-                              dijkstra_preprocessing_args + ["--trips-file", input_demands[0]])
+                              dijkstra_preprocessing_args + common_args)
             if ret != 0:
                 sys.exit("Error: Dijkstra preprocessing failed.")
 
@@ -737,27 +743,27 @@ def main(args=None):
             print("> Preprocessing network for FastDTA")
             print(">> Begin time: %s" % tik)
             ret = call_binary(FASTDTA_PREPROCESS_BINARY,
-                              fastdta_preprocessing_args + ["--trips-file", input_demands[0]])
+                              fastdta_preprocessing_args + common_args)
             if ret != 0:
                 sys.exit("Error: FastDTA preprocessing failed.")
 
         if ROUTING_ALGORITHM_SUMO_SAMPLE == options.routing_algorithm:
             print("> Preprocessing network for Sumo Sample")
             print(">> Begin time: %s" % tik)
-            print(">> Argumetns: %s" % " ".join(
-                sumo_sample_preprocessing_args + ["--trips-file", input_demands[0]]))
+            print(">> Arguments: %s" % " ".join(
+                sumo_sample_preprocessing_args + common_args))
             ret = call_binary(SUMO_SAMPLE_PREPROCESS_BINARY,
-                              sumo_sample_preprocessing_args + ["--trips-file", input_demands[0]])
+                              sumo_sample_preprocessing_args + common_args)
             if ret != 0:
                 sys.exit("Error: Sumo Sample preprocessing failed.")
 
         if ROUTING_ALGORITHM_FASTDTA2 == options.routing_algorithm:
             print("> Preprocessing network for FastDTA2")
             print(">> Begin time: %s" % tik)
-            print(">> Argumetns: %s" % " ".join(
-                fastdta2_preprocessing_args + ["--trips-file", input_demands[0]]))
+            print(">> Arguments: %s" % " ".join(
+                fastdta2_preprocessing_args + common_args))
             ret = call_binary(FASTDTA2_PREPROCESS_BINARY,
-                              fastdta2_preprocessing_args + ["--trips-file", input_demands[0]])
+                              fastdta2_preprocessing_args + common_args)
             if ret != 0:
                 sys.exit("Error: FastDTA2 preprocessing failed.")
 

@@ -14,10 +14,42 @@ use fastdta::postprocess::prepare_next_iteration_for_fastdta2;
 use fastdta::preprocess::get_cch;
 use fastdta::preprocess_routes::get_graph_data_for_fastdta2;
 use fastdta::query::get_paths_with_cch_queries;
-use fastdta::relative_gap::append_relative_gap_to_file;
 use rust_road_router::datastr::graph::floating_time_dependent::{FlWeight, TDGraph, Timestamp};
 use rust_road_router::io::{Load, Reconstruct};
 use rust_road_router::report::measure;
+
+/// Debug function to check if paths from SP routing and FastDTA2 routing are identical
+fn debug_check_path_equality(sp_paths: &[Vec<u32>], fastdta2_paths: &[Vec<u32>], iteration: u32) {
+    assert_eq!(sp_paths.len(), fastdta2_paths.len(), "Path count mismatch");
+
+    let mut identical_count = 0;
+    let mut different_count = 0;
+
+    for (i, (sp_path, fastdta2_path)) in sp_paths.iter().zip(fastdta2_paths.iter()).enumerate() {
+        if sp_path == fastdta2_path {
+            identical_count += 1;
+        } else {
+            different_count += 1;
+            if different_count <= 5 {
+                // Print first 5 differences
+                eprintln!("[DEBUG] Iteration {}, Query {}: Paths differ", iteration, i);
+                eprintln!("  SP path length: {}, FastDTA2 path length: {}", sp_path.len(), fastdta2_path.len());
+            }
+        }
+    }
+
+    eprintln!(
+        "[DEBUG] Iteration {}: {} identical paths, {} different paths out of {} total",
+        iteration,
+        identical_count,
+        different_count,
+        sp_paths.len()
+    );
+
+    if identical_count == sp_paths.len() {
+        eprintln!("[DEBUG] WARNING: All paths are identical! FastDTA2 routing added no new alternatives.");
+    }
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = cli::FastDtaArgs::parse();
@@ -35,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let logger = Logger::new("sumo-fastdta2-router", &input_dir.display().to_string(), iteration as i32);
 
     // Load graph data including meandata, traffic models, and alternative paths from previous iteration
-    let ((edge_ids, query_data, mut meandata, alternative_paths_from_dta, mut traffic_model_data, keep_routes), duration) =
+    let ((edge_ids, query_data, mut meandata, previous_alternative_paths, mut traffic_model_data, keep_routes), duration) =
         measure(|| get_graph_data_for_fastdta2(input_dir, iteration, traffic_model_type, keep_route_probability));
 
     logger.log("preprocessing", duration.as_nanos());
@@ -86,7 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // STEP 2: Add SP to alternative paths and perform choice model
-        let mut alternative_paths = alternative_paths_from_dta.update_alternatives_with_new_paths(
+        let mut alternative_paths = previous_alternative_paths.update_alternatives_with_new_paths(
             &sp_paths,
             &sp_travel_times,
             &query_data.2, // departures as SerializedTimestamp
@@ -95,7 +127,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Perform choice model to get preferred paths P
         alternative_paths.perform_choice_model(
-            &alternative_paths_from_dta,
+            &previous_alternative_paths,
             &choice_algorithm,
             args.router_args.max_alternatives,
             &keep_routes,
@@ -105,11 +137,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (graph, cch, query_data.2.clone(), sp_paths, sp_travel_times, alternative_paths)
     });
 
-    logger.log("first_sp_routing", duration.as_nanos());
+    logger.log("first routing", duration.as_nanos());
 
     // STEP 3: Get preferred paths P from choice model
     let preferred_paths = alternative_paths.get_chosen_paths();
-    let previous_paths = alternative_paths_from_dta.get_chosen_paths();
+    let previous_paths = previous_alternative_paths.get_chosen_paths();
 
     // STEP 4: Temporarily calculate weights w_i' by following paths P on N using traffic model
     let ((fastdta2_paths, fastdta2_travel_times_on_original), duration) = measure(|| {
@@ -172,7 +204,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (fastdta2_paths, fastdta2_travel_times_on_original)
     });
 
-    logger.log("fastdta2_routing", duration.as_nanos());
+    logger.log("second routing", duration.as_nanos());
 
     // STEP 7: Add P' to alternative paths
     let (alternative_paths, duration) = measure(|| {
@@ -189,15 +221,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
 
-        // Add FastDTA2 paths to alternatives
+        // Debug: Check if SP paths and FastDTA2 paths are identical
+        debug_check_path_equality(&_sp_paths, &fastdta2_paths, iteration);
+
+        // Add FastDTA2 paths to alternatives (which already contains SP paths from STEP 2)
+        let state_before_fastdta2 = alternative_paths.clone();
         let mut alternative_paths =
             alternative_paths.update_alternatives_with_new_paths(&fastdta2_paths, &fastdta2_travel_times_on_original, &departures, &original_graph);
 
         // STEP 8: Perform choice model again with updated alternatives
         // For the second choice model, we use the state before adding FastDTA2 as "previous"
-        let previous_for_second_choice = alternative_paths.clone();
         alternative_paths.perform_choice_model(
-            &previous_for_second_choice,
+            &state_before_fastdta2,
             &choice_algorithm,
             args.router_args.max_alternatives,
             &keep_routes,
@@ -207,7 +242,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         alternative_paths
     });
 
-    logger.log("second_choice_model", duration.as_nanos());
+    logger.log("second choice model", duration.as_nanos());
 
     // STEP 9: Prepare output for next iteration
     let (_, duration) = measure(|| {
@@ -236,11 +271,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         traffic_model_data.deconstruct(&input_dir).unwrap();
-
-        if iteration == 0 {
-            // Initialize relative gap file with 0.0 for the first iteration
-            append_relative_gap_to_file(0.0, &input_dir);
-        }
     });
 
     logger.log("postprocessing", duration.as_nanos());

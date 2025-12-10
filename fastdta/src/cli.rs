@@ -32,6 +32,15 @@ pub struct PreprocesserArgs {
     /// (optional, defaults to the number of available threads)
     #[arg(long = "routing-threads", default_value_t = std::thread::available_parallelism().unwrap().get() as i32)]
     pub routing_threads: i32,
+
+    #[arg(long = "begin")]
+    pub begin: Option<f64>,
+
+    #[arg(long = "end")]
+    pub end: Option<f64>,
+
+    #[arg(long = "interval")]
+    pub interval: Option<f64>,
 }
 
 /// Command-line arguments for routing, derived from duarouter

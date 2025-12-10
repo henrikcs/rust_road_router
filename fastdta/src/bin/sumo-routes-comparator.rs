@@ -48,7 +48,7 @@ fn main() {
     let temp_dir_name = "tmp";
     let temp_cch_dir = dta_dir.join(temp_dir_name);
 
-    convert_sumo_to_routing_kit_and_queries(&network_dir, &network_prefix, &trips_file, &temp_cch_dir).unwrap();
+    convert_sumo_to_routing_kit_and_queries(&network_dir, &network_prefix, &trips_file, &temp_cch_dir, None, None, None).unwrap();
 
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH
     run_inertial_flow_cutter(&temp_cch_dir, 42, std::thread::available_parallelism().unwrap().get() as i32).unwrap();

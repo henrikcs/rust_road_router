@@ -22,9 +22,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let trips_file = Path::new(&args.trips_file);
     let output_dir = Path::new(&args.output_dir);
 
+    let begin = args.begin;
+    let end = args.end;
+    let interval = args.interval;
+
     let logger = Logger::new("sumo-tdcch-preprocessor", &input_dir.display().to_string(), -1);
 
-    let (_, duration) = measure(|| convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &trips_file, &output_dir));
+    let (_, duration) = measure(|| convert_sumo_to_routing_kit_and_queries(&input_dir, &input_prefix, &trips_file, &output_dir, begin, end, interval));
     logger.log("preprocessing", duration.as_nanos());
 
     // create a subprocess which runs the bash script: "flow_cutter_cch_cut_order.sh <output_dir>" to create node rankings for the TD-CCH

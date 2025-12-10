@@ -365,11 +365,11 @@ fn get_paths_from_queries<F: FnMut(EdgeId, EdgeId, u32, u32, Timestamp, &TDGraph
 fn construct_path_and_time(
     graph: &TDGraph,
     from_edge: EdgeId,
-    from_edge_tt: FlWeight,
+    _from_edge_tt: FlWeight,
     to_edge: EdgeId,
     departure: Timestamp,
     remaining_path: Vec<EdgeIdT>,
-    remaining_path_tt: FlWeight,
+    _remaining_path_tt: FlWeight,
 ) -> (Vec<EdgeId>, FlWeight) {
     let mut path = Vec::with_capacity(remaining_path.len() + 2);
     path.push(from_edge);
@@ -390,7 +390,7 @@ fn construct_path_and_time(
         path.extend(remaining_path.iter().map(|edge| edge.0));
 
         path.push(to_edge);
-        distance = from_edge_tt + remaining_path_tt;
+        distance = _from_edge_tt + _remaining_path_tt;
         distance += graph.get_travel_time_along_path(departure + distance, &[to_edge]);
     }
 
@@ -472,10 +472,11 @@ mod tests {
         };
 
         #[cfg(feature = "expand-sumo-nodes")]
-        let (routing_kit_graph, _, _, _) = conversion::sumo::sumo_to_td_graph_converter::get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections);
+        let (routing_kit_graph, _, _, _) =
+            conversion::sumo::sumo_to_td_graph_converter::get_routing_kit_td_graph_from_sumo(&nodes, &edges, &connections, None, None, None);
 
         #[cfg(not(feature = "expand-sumo-nodes"))]
-        let (routing_kit_graph, _, _) = conversion::sumo::sumo_to_td_graph_converter::get_routing_kit_td_graph_from_sumo(&nodes, &edges);
+        let (routing_kit_graph, _, _) = conversion::sumo::sumo_to_td_graph_converter::get_routing_kit_td_graph_from_sumo(&nodes, &edges, None, None, None);
 
         let graph = TDGraph::new(
             routing_kit_graph.0,
@@ -544,10 +545,7 @@ mod tests {
             let queries_original_from_edges = vec![0];
             let queries_original_to_edges = vec![1];
 
-            let mut server = floating_td_dijkstra::Server::new(&graph);
-
-            let (paths, distances, _departures) = get_paths_with_dijkstra_server(
-                &mut server,
+            let (paths, distances, _departures) = get_paths_with_dijkstra_queries(
                 &queries_from,
                 &queries_to,
                 &queries_departure,
