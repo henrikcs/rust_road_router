@@ -709,11 +709,11 @@ def main(args=None):
 
     # do a preprocessing if one of the new routing algorithms is selected
 
-    if ROUTING_ALGORITHM_CCH in options.routing_algorithm or \
-            ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm or \
-            ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm or \
-            ROUTING_ALGORITHM_SUMO_SAMPLE in options.routing_algorithm or \
-            ROUTING_ALGORITHM_FASTDTA2 in options.routing_algorithm:
+    if ROUTING_ALGORITHM_CCH == options.routing_algorithm or \
+            ROUTING_ALGORITHM_DIJKSTRA_RUST == options.routing_algorithm or \
+            ROUTING_ALGORITHM_FASTDTA == options.routing_algorithm or \
+            ROUTING_ALGORITHM_SUMO_SAMPLE == options.routing_algorithm or \
+            ROUTING_ALGORITHM_FASTDTA2 == options.routing_algorithm:
 
         # note that the rust libraries only support a single demand file as an input.
         tik = datetime.now()
@@ -801,35 +801,35 @@ def main(args=None):
                     calcMarginalCost(step, options)
 
                 ret = 0
-                if ROUTING_ALGORITHM_CCH in options.routing_algorithm:
+                if ROUTING_ALGORITHM_CCH == options.routing_algorithm:
                     ret = call_binary(
                         CCH_ROUTER_BINARY,
                         ["--iteration", str(step),
                          "--input-prefix", get_basename(input_demands[0])]
                         + arguments_for_router
                         + cch_routing_args)
-                elif ROUTING_ALGORITHM_DIJKSTRA_RUST in options.routing_algorithm:
+                elif ROUTING_ALGORITHM_DIJKSTRA_RUST == options.routing_algorithm:
                     ret = call_binary(
                         DIJKSTRA_ROUTER_BINARY,
                         ["--iteration", str(step),
                          "--input-prefix", get_basename(input_demands[0])]
                         + arguments_for_router
                         + dijkstra_routing_args)
-                elif ROUTING_ALGORITHM_FASTDTA in options.routing_algorithm:
+                elif ROUTING_ALGORITHM_FASTDTA == options.routing_algorithm:
                     ret = call_binary(
                         FASTDTA_ROUTER_BINARY,
                         ["--iteration", str(step),
                          "--input-prefix", get_basename(input_demands[0])]
                         + arguments_for_router
                         + fastdta_routing_args)
-                elif ROUTING_ALGORITHM_SUMO_SAMPLE in options.routing_algorithm:
+                elif ROUTING_ALGORITHM_SUMO_SAMPLE == options.routing_algorithm:
                     ret = call_binary(
                         SUMO_SAMPLE_ROUTER_BINARY,
                         ["--iteration", str(step),
                          "--input-prefix", get_basename(input_demands[0])]
                         + arguments_for_router
                         + sumo_routing_args)
-                elif ROUTING_ALGORITHM_FASTDTA2 in options.routing_algorithm:
+                elif ROUTING_ALGORITHM_FASTDTA2 == options.routing_algorithm:
                     ret = call_binary(
                         FASTDTA2_ROUTER_BINARY,
                         ["--iteration", str(step),
