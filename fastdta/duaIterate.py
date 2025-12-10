@@ -742,6 +742,8 @@ def main(args=None):
         if ROUTING_ALGORITHM_FASTDTA == options.routing_algorithm:
             print("> Preprocessing network for FastDTA")
             print(">> Begin time: %s" % tik)
+            print(">> Arguments: %s" % " ".join(
+                fastdta_preprocessing_args + common_args))
             ret = call_binary(FASTDTA_PREPROCESS_BINARY,
                               fastdta_preprocessing_args + common_args)
             if ret != 0:
