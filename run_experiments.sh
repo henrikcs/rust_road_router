@@ -323,7 +323,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
             fi
             # Add preprocessor args only for fastdta2
             if [ "$algorithm" = "fastdta2" ]; then
-                duaiterate_args+=(
+                dua_args+=(
                     fastdta2-preprocessor--input-prefix "$prefix"
                     fastdta2-preprocessor--input-dir "$in_dir"
                     fastdta2-router--seed $seed
