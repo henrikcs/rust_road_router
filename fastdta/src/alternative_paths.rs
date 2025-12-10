@@ -201,8 +201,8 @@ impl AlternativePathsForDTA {
     /// merges the previous alternatives with the current shortest paths
     pub fn update_alternatives_with_new_paths(
         &self,
-        shortest_paths: &Vec<Vec<EdgeId>>,
-        travel_times: &Vec<FlWeight>,
+        new_paths: &Vec<Vec<EdgeId>>,
+        new_paths_tt: &Vec<FlWeight>,
         departures: &Vec<SerializedTimestamp>,
         graph: &TDGraph,
     ) -> AlternativePathsForDTA {
@@ -210,14 +210,14 @@ impl AlternativePathsForDTA {
 
         // merge previous alternatives with current paths
         for (i, alternatives) in merged_alternative_paths.alternatives_in_query.iter_mut().enumerate() {
-            let mut is_shortest_path_among_alternatives = false;
+            let mut is_new_path_among_alternatives = false;
 
             // Update costs for existing paths
             for (j, alternative_path) in alternatives.paths.iter().enumerate() {
-                if alternative_path.edges == shortest_paths[i].iter().map(|&e| e as EdgeId).collect::<Vec<EdgeId>>() {
+                if alternative_path.edges == new_paths[i] {
                     // path already exists, mark it and update its cost
-                    is_shortest_path_among_alternatives = true;
-                    alternatives.costs[j] = travel_times[i].into();
+                    is_new_path_among_alternatives = true;
+                    alternatives.costs[j] = new_paths_tt[i].into();
                 } else {
                     // Recompute cost for existing alternative path
                     alternatives.costs[j] = graph
@@ -236,11 +236,11 @@ impl AlternativePathsForDTA {
             }
 
             // Add new shortest path if it's not among existing alternatives
-            if !is_shortest_path_among_alternatives {
+            if !is_new_path_among_alternatives {
                 alternatives.paths.push(AlternativePath {
-                    edges: shortest_paths[i].iter().map(|&e| e as EdgeId).collect(),
+                    edges: new_paths[i].iter().map(|&e| e as EdgeId).collect(),
                 });
-                alternatives.costs.push(travel_times[i].into());
+                alternatives.costs.push(new_paths_tt[i].into());
 
                 let scale = (alternatives.paths.len() - 1) as f64 / alternatives.paths.len() as f64;
                 alternatives.scale_probabilities(scale);
