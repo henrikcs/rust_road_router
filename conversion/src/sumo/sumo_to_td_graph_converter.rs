@@ -179,15 +179,27 @@ pub fn read_nodes_edges_and_connections_from_plain_xml(
     files_prefix: &String,
 ) -> (NodesDocumentRoot, EdgesDocumentRoot, ConnectionsDocumentRoot) {
     let Ok(edges) = SumoEdgesReader::read(input_dir.join(files_prefix.clone() + EDG_XML).as_path()) else {
-        panic!("Edges could not be read form {}.", &input_dir.display());
+        panic!(
+            "Edges could not be read form {}. Reading {}",
+            &input_dir.display(),
+            input_dir.join(files_prefix.clone() + EDG_XML).display()
+        );
     };
 
     let Ok(nodes) = SumoNodesReader::read(input_dir.join(files_prefix.clone() + NOD_XML).as_path()) else {
-        panic!("Edges could not be read from {}.", input_dir.display());
+        panic!(
+            "Nodes could not be read from {}. Reading {}",
+            input_dir.display(),
+            input_dir.join(files_prefix.clone() + NOD_XML).display()
+        );
     };
 
     let Ok(connections) = SumoConnectionsReader::read(input_dir.join(files_prefix.clone() + CON_XML).as_path()) else {
-        panic!("Connections could not be read from {}.", input_dir.display());
+        panic!(
+            "Connections could not be read from {}. Reading {}.",
+            input_dir.display(),
+            input_dir.join(files_prefix.clone() + CON_XML).display()
+        );
     };
 
     (nodes, edges, connections)
@@ -196,11 +208,19 @@ pub fn read_nodes_edges_and_connections_from_plain_xml(
 #[cfg(not(feature = "expand-sumo-nodes"))]
 pub fn read_nodes_edges_and_connections_from_plain_xml(input_dir: &Path, files_prefix: &String) -> (NodesDocumentRoot, EdgesDocumentRoot) {
     let Ok(edges) = SumoEdgesReader::read(input_dir.join(files_prefix.clone() + EDG_XML).as_path()) else {
-        panic!("Edges could not be read form {}.", &input_dir.display());
+        panic!(
+            "Edges could not be read form {}. Reading: {}",
+            &input_dir.display(),
+            input_dir.join(files_prefix.clone() + EDG_XML).display()
+        );
     };
 
     let Ok(nodes) = SumoNodesReader::read(input_dir.join(files_prefix.clone() + NOD_XML).as_path()) else {
-        panic!("Edges could not be read from {}.", input_dir.display());
+        panic!(
+            "Nodes could not be read from {}. Reading: {}",
+            input_dir.display(),
+            input_dir.join(files_prefix.clone() + NOD_XML).display()
+        );
     };
 
     (nodes, edges)
