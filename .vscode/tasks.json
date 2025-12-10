@@ -427,11 +427,7 @@
         "fastdta2-router--samples",
         "1 1 1",
         "fastdta2-router--seed",
-        "42",
-        "relative-gap--net-prefix",
-        "capa",
-        "relative-gap--net-dir",
-        "${workspaceFolder}/import/sumo/capa"
+        "42"
       ]
     },
     {
@@ -645,14 +641,6 @@
         "0.0001",
         "--max-convergence-deviation",
         "0.0000001",
-        "--logit",
-        "--logitbeta",
-        "1.0",
-        "--logitgamma",
-        "1.0",
-        "--logittheta",
-        "1.0",
-        "-s",
         "duarouter--precision",
         "6",
         "sumo--step-length",
@@ -669,11 +657,7 @@
         "fastdta2-preprocessor--input-dir",
         "${workspaceFolder}/import/sumo/leopoldshafen",
         "fastdta2-router--seed",
-        "42",
-        "relative-gap--net-prefix",
-        "leopoldshafen",
-        "relative-gap--net-dir",
-        "${workspaceFolder}/import/sumo/leopoldshafen"
+        "42"
       ]
     },
     {
