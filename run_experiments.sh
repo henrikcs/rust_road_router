@@ -338,7 +338,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
             fi
 
             # any other algorithm uses relative-gap-calculator: 
-            if [ "$algorithm" != "fastdta" ] && [ "$algorithm" != "CCH" ] && [ "$algorithm" != "dijkstra-rust" ]; then
+            if [ "$algorithm" != "fastdta" ] && [ "$algorithm" != "fastdta2" ] && [ "$algorithm" != "CCH" ] && [ "$algorithm" != "dijkstra-rust" ]; then
                 dua_args+=(
                     relative-gap--net-prefix "$prefix"
                     relative-gap--net-dir "$in_dir"
