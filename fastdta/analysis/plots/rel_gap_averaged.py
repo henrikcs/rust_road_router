@@ -74,10 +74,20 @@ class RelGapAveraged(Plot):
                 color = algo_style["color"]
                 marker = algo_style["marker"]
 
+                # Find minimum value and its position
+                if avg_values:
+                    min_value = min(avg_values)
+                    min_idx = avg_values.index(min_value)
+                    min_iter = iters[min_idx]
+                else:
+                    min_value = None
+                    min_iter = None
+
                 # Plot mean line
+                label_text = f"{algorithm} (min: {min_value:.6f})" if min_value is not None else algorithm
                 ax.plot(
                     iters, avg_values,
-                    label=algorithm,
+                    label=label_text,
                     color=color,
                     marker=marker,
                     markersize=MS,
@@ -92,6 +102,19 @@ class RelGapAveraged(Plot):
                         [a + s for a, s in zip(avg_values, std_values)],
                         alpha=0.2,
                         color=color
+                    )
+
+                # Annotate minimum value on the plot
+                if min_value is not None:
+                    ax.annotate(
+                        f'{min_value:.6f}',
+                        xy=(min_iter, min_value),
+                        xytext=(5, 5),
+                        textcoords='offset points',
+                        fontsize=7,
+                        color=color,
+                        bbox=dict(boxstyle='round,pad=0.3',
+                                  facecolor='white', edgecolor=color, alpha=0.7)
                     )
 
             # Style
