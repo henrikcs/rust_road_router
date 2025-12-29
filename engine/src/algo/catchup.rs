@@ -511,19 +511,19 @@ impl<'a> Server<'a> {
         #[cfg(feature = "tdcch-query-detailed-timing")]
         {
             eprintln!(
-                "elimination tree: {} {:?}%",
+                "elimination tree: {:?} {:?}%",
                 elimination_tree_time - init_time,
-                100 * ((elimination_tree_time - init_time).num_nanoseconds().unwrap()) / relax_time.num_nanoseconds().unwrap()
+                100 * ((elimination_tree_time - init_time).as_nanos()) / relax_time.as_nanos()
             );
             eprintln!(
-                "fw select: {} {:?}%",
+                "fw select: {:?} {:?}%",
                 forward_select_time - elimination_tree_time,
-                100 * ((forward_select_time - elimination_tree_time).num_nanoseconds().unwrap()) / relax_time.num_nanoseconds().unwrap()
+                100 * ((forward_select_time - elimination_tree_time).as_nanos()) / relax_time.as_nanos()
             );
             eprintln!(
-                "relax: {} {:?}%",
+                "relax: {:?} {:?}%",
                 relax_time - forward_select_time,
-                100 * ((relax_time - forward_select_time).num_nanoseconds().unwrap()) / relax_time.num_nanoseconds().unwrap()
+                100 * ((relax_time - forward_select_time).as_nanos()) / relax_time.as_nanos()
             );
         }
 
