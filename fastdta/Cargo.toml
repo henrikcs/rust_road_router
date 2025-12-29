@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["queries-disable-par"]
+default = []
 expand-sumo-nodes = ["conversion/expand-sumo-nodes"]
 queries-disable-par = []
 
