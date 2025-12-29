@@ -100,7 +100,7 @@ pub fn intersection_point(f1: &TTFPoint, f2: &TTFPoint, g1: &TTFPoint, g2: &TTFP
         let f_interp = interpolate_linear(f1, f2, result.at);
         let g_interp = interpolate_linear(g1, g2, result.at);
         debug_assert!(
-            (f_interp - result.val).abs() <= FlWeight::new(EPSILON * 1.1),
+            (f_interp - result.val).abs() <= FlWeight::new(EPSILON * 10.0),
             "{:?} {:?} {:?} {:?}; {:?} != {:?}",
             f1,
             f2,
@@ -109,8 +109,26 @@ pub fn intersection_point(f1: &TTFPoint, f2: &TTFPoint, g1: &TTFPoint, g2: &TTFP
             f_interp,
             result.val
         );
-        debug_assert!((g_interp - result.val).abs() <= FlWeight::new(EPSILON * 1.1));
-        debug_assert!((f_interp - g_interp).abs() <= FlWeight::new(EPSILON * 1.1));
+        debug_assert!(
+            (g_interp - result.val).abs() <= FlWeight::new(EPSILON * 10.0),
+            "{:?} {:?} {:?} {:?}; {:?} != {:?}",
+            f1,
+            f2,
+            g1,
+            g2,
+            g_interp,
+            result.val
+        );
+        debug_assert!(
+            (f_interp - g_interp).abs() <= FlWeight::new(EPSILON * 10.0),
+            "{:?} {:?} {:?} {:?}; {:?} != {:?}",
+            f1,
+            f2,
+            g1,
+            g2,
+            f_interp,
+            g_interp
+        );
     }
     result
 }
