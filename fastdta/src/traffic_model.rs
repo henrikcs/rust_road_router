@@ -142,7 +142,7 @@ pub mod modified_lee {
                     sse += r * r;
 
                     if let Some(g) = grad.as_deref_mut() {
-                        // partials of f (as above)
+                        // partials of f
                         let df_da = -self.free_flow_speed * da * d.ln() / denom;
                         let df_de = -self.free_flow_speed * num * dtheta / (denom * denom);
                         let df_dt = -self.free_flow_speed * num * e * dtheta * d.ln() / (denom * denom);
