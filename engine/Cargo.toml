@@ -11,7 +11,7 @@ default = [
     "tdcch-postcustomization",
     "tdcch-triangle-sorting",
     "tdcch-query-astar",
-
+    "tdcch-query-corridor",
 ]
 tdcch-disable-par = ["cch-disable-par"]
 cch-disable-par = []
