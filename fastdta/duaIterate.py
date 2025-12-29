@@ -288,8 +288,8 @@ def getArgs(step, options, file, output, routesInfo):
         '--routing-algorithm', options.routing_algorithm,
         '--max-alternatives', str(options.max_alternatives),
         '--weights.expand', str(True),
-        '--logit.beta', str(options.logitbeta),
-        '--logit.gamma', str(options.logitgamma),
+        '--logit.beta=' + str(options.logitbeta),
+        '--logit.gamma=' + str(options.logitgamma),
         '--random', str(options.absrand),
         '--begin', str(options.begin),
         '--verbose', str(options.router_verbose),
@@ -328,7 +328,7 @@ def getArgs(step, options, file, output, routesInfo):
     if 'CH' in options.routing_algorithm:
         args += ['--weight-period', str(options.aggregation)]
     if options.logittheta:
-        args += ['--logit.theta', str(options.logittheta)]
+        args += ['--logit.theta=' + str(options.logittheta)]
     if options.end:
         args += ['--end', str(options.end)]
 

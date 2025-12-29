@@ -207,6 +207,7 @@ pub fn prepare_next_iteration_for_fastdta2(
     input_prefix: &String,
     iteration: u32,
     alternative_paths: &AlternativePathsForDTA,
+    shortest_travel_times: &Vec<FlWeight>,
     departures: &Vec<SerializedTimestamp>,
     graph: &TDGraph,
     write_sumo_alternatives: bool,
@@ -218,18 +219,6 @@ pub fn prepare_next_iteration_for_fastdta2(
     if iteration > 0 {
         let previous_iteration_dir = input_dir.join(format!("{:0>3}", iteration - 1));
         let old_alternative_paths: AlternativePathsForDTA = AlternativePathsForDTA::reconstruct(&previous_iteration_dir.join(DIR_DTA));
-
-        // Get the shortest travel times from the current alternative paths (first alternative is typically the shortest)
-        let shortest_travel_times: Vec<FlWeight> = alternative_paths
-            .alternatives_in_query
-            .iter()
-            .map(|alt| {
-                // Find the minimum cost among all alternatives
-                let min_cost = alt.costs.iter().cloned().filter(|&c| c.is_finite() && c > 0.0).fold(f64::INFINITY, f64::min);
-                FlWeight::new(min_cost)
-            })
-            .collect();
-
         set_relative_gap_with_previous_paths(&old_alternative_paths.get_chosen_paths(), graph, &input_dir, &shortest_travel_times, departures);
     }
 

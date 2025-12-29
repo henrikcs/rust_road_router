@@ -1,7 +1,8 @@
 use std::path::Path;
 
 use conversion::{
-    DIR_DTA, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_SPEEDS, GLOBAL_FREE_FLOW_SPEED_FACTOR,
+    DIR_DTA, FILE_EDGE_DEFAULT_TRAVEL_TIMES, FILE_EDGE_INDICES_TO_ID, FILE_EDGE_LANES, FILE_EDGE_LENGTHS, FILE_EDGE_SPEEDS, GLOBAL_FREE_FLOW_SPEED_FACTOR,
+    SerializedTravelTime,
     sumo::{
         FileReader, meandata::MeandataDocumentRoot, meandata_reader::SumoMeandataReader, sumo_find_file::get_meandata_file,
         sumo_to_new_graph_weights::get_graph_with_travel_times_from_previous_iteration,
@@ -112,6 +113,9 @@ pub fn get_graph_data_for_fastdta2(
     keep_route_probability: f64,
 ) -> (
     Vec<String>,
+    Vec<f64>,
+    Vec<f64>,
+    Vec<u32>,
     (Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     MeandataDocumentRoot,
     AlternativePathsForDTA,
@@ -130,6 +134,12 @@ pub fn get_graph_data_for_fastdta2(
         MeandataDocumentRoot::empty()
     };
 
+    // Load additional data needed for routing
+    let free_flow_tts_ms = Vec::<SerializedTravelTime>::load_from(&input_dir.join(FILE_EDGE_DEFAULT_TRAVEL_TIMES)).unwrap();
+    let free_flow_tts: Vec<f64> = free_flow_tts_ms.iter().map(|&tt| tt as f64 / 1000.0).collect();
+    let edge_lengths = Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_LENGTHS)).unwrap();
+    let edge_lanes = Vec::<u32>::load_from(&input_dir.join(FILE_EDGE_LANES)).unwrap();
+
     if iteration == 0 {
         // Initialize with default values for iteration 0
         let free_flow_speeds: Vec<f64> = Vec::<f64>::load_from(&input_dir.join(FILE_EDGE_SPEEDS))
@@ -140,6 +150,9 @@ pub fn get_graph_data_for_fastdta2(
 
         return (
             edge_ids,
+            free_flow_tts,
+            edge_lengths,
+            edge_lanes,
             query_data,
             MeandataDocumentRoot::empty(),
             AlternativePathsForDTA::init_empty(number_of_queries),
@@ -158,6 +171,9 @@ pub fn get_graph_data_for_fastdta2(
 
     (
         edge_ids,
+        free_flow_tts,
+        edge_lengths,
+        edge_lanes,
         query_data,
         meandata,
         alternative_paths,
