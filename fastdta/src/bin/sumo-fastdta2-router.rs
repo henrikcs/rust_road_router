@@ -231,8 +231,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (mut alternative_paths, duration) = measure(|| {
         let departures: &Vec<u32> = &query_data.2;
 
-        // Debug: Check if SP paths and FastDTA2 paths are identical
-        debug_check_path_equality(&sp_paths, &fastdta2_paths, iteration);
+        //only do this when built in debug mode
+        #[cfg(debug_assertions)]
+        {
+            // Debug: Check if SP paths and FastDTA2 paths are identical
+            debug_check_path_equality(&sp_paths, &fastdta2_paths, iteration);
+        }
 
         // Add FastDTA2 paths to previous alternatives (which already contains SP paths from STEP 2)
 
