@@ -309,7 +309,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 sumo--aggregate-warnings 5
                 sumo--time-to-teleport.disconnected 0
                 sumo--seed $seed
-                sumo--step-length 0.1
+                sumo--step-length 1.0
                 sumo--threads $(nproc)
             )
 
