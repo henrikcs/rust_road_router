@@ -78,7 +78,7 @@ pub fn get_paths_with_cch_queries(
                     Some((path, distance))
                 } else {
                     println!("No path found from {} to {} at {departure:?}", from_edge, to_edge);
-                    None
+                    fallback(graph, from_edge, to_edge, from, to, departure, from_edge_tt, delayed_departure)
                 }
             },
             queries_from,
@@ -125,7 +125,9 @@ pub fn get_paths_with_cch_queries(
                     Some((path, distance))
                 } else {
                     println!("No path found from {} to {} at {departure:?}", from_edge, to_edge);
-                    None
+
+                    // there might be some cases where no path is found due to IPP issues
+                    fallback(graph, from_edge, to_edge, from, to, departure, from_edge_tt, delayed_departure)
                 }
             },
             queries_from,
@@ -262,6 +264,37 @@ pub fn read_queries(input_dir: &Path) -> (Vec<u32>, Vec<u32>, Vec<SerializedTime
         queries_original_from_edges,
         queries_original_to_edges,
     )
+}
+
+fn fallback(
+    graph: &TDGraph,
+    from_edge: EdgeId,
+    to_edge: EdgeId,
+    from: u32,
+    to: u32,
+    departure: Timestamp,
+    from_edge_tt: FlWeight,
+    delayed_departure: Timestamp,
+) -> Option<(Vec<EdgeId>, FlWeight)> {
+    // As a fallback, use dijkstra routing
+    let mut server = floating_td_dijkstra::Server::new(graph);
+
+    let result = server.td_query(TDQuery {
+        from,
+        to,
+        departure: delayed_departure,
+    });
+
+    if let Some(mut result) = result.found() {
+        let edge_path = result.edge_path();
+
+        let (path, distance) = construct_path_and_time(graph, from_edge, from_edge_tt, to_edge, departure, edge_path, result.distance());
+
+        Some((path, distance))
+    } else {
+        println!("Dijkstra fallback also found no path from {} to {} at {departure:?}", from_edge, to_edge);
+        None
+    }
 }
 
 #[cfg(not(feature = "queries-disable-par"))]
