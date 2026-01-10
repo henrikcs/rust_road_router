@@ -344,11 +344,17 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                     -s
                 )
             fi
+
+            # if queries-disable-par is set, we do not use parallel queries in duarouter
+            if [ "$disable_parallel_queries" = false ]; then
+                dua_args+=(
+                    duarouter--routing-threads $(nproc)
+                )
+            fi
             
             dua_args+=(
                 duarouter--weights.interpolate
                 duarouter--seed $seed
-                duarouter--routing-threads $(nproc)
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
                 sumo--time-to-teleport.disconnected 0
