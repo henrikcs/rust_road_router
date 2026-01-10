@@ -19,11 +19,12 @@ use fastdta::{
     query::get_paths_with_cch,
     relative_gap::{EPSILON_TRAVEL_TIME, get_relative_gap},
 };
-use rayon::prelude::*;
+use rayon::{iter, prelude::*};
 use rust_road_router::{datastr::graph::floating_time_dependent::TDGraph, io::read_strings_from_file};
 use rust_road_router::{datastr::graph::floating_time_dependent::Timestamp, io::Reconstruct};
 
 fn main() {
+    let time_start = std::time::Instant::now();
     let args = Args::parse();
 
     let network_dir = Path::new(&args.net_dir);
@@ -86,8 +87,8 @@ fn main() {
             })
             .collect();
 
-        print_network_travel_time(&experienced_tt);
-        print_highest_differences(&best_tt, &experienced_tt, &best_paths, &routes_document_root.vehicles, &query_ids, &edge_ids);
+        // print_network_travel_time(&experienced_tt);
+        // print_highest_differences(&best_tt, &experienced_tt, &best_paths, &routes_document_root.vehicles, &query_ids, &edge_ids);
 
         let rel_gap = get_relative_gap(&best_tt, &experienced_tt);
 
@@ -110,6 +111,11 @@ fn main() {
 
     // remove the temporary CCH directory
     remove_dir_all(&temp_cch_dir).unwrap();
+
+    let time_end = std::time::Instant::now();
+    let logger = fastdta::logger::Logger::new("sumo-relative-gap-calculator", &dta_dir.display().to_string(), iteration as i32);
+    let duration = time_end.duration_since(time_start);
+    logger.log("calculate relative gap", duration.as_nanos());
 }
 
 /// Command-line arguments for counting connections and whether they are complete or not
