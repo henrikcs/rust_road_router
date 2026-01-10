@@ -219,30 +219,33 @@ pub fn get_paths_by_samples(
 
         logger.log(format!("routing (sample {i})").as_str(), duration.as_nanos());
 
-        let mut sampled_old_paths: Vec<&Vec<u32>> = Vec::with_capacity(sample.len());
-        let empty_vec: Vec<u32> = Vec::new();
-        let mut sampled_departures_seconds = Vec::with_capacity(sample.len());
+        let (_, duration) = measure(|| {
+            let mut sampled_old_paths: Vec<&Vec<u32>> = Vec::with_capacity(sample.len());
+            let empty_vec: Vec<u32> = Vec::new();
+            let mut sampled_departures_seconds = Vec::with_capacity(sample.len());
 
-        sample.iter().enumerate().for_each(|(i, &query_i)| {
-            routed_paths[query_i] = sampled_shortest_paths[i].clone();
-            travel_times[query_i] = sampled_travel_times[i];
-            departures[query_i] = sampled_departures[i];
-            sampled_old_paths.push(*previous_paths.get(query_i).unwrap_or(&&empty_vec));
-            sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
+            sample.iter().enumerate().for_each(|(i, &query_i)| {
+                routed_paths[query_i] = sampled_shortest_paths[i].clone();
+                travel_times[query_i] = sampled_travel_times[i];
+                departures[query_i] = sampled_departures[i];
+                sampled_old_paths.push(*previous_paths.get(query_i).unwrap_or(&&empty_vec));
+                sampled_departures_seconds.push(Timestamp::from_millis(sampled_departures[i]));
+            });
+
+            adjust_weights_in_graph_by_following_paths(
+                &mut graph,
+                &sampled_old_paths,
+                &sampled_shortest_paths,
+                &sampled_departures_seconds,
+                &mut meandata.intervals,
+                edge_ids,
+                edge_lengths,
+                &free_flow_tts,
+                &traffic_models,
+                &edge_lanes,
+            );
         });
-
-        adjust_weights_in_graph_by_following_paths(
-            &mut graph,
-            &sampled_old_paths,
-            &sampled_shortest_paths,
-            &sampled_departures_seconds,
-            &mut meandata.intervals,
-            edge_ids,
-            edge_lengths,
-            &free_flow_tts,
-            &traffic_models,
-            &edge_lanes,
-        );
+        logger.log(format!("adjust weights (sample {i})").as_str(), duration.as_nanos());
 
         // println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);
 
