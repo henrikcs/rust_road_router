@@ -17,6 +17,8 @@ declare fastdta_samples=""
 declare sumo_samples=""
 declare repetitions=1
 declare use_logit=false
+declare disable_parallel_queries=false
+declare expand_nodes=false
 
 # --- Function to display usage ---
 usage() {
@@ -45,6 +47,8 @@ usage() {
     echo "  --debug                Build and use the debug target instead of release."
     echo "  --repeat <N >= 1>           Repeat each experiment N times using a different seed. (default: 1)"
     echo "  --logit                Use logit choice model with default parameters."
+    echo "  --disable-parallel-queries  Compile with 'queries-disable-par' feature."
+    echo "  --expand-nodes         Compile with 'expand-sumo-nodes' feature."
     exit 1
 }
 
@@ -147,6 +151,14 @@ while [[ $# -gt 0 ]]; do
         use_logit=true
         shift
         ;;
+        --disable-parallel-queries)
+        disable_parallel_queries=true
+        shift
+        ;;
+        --expand-nodes)
+        expand_nodes=true
+        shift
+        ;;
         *)
         echo "Unknown option: $1"
         usage
@@ -205,6 +217,16 @@ cp "$experiment" "$base_output_dir/"
         algos+=" (sumo samples: $sumo_samples)"
     fi
     
+    # Build feature flags
+    feature_flags=""
+    if [ "$disable_parallel_queries" = true ]; then
+        feature_flags+="queries-disable-par "
+    fi
+    if [ "$expand_nodes" = true ]; then
+        feature_flags+="expand-sumo-nodes "
+    fi
+    feature_flags=$(echo "$feature_flags" | xargs)  # trim whitespace
+    
     cd "$base_output_dir" || exit 1
     # Write README.md
     cat > README.md << EOF
@@ -220,6 +242,8 @@ cp "$experiment" "$base_output_dir/"
 **RAM:** ${ram_info:-unknown}
 
 **Algorithms run:** $algos
+
+**Build features:** ${feature_flags:-none}
 
 ${message:+**Message:**
 $message
@@ -243,11 +267,30 @@ export SUMO_HOME=~/rust_road_router/venvs/libsumo/lib/python3.11/site-packages/s
 export PATH=$SUMO_HOME/bin:$PATH
 
 # --- Compile the project ---
+# Build feature flags
+declare -a build_features=()
+if [ "$disable_parallel_queries" = true ]; then
+    build_features+=("queries-disable-par")
+fi
+if [ "$expand_nodes" = true ]; then
+    build_features+=("expand-sumo-nodes")
+fi
+
 if [ "$release_type" = "debug" ]; then
     export RUST_BACKTRACE=1
-    cargo build
+    if [ ${#build_features[@]} -gt 0 ]; then
+        IFS=',' eval 'features_str="${build_features[*]}"'
+        cargo build --features "$features_str"
+    else
+        cargo build
+    fi
 else
-    cargo build --release
+    if [ ${#build_features[@]} -gt 0 ]; then
+        IFS=',' eval 'features_str="${build_features[*]}"'
+        cargo build --release --features "$features_str"
+    else
+        cargo build --release
+    fi
 fi
 
 # copy duaIterate.py from fastdta to the venv directory
