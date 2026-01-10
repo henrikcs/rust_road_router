@@ -348,6 +348,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
             dua_args+=(
                 duarouter--weights.interpolate
                 duarouter--seed $seed
+                duarouter--routing-threads $(nproc)
                 sumo--ignore-route-errors
                 sumo--aggregate-warnings 5
                 sumo--time-to-teleport.disconnected 0
