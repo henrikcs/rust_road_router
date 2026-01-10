@@ -105,6 +105,7 @@ fn calculate_overlap_length(edges_i: &[u32], edges_j: &[u32], length_i: f64, len
         return 0.0;
     }
 
+    //TODO: implement precise overlap length calculation by exposing edge travel times
     // Since we don't have individual edge travel times, we approximate
     // the overlap length by assuming uniform distribution of travel time across edges
     let avg_edge_time_i = length_i / edges_i.len() as f64;

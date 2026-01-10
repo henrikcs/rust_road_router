@@ -116,7 +116,9 @@ fn preprocess_tt<'a>(
                     // in the last interval, cut the travel time to length of the last interval + the minimum travel time of the edge
                     // this ensures the fifo property for the travel time in the last interval
                     // since the time functions are periodic and wrap around
-                    let interval_duration = ((interval.end - interval.begin) * 1000.0) as SerializedTravelTime;
+                    // the last interval may have a length of at least 24h, since the period is defined to be 48h but inputs are only given for 24h
+                    // we set it to 24h
+                    let interval_duration = 86_400_000 as SerializedTravelTime;
 
                     if interval_duration + default_travel_time - FIFO_BUFFER_MS < tt {
                         // If the next travel time is less than the current, we adjust the current travel time

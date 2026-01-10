@@ -64,9 +64,9 @@ pub fn period() -> Timestamp {
 
 /// Travel time functions are periodic.
 /// This value is the wraparound value.
-/// Hardcoded to `86400s`, that is 1 day.
+/// Hardcoded to `86400s` * 2, that is 2 days.
 #[cfg(not(test))]
 #[inline]
 pub const fn period() -> Timestamp {
-    86_400_000
+    86_400_000 * 2
 }
