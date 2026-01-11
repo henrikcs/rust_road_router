@@ -108,16 +108,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let (_shortest_paths, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
 
-            let query_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
+            // let query_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
 
-            print_highest_differences(
-                &shortest_travel_times.iter().map(|&tt| tt.into()).collect(),
-                &travel_times.iter().map(|&tt| tt.into()).collect(),
-                &paths,
-                &previous_paths,
-                &query_ids,
-                &edge_ids,
-            );
+            // print_highest_differences(
+            //     &shortest_travel_times.iter().map(|&tt| tt.into()).collect(),
+            //     &travel_times.iter().map(|&tt| tt.into()).collect(),
+            //     &paths,
+            //     &previous_paths,
+            //     &query_ids,
+            //     &edge_ids,
+            // );
 
             set_relative_gap_with_previous_paths(&previous_paths, &graph, &input_dir, &shortest_travel_times, &departures);
         }
