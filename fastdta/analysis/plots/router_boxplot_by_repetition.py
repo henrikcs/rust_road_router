@@ -8,7 +8,6 @@ from typing import Dict, List
 import matplotlib.pyplot as plt
 
 from common import (
-    DataModel,
     get_experiments_by_instance_and_algorithm,
 )
 from .base import Plot, register_plot, ensure_outdir
