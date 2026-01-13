@@ -77,8 +77,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     });
 
-    logger.log("fastdta routing", duration.as_nanos());
-
     let (_, duration) = measure(|| {
         prepare_next_iteration_for_sampled_routing(
             &input_dir,
