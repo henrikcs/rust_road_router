@@ -95,29 +95,6 @@ class RelGapAveraged(Plot):
                     linewidth=LW,
                 )
 
-                # Plot std deviation as shaded area
-                if len(avg_values) > 0:
-                    ax.fill_between(
-                        iters,
-                        [a - s for a, s in zip(avg_values, std_values)],
-                        [a + s for a, s in zip(avg_values, std_values)],
-                        alpha=0.2,
-                        color=color
-                    )
-
-                # Annotate minimum value on the plot
-                if min_value is not None:
-                    ax.annotate(
-                        f'{min_value:.6f}',
-                        xy=(min_iter, min_value),
-                        xytext=(5, 5),
-                        textcoords='offset points',
-                        fontsize=7,
-                        color=color,
-                        bbox=dict(boxstyle='round,pad=0.3',
-                                  facecolor='white', edgecolor=color, alpha=0.7)
-                    )
-
             # Style
             ax.set_ylabel("Relative Gap", fontsize=14)
             ax.set_yscale('log')
