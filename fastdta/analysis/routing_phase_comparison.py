@@ -222,7 +222,8 @@ def create_stacked_bar_chart(
     algorithms: List[str],
     phase_data: Dict[str, Dict[str, float]],
     title: str,
-    y_limits: Optional[Tuple[float, float]] = None
+    y_limits: Optional[Tuple[float, float]] = None,
+    show_ylabel: bool = True
 ):
     """
     Create stacked bar chart for multiple algorithms.
@@ -233,6 +234,7 @@ def create_stacked_bar_chart(
         phase_data: {algorithm: {phase_name: average_time}}
         title: Plot title
         y_limits: Optional tuple (y_min, y_max) for y-axis limits
+        show_ylabel: Whether to show the y-axis label
     """
     # Prepare data
     bar_positions = np.arange(len(algorithms))
@@ -281,12 +283,13 @@ def create_stacked_bar_chart(
         bottoms += heights
 
     # Style
-    ax.set_ylabel("Average Time (s)", fontsize=12)
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    if show_ylabel:
+        ax.set_ylabel("Average Time (s)", fontsize=16)
+    # Title removed as requested
     ax.set_xticks(bar_positions)
     ax.set_xticklabels([get_display_label(a)
-                       for a in algorithms], rotation=45, ha='right', fontsize=10)
-    ax.tick_params(axis='y', labelsize=10)
+                       for a in algorithms], rotation=45, ha='right', fontsize=14)
+    ax.tick_params(axis='y', labelsize=14)
     ax.grid(True, axis='y', linestyle='--', alpha=0.3)
 
     # Set y-axis limits if specified
@@ -295,7 +298,7 @@ def create_stacked_bar_chart(
 
     # Show legend
     if legend_entries:
-        ax.legend(loc='upper left', fontsize=8, framealpha=0.9)
+        ax.legend(loc='upper left', fontsize=12, framealpha=0.9)
 
 
 def create_stacked_bar_chart_with_broken_axis(
@@ -336,12 +339,15 @@ def create_stacked_bar_chart_with_broken_axis(
     fig.subplots_adjust(hspace=0.05)
 
     # Create the same stacked bars on both axes
-    for ax, y_limits in [(ax_upper, (break_upper, upper_limit)),
-                         (ax_lower, (0, break_lower))]:
+    # Only the lower axis should have a y-label
+    for idx, (ax, y_limits) in enumerate([(ax_upper, (break_upper, upper_limit)),
+                                          (ax_lower, (0, break_lower))]):
+        should_show_ylabel = (idx == 1)  # Only show for lower axis
         create_stacked_bar_chart(
             ax, algorithms, phase_data,
             title if ax == ax_upper else "",
-            y_limits
+            y_limits,
+            show_ylabel=should_show_ylabel
         )
 
         # Remove x-axis labels from upper plot
@@ -393,7 +399,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Example:
-  %(prog)s --log experiment.out --csv experiment.csv --out-dir phase_plots/
+  %(prog)s --log experiment.out --csv experiment.csv --out-dir phase_plots/ --suffix _seq --y-axis-breaks-60 100 300
         """
     )
     parser.add_argument(
@@ -412,21 +418,45 @@ Example:
         help="Output directory for plots (default: phase_comparison_plots)"
     )
     parser.add_argument(
-        "--y-axis-breaks",
+        "--suffix",
+        default="",
+        help="Suffix to append to output filenames (e.g., '_seq' results in routing_phase_comparison_agg60_seq.pdf)"
+    )
+    parser.add_argument(
+        "--y-axis-breaks-60",
         nargs=2,
         type=float,
         metavar=('LOWER_MAX', 'UPPER_MIN'),
-        help="Break y-axis into two segments. First value is the highest value in lower segment, "
-             "second value is the lowest value in upper segment. Example: --y-axis-breaks 50 250"
+        help="Break y-axis for aggregation 60. Example: --y-axis-breaks-60 100 300"
+    )
+    parser.add_argument(
+        "--y-axis-breaks-300",
+        nargs=2,
+        type=float,
+        metavar=('LOWER_MAX', 'UPPER_MIN'),
+        help="Break y-axis for aggregation 300. Example: --y-axis-breaks-300 50 200"
+    )
+    parser.add_argument(
+        "--y-axis-breaks-900",
+        nargs=2,
+        type=float,
+        metavar=('LOWER_MAX', 'UPPER_MIN'),
+        help="Break y-axis for aggregation 900. Example: --y-axis-breaks-900 25 180"
     )
 
     args = parser.parse_args()
 
     # Validate y-axis breaks if provided
-    if args.y_axis_breaks:
-        if args.y_axis_breaks[0] >= args.y_axis_breaks[1]:
-            print(f"Error: First break value ({args.y_axis_breaks[0]}) must be less than "
-                  f"second break value ({args.y_axis_breaks[1]})", file=sys.stderr)
+    y_axis_breaks_map = {
+        60: args.y_axis_breaks_60,
+        300: args.y_axis_breaks_300,
+        900: args.y_axis_breaks_900
+    }
+
+    for agg, breaks in y_axis_breaks_map.items():
+        if breaks and breaks[0] >= breaks[1]:
+            print(
+                f"Error: First y-axis break value must be less than second value for aggregation {agg}", file=sys.stderr)
             sys.exit(1)
 
     # Validate input files
@@ -460,6 +490,8 @@ Example:
 
     # Create one plot per aggregation
     for aggregation in aggregations:
+        # Get y-axis breaks for this aggregation
+        y_axis_breaks_current = y_axis_breaks_map.get(aggregation)
         print(f"\nGenerating plot for aggregation {aggregation}...")
 
         # Collect data for this aggregation
@@ -484,7 +516,7 @@ Example:
         # Create figure
         title = f"Routing Phase Breakdown (Aggregation {aggregation}s)"
 
-        if args.y_axis_breaks:
+        if y_axis_breaks_current:
             # Create figure with broken axis
             fig = plt.figure(
                 figsize=(max(10, len(present_algorithms) * 1.5), 8))
@@ -493,8 +525,8 @@ Example:
                 present_algorithms,
                 phase_data,
                 title,
-                args.y_axis_breaks[0],
-                args.y_axis_breaks[1]
+                y_axis_breaks_current[0],
+                y_axis_breaks_current[1]
             )
         else:
             # Create regular figure
@@ -507,8 +539,8 @@ Example:
                 title
             )
 
-        # Save plot
-        output_filename = f"routing_phase_comparison_agg{aggregation}.pdf"
+        # Save plot with suffix
+        output_filename = f"routing_phase_comparison_agg{aggregation}{args.suffix}.pdf"
         output_path = os.path.join(args.out_dir, output_filename)
         fig.tight_layout()
         fig.savefig(output_path, bbox_inches='tight', dpi=150)
