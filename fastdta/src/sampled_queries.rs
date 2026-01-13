@@ -71,27 +71,29 @@ pub fn get_paths_by_samples_with_keep_routes(
 
         logger.log(format!("routing (sample {i})").as_str(), duration.as_nanos());
 
-        let mut sampled_old_paths: Vec<&Vec<u32>> = Vec::with_capacity(sample.len());
+        let (_, duration) = measure(|| {
+            let mut sampled_old_paths: Vec<&Vec<u32>> = Vec::with_capacity(sample.len());
 
-        sample.iter().enumerate().for_each(|(i, &query_i)| {
-            routed_paths[query_i] = sampled_new_paths[i].clone();
-            routed_paths_tt[query_i] = graph.get_travel_time_along_path(Timestamp::from_millis(departures[query_i]), &sampled_new_paths[i]);
-            sampled_old_paths.push(previous_paths[query_i]);
+            sample.iter().enumerate().for_each(|(i, &query_i)| {
+                routed_paths[query_i] = sampled_new_paths[i].clone();
+                routed_paths_tt[query_i] = graph.get_travel_time_along_path(Timestamp::from_millis(departures[query_i]), &sampled_new_paths[i]);
+                sampled_old_paths.push(previous_paths[query_i]);
+            });
+
+            adjust_weights_in_graph_by_following_paths(
+                &mut graph,
+                &sampled_old_paths,
+                &sampled_new_paths,
+                &departures.iter().map(|&d| Timestamp::from_millis(d)).collect(),
+                &mut meandata.intervals,
+                edge_ids,
+                edge_lengths,
+                &free_flow_tts,
+                &traffic_models,
+                &edge_lanes,
+            );
         });
-
-        adjust_weights_in_graph_by_following_paths(
-            &mut graph,
-            &sampled_old_paths,
-            &sampled_new_paths,
-            &departures.iter().map(|&d| Timestamp::from_millis(d)).collect(),
-            &mut meandata.intervals,
-            edge_ids,
-            edge_lengths,
-            &free_flow_tts,
-            &traffic_models,
-            &edge_lanes,
-        );
-
+        logger.log(format!("adjust weights (sample {i})").as_str(), duration.as_nanos());
         // println!("Applying edge occupancy deltas for sample {i}: {:?}", deltas);
 
         // debug(&meandata, &input_dir, iteration as u32, i as u32);
