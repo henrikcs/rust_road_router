@@ -68,12 +68,10 @@ class SimulationBoxplot(Plot):
                 patch.set_alpha(0.7)
 
             # Style
-            ax.set_title(
-                f"Simulation Duration by Algorithm\n{instance.prefix} - {instance.trip_file_name}")
-            ax.set_xlabel("Algorithm")
-            ax.set_ylabel("Simulation Duration (s)")
+            ax.set_ylabel("Simulation Duration (s)", fontsize=14)
             ax.set_xticks(range(1, len(algos) + 1))
             ax.set_xticklabels(algos, rotation=45, ha="right")
+            ax.tick_params(axis='both', labelsize=12)
             ax.grid(True, axis="y", linestyle="--", alpha=0.4)
 
             # Save

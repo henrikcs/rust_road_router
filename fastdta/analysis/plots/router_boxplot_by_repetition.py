@@ -79,12 +79,10 @@ class RouterBoxplotByRepetition(Plot):
                 patch.set_alpha(0.7)
 
             # Style
-            ax.set_title(
-                f"Router Duration by Repetition\n{instance.prefix} - {algorithm}")
-            ax.set_xlabel("Repetition")
-            ax.set_ylabel("Router Duration (s)")
+            ax.set_ylabel("Router Duration (s)", fontsize=14)
             ax.set_xticks(range(1, len(labels) + 1))
             ax.set_xticklabels(labels)
+            ax.tick_params(axis='both', labelsize=12)
             ax.grid(True, axis="y", linestyle="--", alpha=0.4)
 
             # Save

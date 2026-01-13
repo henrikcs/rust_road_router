@@ -118,12 +118,10 @@ class RelGapAveraged(Plot):
                     )
 
             # Style
-            ax.set_title(
-                f"Relative Gap Progress (averaged)\n{instance.prefix} - {instance.trip_file_name}")
-            ax.set_xlabel("Iteration")
-            ax.set_ylabel("Relative Gap")
+            ax.set_ylabel("Relative Gap", fontsize=14)
             ax.set_yscale('log')
             ax.set_xlim(0, max(1, max_iter))
+            ax.tick_params(axis='both', labelsize=12)
             ax.grid(True, linestyle="--", alpha=0.4)
             ax.legend(title="Algorithm", fontsize=8, loc='best')
 

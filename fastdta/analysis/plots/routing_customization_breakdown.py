@@ -149,12 +149,10 @@ class RoutingCustomizationBreakdown(Plot):
                 bottom += heights
 
             # Style
-            ax.set_title(
-                f"Routing Phase Breakdown\n{instance.prefix} - {algorithm}")
-            ax.set_xlabel("Repetition")
-            ax.set_ylabel("Average Time (s)")
+            ax.set_ylabel("Average Time (s)", fontsize=14)
             ax.set_xticks(x)
             ax.set_xticklabels([f"Rep {r}" for r in reps])
+            ax.tick_params(axis='both', labelsize=12)
             ax.legend(title="Phase", fontsize=8, loc='upper right')
             ax.grid(True, axis="y", linestyle="--", alpha=0.4)
 
