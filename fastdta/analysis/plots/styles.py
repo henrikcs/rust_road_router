@@ -28,6 +28,19 @@ MS = 4        # line marker size (points)
 LW = 1.2      # line width
 S_SCATTER = 30  # scatter marker area (points^2)
 
+# Display labels for algorithms
+ALGO_DISPLAY_LABELS: Dict[str, str] = {
+    "cch": "CATCHUp",
+    "dijkstra-rust": "Dijkstra",
+    "fastdta2": "FAST DTA2",
+    "fastdta_1_1": "FAST DTA1 ($S_a$)",
+    "fastdta_1_1_1": "FAST DTA1 ($S_b$)",
+    "fastdta_1_2_3_4": "FAST DTA1 ($S_c$)",
+    "dijkstra": "Dijkstra (SUMO)",
+    "astar": "A* (SUMO)",
+    "ch": "CH (SUMO)",
+}
+
 # Cache for dynamically generated styles
 _dynamic_styles: Dict[str, Dict[str, str]] = {}
 _sample_counter: Dict[str, int] = {"fastdta": 0, "sumo-sample": 0}
@@ -111,3 +124,12 @@ def get_all_algorithm_colors(algorithms: list) -> Dict[str, str]:
     """
     reset_dynamic_styles()
     return {algo: style_for_algo(algo)["color"] for algo in sorted(algorithms)}
+
+
+def get_display_label(algo: str) -> str:
+    """
+    Get the display label for an algorithm.
+    Returns the mapped label if available, otherwise returns the original algorithm name.
+    """
+    algo_lower = normalize_algo(algo)
+    return ALGO_DISPLAY_LABELS.get(algo_lower, algo)

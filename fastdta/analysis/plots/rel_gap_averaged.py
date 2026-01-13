@@ -15,7 +15,7 @@ from common import (
     get_relative_gaps,
 )
 from .base import Plot, register_plot, ensure_outdir
-from .styles import style_for_algo, get_all_algorithm_colors, MS, LW
+from .styles import style_for_algo, get_all_algorithm_colors, get_display_label, MS, LW
 
 
 @register_plot
@@ -84,7 +84,8 @@ class RelGapAveraged(Plot):
                     min_iter = None
 
                 # Plot mean line
-                label_text = f"{algorithm} (min: {min_value:.6f})" if min_value is not None else algorithm
+                display_label = get_display_label(algorithm)
+                label_text = f"{display_label} (min: {min_value:.6f})" if min_value is not None else display_label
                 ax.plot(
                     iters, avg_values,
                     label=label_text,

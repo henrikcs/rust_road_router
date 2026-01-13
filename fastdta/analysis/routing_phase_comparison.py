@@ -9,6 +9,7 @@ with a separate y-axis.
 Usage:
     python routing_phase_comparison.py --log <experiment.out> --csv <experiment.csv> [--out-dir <output>]
 """
+from plots.styles import get_display_label
 from common import (
     build_model,
     DataModel,
@@ -283,7 +284,8 @@ def create_stacked_bar_chart(
     ax.set_ylabel("Average Time (s)", fontsize=12)
     ax.set_title(title, fontsize=14, fontweight='bold')
     ax.set_xticks(bar_positions)
-    ax.set_xticklabels(algorithms, rotation=45, ha='right', fontsize=10)
+    ax.set_xticklabels([get_display_label(a)
+                       for a in algorithms], rotation=45, ha='right', fontsize=10)
     ax.tick_params(axis='y', labelsize=10)
     ax.grid(True, axis='y', linestyle='--', alpha=0.3)
 

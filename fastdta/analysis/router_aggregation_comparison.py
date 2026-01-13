@@ -8,7 +8,7 @@ Creates a grid of subplots (2-3 rows x 2 columns):
 - Each subplot shows router duration boxplots grouped by algorithm
 - Each algorithm group has 3 boxplots for different aggregations (60, 300, 900)
 """
-from plots.styles import style_for_algo, get_all_algorithm_colors
+from plots.styles import style_for_algo, get_all_algorithm_colors, get_display_label
 from common import (
     build_model,
     DataModel,
@@ -137,7 +137,7 @@ def create_grouped_boxplot(ax, data: Dict[Tuple[str, int], List[float]],
 
         # Store tick position at center of group
         tick_positions.append(current_pos)
-        tick_labels.append(algo)
+        tick_labels.append(get_display_label(algo))
 
         # Move to next group
         current_pos += group_width + group_spacing

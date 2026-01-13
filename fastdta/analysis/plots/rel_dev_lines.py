@@ -14,7 +14,7 @@ from common import (
     get_experiments_by_instance,
 )
 from .base import Plot, register_plot, ensure_outdir
-from .styles import style_for_algo, get_all_algorithm_colors, MS, LW
+from .styles import style_for_algo, get_all_algorithm_colors, get_display_label, MS, LW
 
 
 def get_rel_deviations(exp) -> Dict[int, float]:
@@ -83,7 +83,7 @@ class RelDevLines(Plot):
 
                 ax.plot(
                     iters, avg_values,
-                    label=algorithm,
+                    label=get_display_label(algorithm),
                     color=color,
                     marker=marker,
                     markersize=MS,

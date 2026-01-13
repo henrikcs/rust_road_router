@@ -14,7 +14,7 @@ from common import (
     get_routing_times,
 )
 from .base import Plot, register_plot, ensure_outdir
-from .styles import style_for_algo, get_all_algorithm_colors
+from .styles import style_for_algo, get_all_algorithm_colors, get_display_label
 
 
 @register_plot
@@ -57,6 +57,7 @@ class RouterBoxplotByAlgo(Plot):
             algos = sorted(algo_times.keys())
             data = [algo_times[a] for a in algos]
             colors = [algo_colors.get(a, "#999999") for a in algos]
+            labels = [get_display_label(a) for a in algos]
 
             # Create figure
             fig, ax = plt.subplots(figsize=(max(8, len(algos) * 1.5), 5))
@@ -71,7 +72,7 @@ class RouterBoxplotByAlgo(Plot):
             # Style
             ax.set_ylabel("Router Duration (s)", fontsize=14)
             ax.set_xticks(range(1, len(algos) + 1))
-            ax.set_xticklabels(algos, rotation=45, ha="right")
+            ax.set_xticklabels(labels, rotation=45, ha="right")
             ax.tick_params(axis='both', labelsize=12)
             ax.grid(True, axis="y", linestyle="--", alpha=0.4)
 
