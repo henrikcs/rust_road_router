@@ -51,19 +51,21 @@ def aggregate_departures(departure_times, bin_size):
     if not departure_times:
         return [], []
 
-    min_time = 0
+    min_time = min(departure_times)
     max_time = max(departure_times)
 
-    # Create bins from 0 to max_time (rounded up to next bin boundary)
-    num_bins = int(np.ceil(max_time / bin_size)) + 1
-    bins = [i * bin_size for i in range(num_bins)]
+    # Create bins from first departure (rounded down) to max_time (rounded up)
+    first_bin_start = int(min_time / bin_size) * bin_size
+    last_bin_start = int(np.ceil(max_time / bin_size)) * bin_size
+    num_bins = int((last_bin_start - first_bin_start) / bin_size) + 1
+    bins = [first_bin_start + i * bin_size for i in range(num_bins)]
 
     # Count trips in each bin
     counts = [0] * (num_bins - 1)
 
     for depart in departure_times:
-        bin_idx = int(depart / bin_size)
-        if bin_idx < len(counts):
+        bin_idx = int((depart - first_bin_start) / bin_size)
+        if 0 <= bin_idx < len(counts):
             counts[bin_idx] += 1
 
     # Return bin start times and counts
@@ -91,6 +93,9 @@ def plot_departure_histogram(bin_starts, counts, output_path):
         bin_width = bin_starts[1] - bin_starts[0] if len(bin_starts) > 1 else 1
         ax.bar(bin_starts, counts, width=bin_width, align='edge',
                edgecolor='black', linewidth=0.5)
+
+        # Set x-axis limits to the actual data range
+        ax.set_xlim(bin_starts[0], bin_starts[-1] + bin_width)
 
     # Set labels with readable font size
     ax.set_xlabel('Time (s)', fontsize=10)
