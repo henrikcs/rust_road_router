@@ -312,43 +312,87 @@ fn get_paths_from_queries_par<
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
-    let mut pdds: Vec<(Vec<EdgeId>, FlWeight, SerializedTimestamp)> = vec![(vec![], FlWeight::INFINITY, 0); queries_from.len()];
+    use rayon::iter::IntoParallelRefIterator;
 
-    pdds.par_iter_mut().enumerate().for_each_init(
-        || server_init(),
-        |server, (i, (path, tt, dep))| {
-            let departure = queries_departure[i];
-            departure.clone_into(dep);
+    let num_queries = queries_from.len();
+    let num_threads = rayon::current_num_threads();
+    let num_chunks = num_threads.min(num_queries);
 
-            if let Some((shortest_path, shortest_travel_time)) = path_collector(
-                server,
-                queries_original_from_edges[i],
-                queries_original_to_edges[i],
-                queries_from[i],
-                queries_to[i],
-                Timestamp::from_millis(departure),
-                &graph,
-            ) {
-                shortest_path.clone_into(path);
-                shortest_travel_time.clone_into(tt);
-            } else {
-                println!(
-                    "No path found from {} to {} at {dep:?} in query {}",
-                    queries_original_from_edges[i], queries_original_to_edges[i], i
-                );
+    // Calculate chunk size, ensuring all queries are covered
+    let base_chunk_size = num_queries / num_chunks;
+    let remainder = num_queries % num_chunks;
+
+    // Create chunk ranges
+    let mut chunk_ranges = Vec::with_capacity(num_chunks);
+    let mut start = 0;
+    for i in 0..num_chunks {
+        // Distribute remainder across first chunks
+        let chunk_size = base_chunk_size + if i < remainder { 1 } else { 0 };
+        let end = start + chunk_size;
+        chunk_ranges.push(start..end);
+        start = end;
+    }
+
+    // Process chunks in parallel, but queries within each chunk sequentially
+    // Each thread returns a hashmap with query_id -> (path, distance, departure)
+    let chunk_results: Vec<std::collections::HashMap<usize, (Vec<EdgeId>, FlWeight, SerializedTimestamp)>> = chunk_ranges
+        .par_iter()
+        .map_init(
+            || server_init(),
+            |server, range| {
+                let mut local_results = std::collections::HashMap::new();
+
+                for i in range.clone() {
+                    let departure = queries_departure[i];
+
+                    if let Some((shortest_path, shortest_travel_time)) = path_collector(
+                        server,
+                        queries_original_from_edges[i],
+                        queries_original_to_edges[i],
+                        queries_from[i],
+                        queries_to[i],
+                        Timestamp::from_millis(departure),
+                        &graph,
+                    ) {
+                        local_results.insert(i, (shortest_path, shortest_travel_time, departure));
+                    } else {
+                        println!(
+                            "No path found from {} to {} at {departure:?} in query {}",
+                            queries_original_from_edges[i], queries_original_to_edges[i], i
+                        );
+                    }
+                }
+
+                local_results
+            },
+        )
+        .collect();
+
+    // Merge results from all threads into ordered vectors
+    let mut paths = Vec::with_capacity(num_queries);
+    let mut distances = Vec::with_capacity(num_queries);
+    let mut departures = Vec::with_capacity(num_queries);
+
+    for i in 0..num_queries {
+        // Find the result for query i in the chunk results
+        let mut found = false;
+        for chunk_result in &chunk_results {
+            if let Some((path, distance, departure)) = chunk_result.get(&i) {
+                paths.push(path.clone());
+                distances.push(*distance);
+                departures.push(*departure);
+                found = true;
+                break;
             }
-        },
-    );
+        }
 
-    let mut paths = Vec::with_capacity(queries_from.len());
-    let mut distances = Vec::with_capacity(queries_from.len());
-    let mut departures = Vec::with_capacity(queries_from.len());
-
-    pdds.into_iter().for_each(|(path, distance, departure)| {
-        paths.push(path);
-        distances.push(distance);
-        departures.push(departure);
-    });
+        if !found {
+            // Query failed, insert empty result
+            paths.push(vec![]);
+            distances.push(FlWeight::INFINITY);
+            departures.push(queries_departure[i]);
+        }
+    }
 
     (paths, distances, departures)
 }
