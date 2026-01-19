@@ -95,6 +95,26 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Debug Suboptimal Routing",
+      "program": "${workspaceFolder}/target/debug/sumo-tddijkstra-router",
+      "args": [
+        "--input-dir",
+        "./data/imported/sumo/suboptimal-routing",
+        "--input-prefix",
+        "suboptimal-routing",
+        "--iteration",
+        "1"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PATH": "${workspaceFolder}/lib/InertialFlowCutter/build:${env:PATH}",
+        "RUST_BACKTRACE": "1"
+      },
+      "preLaunchTask": "Build (debug)"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Debug Router (leopoldshafen)",
       "program": "${workspaceFolder}/target/debug/sumo-tdcch-router",
       "args": [
