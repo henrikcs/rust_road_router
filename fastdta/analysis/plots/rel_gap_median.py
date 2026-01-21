@@ -1,7 +1,7 @@
-# plots/rel_gap_averaged.py
+# plots/rel_gap_median.py
 """
 For each instance: plot relative gap progress over iterations,
-averaged over repetitions, one line per algorithm.
+using median over repetitions, one line per algorithm.
 """
 from __future__ import annotations
 from typing import Dict, List
@@ -19,18 +19,18 @@ from .styles import style_for_algo, get_all_algorithm_colors, get_display_label,
 
 
 @register_plot
-class RelGapAveraged(Plot):
+class RelGapMedian(Plot):
     @staticmethod
     def key() -> str:
-        return "rel-gap-averaged"
+        return "rel-gap-median"
 
     @staticmethod
     def display_name() -> str:
-        return "Relative gap by iteration (averaged over repetitions, per algorithm)"
+        return "Relative gap by iteration (median over repetitions, per algorithm)"
 
     @staticmethod
     def filename_suffix() -> str:
-        return "rel-gap-averaged"
+        return "rel-gap-median"
 
     def run(self, dm: DataModel, out_dir: str) -> None:
         ensure_outdir(out_dir)
@@ -44,7 +44,7 @@ class RelGapAveraged(Plot):
             if not instance:
                 continue
 
-            # Collect gaps per algorithm -> iteration -> list of values (for averaging)
+            # Collect gaps per algorithm -> iteration -> list of values (for median calculation)
             algo_iter_gaps: Dict[str, Dict[int, List[float]]
                                  ] = defaultdict(lambda: defaultdict(list))
 
@@ -63,10 +63,9 @@ class RelGapAveraged(Plot):
             for algorithm in sorted(algo_iter_gaps.keys()):
                 iter_gaps = algo_iter_gaps[algorithm]
 
-                # Calculate average and std for each iteration
+                # Calculate median for each iteration
                 iters = sorted(iter_gaps.keys())
-                avg_values = [np.mean(iter_gaps[i]) for i in iters]
-                std_values = [np.std(iter_gaps[i]) for i in iters]
+                median_values = [np.median(iter_gaps[i]) for i in iters]
 
                 max_iter = max(max_iter, max(iters) if iters else 0)
 
@@ -75,19 +74,19 @@ class RelGapAveraged(Plot):
                 marker = algo_style["marker"]
 
                 # Find minimum value and its position
-                if avg_values:
-                    min_value = min(avg_values)
-                    min_idx = avg_values.index(min_value)
+                if median_values:
+                    min_value = min(median_values)
+                    min_idx = median_values.index(min_value)
                     min_iter = iters[min_idx]
                 else:
                     min_value = None
                     min_iter = None
 
-                # Plot mean line
+                # Plot median line
                 display_label = get_display_label(algorithm)
                 label_text = f"{display_label} (min: {min_value:.6f})" if min_value is not None else display_label
                 ax.plot(
-                    iters, avg_values,
+                    iters, median_values,
                     label=label_text,
                     color=color,
                     marker=marker,

@@ -98,7 +98,8 @@ class RelDevLines(Plot):
             ax.set_xlim(0, max(1, max_iter))
             ax.tick_params(axis='both', labelsize=12)
             ax.grid(True, linestyle="--", alpha=0.4)
-            ax.legend(title="Algorithm", fontsize=8, loc='best')
+            ax.legend(title="Algorithm", fontsize=8,
+                      loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
 
             # Save
             filename = self.filename_for_instance(
