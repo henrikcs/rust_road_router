@@ -874,6 +874,17 @@ def main(args=None):
                 if last_gap <= options.relGap:
                     rel_gap_converged = True
 
+        # if the input demand contains the word "ka", we do not run the simulation
+        # the Karlsruhe simulation takes more than 14h per iteration and is not needed
+        if any("ka" in os.path.basename(f) for f in input_demands):
+            print(">> Skipping simulation due to 'Karlsruhe' instance")
+            print("< Step %s ended (duration: %s)" %
+                  (step, datetime.now() - btimeA))
+            print("------------------\n")
+            log.flush()
+            sys.stdout.flush()
+            continue
+
         # simulation
         print(">> Running simulation")
         btime = datetime.now()
