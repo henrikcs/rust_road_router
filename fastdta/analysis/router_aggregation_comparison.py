@@ -27,17 +27,23 @@ from matplotlib.patches import Rectangle
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
-# Fixed algorithm order
-ALGORITHM_ORDER = [
-    "fastdta2",
-    "fastdta_1_1",
-    "fastdta_1_1_1",
-    "fastdta_1_2_3_4",
+# Algorithm order for SUMO plot (traditional routing algorithms)
+SUMO_ALGORITHM_ORDER = [
     "dijkstra-rust",
     "cch",
     "dijkstra",
     "astar",
     "ch",
+]
+
+# Algorithm order for FastDTA plot (FastDTA variants + baselines)
+FASTDTA_ALGORITHM_ORDER = [
+    "fastdta2",
+    "fastdta_1_1",
+    "fastdta_1_1_1",
+    "fastdta_1_2_3_4",
+    "cch",
+    "dijkstra-rust",
 ]
 
 # Aggregation values to expect (in order for display)
@@ -54,6 +60,7 @@ NETWORK_NAMES = {
 def parse_data_for_subplot(dm: DataModel) -> Dict[Tuple[str, int], List[float]]:
     """
     Parse routing times from data model, grouped by algorithm and aggregation.
+    Subtracts preprocessing and postprocessing times from total router duration.
     Returns: {(algorithm, aggregation): [routing_times]}
     """
     result: Dict[Tuple[str, int], List[float]] = {}
@@ -71,15 +78,41 @@ def parse_data_for_subplot(dm: DataModel) -> Dict[Tuple[str, int], List[float]]:
 
         for exp in exps:
             times = get_routing_times(exp, skip_first=skip_first)
-            if times:
+
+            # Calculate adjusted times by subtracting preprocessing and postprocessing
+            adjusted_times = []
+            step_idx = 1 if skip_first else 0  # Track which step we're on
+
+            for time in times:
+                if step_idx < len(exp.steps):
+                    step = exp.steps[step_idx]
+
+                    # Sum up preprocessing and postprocessing times for this step
+                    pre_post_time = 0.0
+                    for phase in step.phase_details:
+                        phase_name_lower = phase.phase_name.lower()
+                        if "preprocessing" in phase_name_lower or "postprocessing" in phase_name_lower:
+                            pre_post_time += phase.duration_seconds
+
+                    # Subtract from total time (ensure non-negative)
+                    adjusted_time = max(0.0, time - pre_post_time)
+                    adjusted_times.append(adjusted_time)
+                else:
+                    # No step data available, use original time
+                    adjusted_times.append(time)
+
+                step_idx += 1
+
+            if adjusted_times:
                 key = (exp.algorithm, aggregation)
-                result.setdefault(key, []).extend(times)
+                result.setdefault(key, []).extend(adjusted_times)
 
     return result
 
 
 def create_grouped_boxplot(ax, data: Dict[Tuple[str, int], List[float]],
-                           algo_colors: Dict[str, str], title: str) -> Dict[Tuple[str, int], float]:
+                           algo_colors: Dict[str, str], title: str,
+                           algorithm_order: List[str]) -> Dict[Tuple[str, int], float]:
     """
     Create boxplot with algorithms grouped, each showing 3 aggregations.
 
@@ -88,6 +121,7 @@ def create_grouped_boxplot(ax, data: Dict[Tuple[str, int], List[float]],
         data: {(algorithm, aggregation): [routing_times]}
         algo_colors: {algorithm: color}
         title: Subplot title
+        algorithm_order: List of algorithms to display in order
 
     Returns:
         Dictionary of median values: {(algorithm, aggregation): median}
@@ -107,7 +141,7 @@ def create_grouped_boxplot(ax, data: Dict[Tuple[str, int], List[float]],
 
     current_pos = 1.0
 
-    for algo in ALGORITHM_ORDER:
+    for algo in algorithm_order:
         algo_data = []
         algo_found = False
 
@@ -263,11 +297,6 @@ Example:
         try:
             dm = build_model(log_file, csv_file)
             data = parse_data_for_subplot(dm)
-
-            # Filter out CH if requested
-            if args.hide_ch:
-                data = {k: v for k, v in data.items() if k[0].lower() != 'ch'}
-
             subplot_data[(network, mode)] = data
 
             # Collect all algorithms for color consistency
@@ -280,16 +309,39 @@ Example:
     # Get consistent colors for all algorithms
     algo_colors = get_all_algorithm_colors(sorted(all_algorithms))
 
-    # Create figure with subplots
+    # Generate output file paths
+    base_path = args.out
+    if base_path.endswith('.pdf'):
+        base_path = base_path[:-4]
+    elif base_path.endswith('.png'):
+        base_path = base_path[:-4]
+
+    # Determine file extension
+    ext = '.pdf'
+    if args.out.endswith('.png'):
+        ext = '.png'
+
+    sumo_output = base_path + '_sumo' + ext
+    fastdta_output = base_path + '_fastdta' + ext
+
+    # Prepare algorithm orders (apply --hide-ch filter)
+    sumo_algos = SUMO_ALGORITHM_ORDER.copy()
+    if args.hide_ch:
+        sumo_algos = [a for a in sumo_algos if a.lower() != 'ch']
+
+    fastdta_algos = FASTDTA_ALGORITHM_ORDER.copy()
+
+    # Create SUMO plot
+    print("\n=== Creating SUMO algorithms plot ===")
     fig_width = 16
     fig_height = 6 * num_rows
-    fig, axes = plt.subplots(num_rows, 2, figsize=(fig_width, fig_height))
+    fig_sumo, axes_sumo = plt.subplots(
+        num_rows, 2, figsize=(fig_width, fig_height))
 
     if num_rows == 1:
-        axes = axes.reshape(1, -1)
+        axes_sumo = axes_sumo.reshape(1, -1)
 
-    # Plot each subplot and collect medians
-    print("\n=== Median Values ===")
+    print("\n=== SUMO Plot Median Values ===")
     row_idx = 0
     for network in ["leopoldshafen", "rastatt", "karlsruhe"]:
         if network == "karlsruhe" and not has_karlsruhe:
@@ -297,52 +349,93 @@ Example:
 
         network_display = NETWORK_NAMES[network]
 
-        # Sequential (left column)
+        # Filter data for SUMO algorithms only
         data_seq = subplot_data.get((network, "Sequential"), {})
+        data_seq_filtered = {k: v for k,
+                             v in data_seq.items() if k[0] in sumo_algos}
+
+        data_par = subplot_data.get((network, "Parallel"), {})
+        data_par_filtered = {k: v for k,
+                             v in data_par.items() if k[0] in sumo_algos}
+
+        # Sequential (left column)
         title_seq = f"{network_display} - Sequential"
         medians_seq = create_grouped_boxplot(
-            axes[row_idx, 0], data_seq, algo_colors, title_seq)
+            axes_sumo[row_idx, 0], data_seq_filtered, algo_colors, title_seq, sumo_algos)
 
         print(f"\n{title_seq}:")
         for (algo, agg), median in sorted(medians_seq.items()):
             print(f"  {algo:20s} agg={agg:3d}s: {median:.4f}s")
 
         # Parallel (right column)
-        data_par = subplot_data.get((network, "Parallel"), {})
         title_par = f"{network_display} - Parallel"
         medians_par = create_grouped_boxplot(
-            axes[row_idx, 1], data_par, algo_colors, title_par)
+            axes_sumo[row_idx, 1], data_par_filtered, algo_colors, title_par, sumo_algos)
 
         print(f"\n{title_par}:")
         for (algo, agg), median in sorted(medians_par.items()):
             print(f"  {algo:20s} agg={agg:3d}s: {median:.4f}s")
 
-        # Share y-axis limits within row for easy comparison
-        y_mins = []
-        y_maxs = []
-        for ax in [axes[row_idx, 0], axes[row_idx, 1]]:
-            ylim = ax.get_ylim()
-            y_mins.append(ylim[0])
-            y_maxs.append(ylim[1])
+        row_idx += 1
 
-        if y_mins and y_maxs:
-            common_ymin = min(y_mins)
-            common_ymax = max(y_maxs)
-            axes[row_idx, 0].set_ylim(common_ymin, common_ymax)
-            axes[row_idx, 1].set_ylim(common_ymin, common_ymax)
+    plt.tight_layout()
+    print(f"\nSaving SUMO plot to: {sumo_output}")
+    os.makedirs(os.path.dirname(sumo_output) or '.', exist_ok=True)
+    fig_sumo.savefig(sumo_output, bbox_inches='tight', dpi=150)
+    plt.close(fig_sumo)
+
+    # Create FastDTA plot
+    print("\n=== Creating FastDTA algorithms plot ===")
+    fig_fastdta, axes_fastdta = plt.subplots(
+        num_rows, 2, figsize=(fig_width, fig_height))
+
+    if num_rows == 1:
+        axes_fastdta = axes_fastdta.reshape(1, -1)
+
+    print("\n=== FastDTA Plot Median Values ===")
+    row_idx = 0
+    for network in ["leopoldshafen", "rastatt", "karlsruhe"]:
+        if network == "karlsruhe" and not has_karlsruhe:
+            continue
+
+        network_display = NETWORK_NAMES[network]
+
+        # Filter data for FastDTA algorithms only
+        data_seq = subplot_data.get((network, "Sequential"), {})
+        data_seq_filtered = {k: v for k,
+                             v in data_seq.items() if k[0] in fastdta_algos}
+
+        data_par = subplot_data.get((network, "Parallel"), {})
+        data_par_filtered = {k: v for k,
+                             v in data_par.items() if k[0] in fastdta_algos}
+
+        # Sequential (left column)
+        title_seq = f"{network_display} - Sequential"
+        medians_seq = create_grouped_boxplot(
+            axes_fastdta[row_idx, 0], data_seq_filtered, algo_colors, title_seq, fastdta_algos)
+
+        print(f"\n{title_seq}:")
+        for (algo, agg), median in sorted(medians_seq.items()):
+            print(f"  {algo:20s} agg={agg:3d}s: {median:.4f}s")
+
+        # Parallel (right column)
+        title_par = f"{network_display} - Parallel"
+        medians_par = create_grouped_boxplot(
+            axes_fastdta[row_idx, 1], data_par_filtered, algo_colors, title_par, fastdta_algos)
+
+        print(f"\n{title_par}:")
+        for (algo, agg), median in sorted(medians_par.items()):
+            print(f"  {algo:20s} agg={agg:3d}s: {median:.4f}s")
 
         row_idx += 1
 
-    # Adjust layout
     plt.tight_layout()
+    print(f"\nSaving FastDTA plot to: {fastdta_output}")
+    os.makedirs(os.path.dirname(fastdta_output) or '.', exist_ok=True)
+    fig_fastdta.savefig(fastdta_output, bbox_inches='tight', dpi=150)
+    plt.close(fig_fastdta)
 
-    # Save figure
-    print(f"\nSaving plot to: {args.out}")
-    os.makedirs(os.path.dirname(args.out) or '.', exist_ok=True)
-    fig.savefig(args.out, bbox_inches='tight', dpi=150)
-    plt.close(fig)
-
-    print("Done!")
+    print("\nDone!")
 
 
 if __name__ == "__main__":
