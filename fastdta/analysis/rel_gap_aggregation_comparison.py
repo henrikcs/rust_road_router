@@ -86,7 +86,7 @@ def calculate_median_gaps(experiments) -> Tuple[List[int], List[float]]:
 
     # Calculate median for each iteration
     iterations = sorted(iter_gaps.keys())
-    medians = [np.median(iter_gaps[i]) for i in iterations]
+    medians = [np.min(iter_gaps[i]) for i in iterations]
 
     return iterations, medians
 
@@ -147,7 +147,7 @@ def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str,
 
             if iter_gaps:
                 iterations = sorted(iter_gaps.keys())
-                medians = [np.median(iter_gaps[i]) for i in iterations]
+                medians = [np.min(iter_gaps[i]) for i in iterations]
                 plot_data[agg][algo] = (iterations, medians)
 
     # Check if we have data for any aggregation

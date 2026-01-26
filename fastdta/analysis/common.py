@@ -583,13 +583,37 @@ def get_routing_times(exp: Experiment, skip_first: bool = True) -> List[float]:
     """
     Get all routing times from an experiment.
     Returns times in seconds.
+
+    Fallback strategy for experiments with errors:
+    - If router.duration_seconds is available, use it
+    - Otherwise, if we have begin_time and the experiment has total_duration,
+      use the total_duration as an approximation (assumes single-iteration experiments)
+    - As a last resort, if there's no router step at all but there's a total_duration
+      and a single step, use total_duration (for experiments that crashed early)
     """
     times = []
     for step in exp.steps:
         if skip_first and step.iteration == 0:
             continue
+
+        # Primary method: use router duration if available
         if step.router and step.router.duration_seconds is not None:
             times.append(step.router.duration_seconds)
+        # Fallback 1: if router has begin_time but no duration, and experiment has total_duration
+        # This happens when the router crashes or errors before printing duration
+        elif (step.router and step.router.begin_time is not None and
+              exp.total_duration and exp.total_duration.duration_seconds is not None):
+            # Use experiment total duration as approximation (for single-iteration runs)
+            # This is reasonable for routing-only experiments where simulation is skipped
+            times.append(exp.total_duration.duration_seconds)
+        # Fallback 2: if there's no router step at all (crash before block end marker)
+        # but we have total_duration and it's a single-step experiment
+        elif (step.router is None and
+              exp.total_duration and exp.total_duration.duration_seconds is not None and
+              len(exp.steps) == 1):
+            # Use experiment total duration as approximation
+            times.append(exp.total_duration.duration_seconds)
+
     return times
 
 

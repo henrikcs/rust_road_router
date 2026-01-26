@@ -66,9 +66,11 @@ def parse_data_for_subplot(dm: DataModel) -> Dict[Tuple[str, int], List[float]]:
             continue
 
         aggregation = int(instance.aggregation)
+        # For single-iteration experiments (last_iter=1), include step 0
+        skip_first = instance.last_iter > 1
 
         for exp in exps:
-            times = get_routing_times(exp, skip_first=True)
+            times = get_routing_times(exp, skip_first=skip_first)
             if times:
                 key = (exp.algorithm, aggregation)
                 result.setdefault(key, []).extend(times)
