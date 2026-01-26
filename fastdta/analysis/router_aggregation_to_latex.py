@@ -58,10 +58,15 @@ NETWORK_NAMES = {
 }
 
 
-def parse_data_for_subplot(dm: DataModel) -> Dict[Tuple[str, int], List[float]]:
+def parse_data_for_subplot(dm: DataModel, subtract_pre_post: bool = True) -> Dict[Tuple[str, int], List[float]]:
     """
     Parse routing times from data model, grouped by algorithm and aggregation.
-    Subtracts preprocessing and postprocessing times from total router duration.
+    Optionally subtracts preprocessing and postprocessing times from total router duration.
+
+    Args:
+        dm: DataModel to parse
+        subtract_pre_post: If True, subtract preprocessing and postprocessing times
+
     Returns: {(algorithm, aggregation): [routing_times]}
     """
     result: Dict[Tuple[str, int], List[float]] = {}
@@ -80,12 +85,12 @@ def parse_data_for_subplot(dm: DataModel) -> Dict[Tuple[str, int], List[float]]:
         for exp in exps:
             times = get_routing_times(exp, skip_first=skip_first)
 
-            # Calculate adjusted times by subtracting preprocessing and postprocessing
+            # Calculate adjusted times by optionally subtracting preprocessing and postprocessing
             adjusted_times = []
             step_idx = 1 if skip_first else 0  # Track which step we're on
 
             for time in times:
-                if step_idx < len(exp.steps):
+                if subtract_pre_post and step_idx < len(exp.steps):
                     step = exp.steps[step_idx]
 
                     # Sum up preprocessing and postprocessing times for this step
@@ -99,7 +104,7 @@ def parse_data_for_subplot(dm: DataModel) -> Dict[Tuple[str, int], List[float]]:
                     adjusted_time = max(0.0, time - pre_post_time)
                     adjusted_times.append(adjusted_time)
                 else:
-                    # No step data available, use original time
+                    # Don't subtract, use original time
                     adjusted_times.append(time)
 
                 step_idx += 1
@@ -323,23 +328,40 @@ Example:
         ])
 
     # Parse all data models and compute medians
+    # Parse twice: once for SUMO (keeping pre/post times), once for FastDTA (subtracting them)
     print("Loading data...")
     # {(network, mode, algorithm): {(algorithm, aggregation): median}}
-    all_medians = {}
+    sumo_medians = {}
+    fastdta_medians = {}
 
     for network, mode, (log_file, csv_file) in configs:
         print(f"  Parsing {network} {mode}...")
         try:
             dm = build_model(log_file, csv_file)
-            parsed_data = parse_data_for_subplot(dm)
-            medians = compute_medians(parsed_data)
 
-            # Store medians indexed by (network, mode, algorithm)
-            for (algo, agg), median_val in medians.items():
+            # Parse for SUMO table: keep preprocessing/postprocessing times
+            parsed_data_sumo = parse_data_for_subplot(
+                dm, subtract_pre_post=False)
+            medians_sumo = compute_medians(parsed_data_sumo)
+
+            # Parse for FastDTA table: subtract preprocessing/postprocessing times
+            parsed_data_fastdta = parse_data_for_subplot(
+                dm, subtract_pre_post=True)
+            medians_fastdta = compute_medians(parsed_data_fastdta)
+
+            # Store SUMO medians indexed by (network, mode, algorithm)
+            for (algo, agg), median_val in medians_sumo.items():
                 key = (network, mode, algo)
-                if key not in all_medians:
-                    all_medians[key] = {}
-                all_medians[key][(algo, agg)] = median_val
+                if key not in sumo_medians:
+                    sumo_medians[key] = {}
+                sumo_medians[key][(algo, agg)] = median_val
+
+            # Store FastDTA medians indexed by (network, mode, algorithm)
+            for (algo, agg), median_val in medians_fastdta.items():
+                key = (network, mode, algo)
+                if key not in fastdta_medians:
+                    fastdta_medians[key] = {}
+                fastdta_medians[key][(algo, agg)] = median_val
 
         except Exception as e:
             print(f"  Error parsing {network} {mode}: {e}")
@@ -350,7 +372,7 @@ Example:
     sumo_table = generate_latex_table(
         networks,
         SUMO_ALGORITHM_ORDER,
-        all_medians,
+        sumo_medians,
         hide_ch=args.hide_ch
     )
 
@@ -358,7 +380,7 @@ Example:
     fastdta_table = generate_latex_table(
         networks,
         FASTDTA_ALGORITHM_ORDER,
-        all_medians,
+        fastdta_medians,
         hide_ch=args.hide_ch
     )
 
