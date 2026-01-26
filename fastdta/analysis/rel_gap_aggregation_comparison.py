@@ -24,6 +24,7 @@ from typing import Dict, List, Tuple
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 
 # Add analysis directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -68,10 +69,15 @@ def group_by_aggregation(experiments, instance):
     return by_agg
 
 
-def calculate_median_gaps(experiments) -> Tuple[List[int], List[float]]:
+def calculate_median_gaps(experiments, agg_method: str = "min") -> Tuple[List[int], List[float]]:
     """
-    Calculate median relative gaps across repetitions for each iteration.
-    Returns (iterations, median_values)
+    Calculate aggregated relative gaps across repetitions for each iteration.
+
+    Args:
+        experiments: List of experiments to aggregate
+        agg_method: Aggregation method - "min", "mean", or "median"
+
+    Returns (iterations, aggregated_values)
     """
     # Collect gaps per iteration across all experiments
     iter_gaps: Dict[int, List[float]] = defaultdict(list)
@@ -84,15 +90,134 @@ def calculate_median_gaps(experiments) -> Tuple[List[int], List[float]]:
     if not iter_gaps:
         return [], []
 
-    # Calculate median for each iteration
+    # Calculate aggregation for each iteration
     iterations = sorted(iter_gaps.keys())
-    medians = [np.min(iter_gaps[i]) for i in iterations]
 
-    return iterations, medians
+    if agg_method == "min":
+        aggregated = [np.min(iter_gaps[i]) for i in iterations]
+    elif agg_method == "mean":
+        aggregated = [np.mean(iter_gaps[i]) for i in iterations]
+    elif agg_method == "median":
+        aggregated = [np.median(iter_gaps[i]) for i in iterations]
+    else:
+        raise ValueError(f"Unknown aggregation method: {agg_method}")
+
+    return iterations, aggregated
 
 
-def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str, y_min: float = None):
-    """Create comparison plot for one network across aggregations."""
+def compute_pairwise_statistics(plot_data: Dict[int, Dict[str, Tuple[List[int], List[float]]]], algos_to_plot: List[str], network_name: str):
+    """Compute and print pairwise statistical comparisons between algorithms."""
+    print(f"\n{'='*80}")
+    print(f"Statistical Comparison for {network_name}")
+    print(f"{'='*80}")
+
+    for agg in AGGREGATIONS:
+        if agg not in plot_data or len(plot_data[agg]) < 2:
+            continue
+
+        print(f"\nAggregation: {agg}s")
+        print("-" * 80)
+
+        # Get algorithms that have data for this aggregation
+        available_algos = [
+            algo for algo in algos_to_plot if algo in plot_data[agg]]
+
+        if len(available_algos) < 2:
+            print("  Not enough algorithms with data for comparison")
+            continue
+
+        # Pairwise comparisons
+        for i, algo1 in enumerate(available_algos):
+            for algo2 in available_algos[i+1:]:
+                iter1, vals1 = plot_data[agg][algo1]
+                iter2, vals2 = plot_data[agg][algo2]
+
+                # Find common iterations
+                common_iters = sorted(set(iter1) & set(iter2))
+                if len(common_iters) < 2:
+                    continue
+
+                # Extract values for common iterations
+                vals1_common = [vals1[iter1.index(it)] for it in common_iters]
+                vals2_common = [vals2[iter2.index(it)] for it in common_iters]
+
+                # Compute statistics
+                mean_diff = np.mean(
+                    np.array(vals1_common) - np.array(vals2_common))
+                median_diff = np.median(
+                    np.array(vals1_common) - np.array(vals2_common))
+
+                # Mean absolute difference
+                mad = np.mean(
+                    np.abs(np.array(vals1_common) - np.array(vals2_common)))
+
+                # Root mean square error
+                rmse = np.sqrt(
+                    np.mean((np.array(vals1_common) - np.array(vals2_common))**2))
+
+                # Wilcoxon signed-rank test (paired, non-parametric)
+                try:
+                    wilcoxon_stat, wilcoxon_p = stats.wilcoxon(
+                        vals1_common, vals2_common)
+                except Exception as e:
+                    wilcoxon_stat, wilcoxon_p = None, None
+
+                # Paired t-test (assumes normality)
+                try:
+                    t_stat, t_p = stats.ttest_rel(vals1_common, vals2_common)
+                except Exception as e:
+                    t_stat, t_p = None, None
+
+                # Cohen's d (effect size)
+                pooled_std = np.sqrt(
+                    (np.var(vals1_common) + np.var(vals2_common)) / 2)
+                cohens_d = mean_diff / pooled_std if pooled_std > 0 else 0
+
+                # Display labels
+                label1 = get_display_label(algo1)
+                label2 = get_display_label(algo2)
+
+                print(f"\n  {label1} vs {label2}:")
+                print(f"    N (common iterations):  {len(common_iters)}")
+                print(f"    Mean difference:        {mean_diff:.6e}")
+                print(f"    Median difference:      {median_diff:.6e}")
+                print(f"    Mean absolute diff:     {mad:.6e}")
+                print(f"    RMSE:                   {rmse:.6e}")
+                if wilcoxon_p is not None:
+                    print(f"    Wilcoxon p-value:       {wilcoxon_p:.6e}")
+                if t_p is not None:
+                    print(f"    Paired t-test p-value:  {t_p:.6e}")
+                print(f"    Cohen's d:              {cohens_d:.4f}")
+
+                # Interpretation
+                if wilcoxon_p is not None:
+                    if wilcoxon_p < 0.001:
+                        sig_str = "highly significant (p < 0.001)"
+                    elif wilcoxon_p < 0.01:
+                        sig_str = "very significant (p < 0.01)"
+                    elif wilcoxon_p < 0.05:
+                        sig_str = "significant (p < 0.05)"
+                    else:
+                        sig_str = "not significant (p >= 0.05)"
+                    print(f"    Significance:           {sig_str}")
+
+    print(f"\n{'='*80}\n")
+
+
+def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str, y_min: float = None, algorithms: List[str] = None, agg_method: str = "min"):
+    """Create comparison plot for one network across aggregations.
+
+    Args:
+        dm: Data model
+        prefix: Network prefix
+        out_dir: Output directory
+        y_min: Minimum y-axis value
+        algorithms: List of algorithms to plot
+        agg_method: Aggregation method for repetitions - "min", "mean", "median", "best", or a number (0 to n-1) to select specific repetition
+    """
+
+    # Use specified algorithms or default to all
+    algos_to_plot = algorithms if algorithms else ALGORITHM_ORDER
 
     # Get all instances with this prefix (one per aggregation)
     instances_with_prefix = {
@@ -133,9 +258,37 @@ def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str,
     # Calculate medians for each algorithm and aggregation
     plot_data: Dict[int, Dict[str, Tuple[List[int], List[float]]]] = {}
 
+    # For "best" method, we need to find the best repetition for each algo/agg combination
+    if agg_method == "best":
+        best_repetitions: Dict[Tuple[int, str],
+                               int] = {}  # (agg, algo) -> rep_index
+
+        for agg in AGGREGATIONS:
+            for algo in algos_to_plot:
+                if algo not in agg_algo_data[agg]:
+                    continue
+
+                # Find which repetition reached the lowest relative gap
+                n_reps = len(agg_algo_data[agg][algo])
+                if n_reps == 0:
+                    continue
+
+                best_rep = 0
+                best_min_gap = float('inf')
+
+                for rep_idx in range(n_reps):
+                    exp, gaps = agg_algo_data[agg][algo][rep_idx]
+                    if gaps:
+                        min_gap = min(gaps.values())
+                        if min_gap < best_min_gap:
+                            best_min_gap = min_gap
+                            best_rep = rep_idx
+
+                best_repetitions[(agg, algo)] = best_rep
+
     for agg in AGGREGATIONS:
         plot_data[agg] = {}
-        for algo in ALGORITHM_ORDER:
+        for algo in algos_to_plot:
             if algo not in agg_algo_data[agg]:
                 continue
 
@@ -147,13 +300,53 @@ def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str,
 
             if iter_gaps:
                 iterations = sorted(iter_gaps.keys())
-                medians = [np.min(iter_gaps[i]) for i in iterations]
-                plot_data[agg][algo] = (iterations, medians)
+
+                if agg_method == "best":
+                    # Use the best repetition for this algo/agg combination
+                    best_rep = best_repetitions.get((agg, algo), 0)
+                    n_reps = len(iter_gaps[iterations[0]]) if iterations else 0
+                    if n_reps > 0:
+                        aggregated = [iter_gaps[i][best_rep]
+                                      for i in iterations]
+                    else:
+                        aggregated = []
+                else:
+                    # Check if agg_method is an integer (specific repetition index)
+                    try:
+                        rep_index = int(agg_method)
+                        # Use specific repetition (with modulo to handle out-of-range indices)
+                        n_reps = len(
+                            iter_gaps[iterations[0]]) if iterations else 0
+                        if n_reps > 0:
+                            actual_index = rep_index % n_reps
+                            aggregated = [iter_gaps[i][actual_index]
+                                          for i in iterations]
+                        else:
+                            aggregated = []
+                    except (ValueError, TypeError):
+                        # agg_method is a string, use aggregation function
+                        if agg_method == "min":
+                            aggregated = [np.min(iter_gaps[i])
+                                          for i in iterations]
+                        elif agg_method == "mean":
+                            aggregated = [np.mean(iter_gaps[i])
+                                          for i in iterations]
+                        elif agg_method == "median":
+                            aggregated = [np.median(iter_gaps[i])
+                                          for i in iterations]
+                        else:
+                            raise ValueError(
+                                f"Unknown aggregation method: {agg_method}")
+                plot_data[agg][algo] = (iterations, aggregated)
 
     # Check if we have data for any aggregation
     if not any(plot_data.values()):
         print(f"No data found for network {prefix}")
         return
+
+    # Compute and print statistical comparisons
+    network_name = extract_network_name(prefix)
+    compute_pairwise_statistics(plot_data, algos_to_plot, network_name)
 
     # Get consistent colors
     algo_colors = get_all_algorithm_colors(list(dm.algorithms))
@@ -175,7 +368,7 @@ def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str,
         print(f"  Aggregation {agg}s:")
 
         # Plot each algorithm
-        for algo in ALGORITHM_ORDER:
+        for algo in algos_to_plot:
             if algo not in plot_data[agg]:
                 continue
 
@@ -262,7 +455,7 @@ def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str,
 
     # Save
     os.makedirs(out_dir, exist_ok=True)
-    filename = f"{sanitize_for_filename(prefix)}-rel-gap-agg-comparison.pdf"
+    filename = f"{sanitize_for_filename(prefix)}-rel-gap-agg-comparison-{agg_method}.pdf"
     filepath = os.path.join(out_dir, filename)
     fig.savefig(filepath, bbox_inches='tight', dpi=150)
     plt.close(fig)
@@ -296,6 +489,18 @@ def main():
         default=None,
         help="Minimum y-axis value for relative gap (optional)"
     )
+    parser.add_argument(
+        "--algorithms",
+        nargs="+",
+        default=None,
+        help="List of algorithms to plot (e.g., dijkstra-rust cch). If not specified, all algorithms are plotted."
+    )
+    parser.add_argument(
+        "--agg-method",
+        type=str,
+        default="min",
+        help="Method to aggregate repetitions: 'min', 'mean', 'median', 'best', or a number (0 to n-1) to select a specific repetition (default: min)"
+    )
 
     args = parser.parse_args()
 
@@ -326,11 +531,14 @@ def main():
 
     # Create plots
     print("\nGenerating plots...")
+    print(f"Using aggregation method: {args.agg_method}")
+    if args.algorithms:
+        print(f"Filtering algorithms: {', '.join(args.algorithms)}")
     for prefix, inst_indices in instances_by_prefix.items():
         # Create plot for this network prefix across all aggregations
         if inst_indices:
             create_aggregation_comparison_plot(
-                dm, prefix, args.out_dir, y_min=args.y_min)
+                dm, prefix, args.out_dir, y_min=args.y_min, algorithms=args.algorithms, agg_method=args.agg_method)
 
     print(f"\nPlots saved to: {args.out_dir}")
 
