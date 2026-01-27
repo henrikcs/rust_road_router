@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use conversion::FILE_QUERY_IDS;
 use fastdta::calibrate_traffic_model::calibrate_traffic_models;
 use fastdta::cli;
 use fastdta::cli::Parser;
@@ -14,7 +13,6 @@ use fastdta::sampled_queries::{get_paths_by_samples, get_paths_by_samples_with_k
 use fastdta::sampler::sample;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
-use rust_road_router::io::read_strings_from_file;
 use rust_road_router::report::measure;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,6 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let traffic_model_type = args.get_traffic_model();
     let samples = args.get_samples();
     let keep_route_probability = args.router_args.keep_route_probability.unwrap_or(0.0);
+
+    let routing_threads = args.router_args.routing_threads as usize;
+    println!("[sumo-fastdta-router] Using {} routing threads", routing_threads);
 
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
@@ -61,6 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &previous_paths,
                 &mut meandata,
                 &edge_ids,
+                routing_threads,
             );
         }
         get_paths_by_samples_with_keep_routes(
@@ -74,6 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &mut meandata,
             &edge_ids,
             &keep_routes,
+            routing_threads,
         )
     });
 
@@ -104,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let (_, graph, cch) = get_graph_data_for_cch(input_dir, iteration);
             let customized_graph = customize(&cch, &graph);
 
-            let (_shortest_paths, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph);
+            let (_shortest_paths, shortest_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, input_dir, &graph, routing_threads);
 
             // let query_ids: Vec<String> = read_strings_from_file(&input_dir.join(FILE_QUERY_IDS)).unwrap();
 

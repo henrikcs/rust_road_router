@@ -17,6 +17,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let choice_algorithm = args.get_choice_algorithm();
 
+    let routing_threads = args.routing_threads as usize;
+    println!("[sumo-tddijkstra-router] Using {} routing threads", routing_threads);
+
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
     let logger = Logger::new("sumo-tddijkstra-router", &input_dir.display().to_string(), iteration as i32);
@@ -24,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ((edge_ids, graph), duration) = measure(|| get_graph_data_for_dijkstra(input_dir, iteration));
     logger.log("preprocessing", duration.as_nanos());
 
-    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_dijkstra(input_dir, &graph));
+    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_dijkstra(input_dir, &graph, routing_threads));
     logger.log("dijkstra routing", duration.as_nanos());
 
     let write_sumo_alternatives =

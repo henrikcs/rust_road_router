@@ -284,8 +284,8 @@ pub struct RouterArgs {
     #[arg(long = "routing-algorithm")]
     pub routing_algorithm: Option<String>,
 
-    #[arg(long = "routing-threads")]
-    pub routing_threads: Option<i32>,
+    #[arg(long = "routing-threads", default_value_t = std::thread::available_parallelism().unwrap().get() as i32)]
+    pub routing_threads: i32,
 
     #[arg(long = "save-commented", default_value_t = String::from("False"))]
     pub save_commented: String,

@@ -611,6 +611,15 @@ def generateEdgedataAddFile(EDGEDATA_ADD, options):
     fd.close()
 
 
+def add_routing_threads_to_options_list(args_list, options):
+    # add routing threads from dua-args, if specified
+    if "--routing-threads" in args_list:
+        idx = args_list.index("--routing-threads")
+        options += ["--routing-threads", args_list[idx + 1]]
+        print("(Using %s routing threads)" %
+              args_list[idx + 1])
+
+
 def main(args=None):
     argParser = initOptions()
 
@@ -719,7 +728,10 @@ def main(args=None):
             "--trips-file", input_demands[0],
             "--begin", str(options.begin),
             "--end", str(options.end),
-            "--interval", str(options.aggregation)]
+            "--interval", str(options.aggregation)
+        ]
+
+        add_routing_threads_to_options_list(dua_args, common_args)
 
         # note that the rust libraries only support a single demand file as an input.
         tik = datetime.now()
@@ -803,6 +815,10 @@ def main(args=None):
                                          output, options.routefile)
                 arguments_for_router = getArgs(
                     step, options, router_input, output, options.routefile)
+
+                add_routing_threads_to_options_list(
+                    dua_args, arguments_for_router)
+
                 log.flush()
                 sys.stdout.flush()
                 if options.marginal_cost:
@@ -873,17 +889,6 @@ def main(args=None):
                       (step - 1, last_gap))
                 if last_gap <= options.relGap:
                     rel_gap_converged = True
-
-        # if the input demand contains the word "ka", we do not run the simulation
-        # the Karlsruhe simulation takes more than 14h per iteration and is not needed
-        if any("ka" in os.path.basename(f) for f in input_demands):
-            print(">> Skipping simulation due to 'Karlsruhe' instance")
-            print("< Step %s ended (duration: %s)" %
-                  (step, datetime.now() - btimeA))
-            print("------------------\n")
-            log.flush()
-            sys.stdout.flush()
-            continue
 
         # simulation
         print(">> Running simulation")

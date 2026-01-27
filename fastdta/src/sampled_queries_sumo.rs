@@ -41,6 +41,7 @@ pub fn get_paths_by_samples_with_sumo_keep_routes(
     previous_paths: &Vec<&Vec<u32>>,
     edge_ids: &Vec<String>,
     keep_routes: &Vec<bool>,
+    routing_threads: usize,
 ) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let mut routed_paths: Vec<Vec<u32>> = previous_paths.iter().map(|path| (*path).clone()).collect();
 
@@ -58,8 +59,18 @@ pub fn get_paths_by_samples_with_sumo_keep_routes(
         let (customized_graph, duration) = measure(|| customize(&cch, &graph));
         logger.log(&format!("cch customization (batch {batch_idx})"), duration.as_nanos());
 
-        let (sampled_shortest_paths, duration) =
-            measure(|| get_sampled_queries_with_keep_routes(&graph, &cch, &customized_graph, keep_routes, sample, query_data, &previous_paths));
+        let (sampled_shortest_paths, duration) = measure(|| {
+            get_sampled_queries_with_keep_routes(
+                &graph,
+                &cch,
+                &customized_graph,
+                keep_routes,
+                sample,
+                query_data,
+                &previous_paths,
+                routing_threads,
+            )
+        });
         logger.log(&format!("routing (batch {batch_idx})"), duration.as_nanos());
 
         // Store results for this sample and update all_routed_paths
@@ -137,6 +148,7 @@ pub fn get_paths_by_samples_with_sumo(
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     samples: &Vec<Vec<usize>>,
     edge_ids: &Vec<String>,
+    routing_threads: usize,
 ) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let mut shortest_paths: Vec<Vec<u32>> = vec![vec![]; query_data.0.len()];
     let mut travel_times = vec![FlWeight::INVALID; query_data.0.len()];
@@ -184,6 +196,7 @@ pub fn get_paths_by_samples_with_sumo(
                 &sample.iter().map(|&i| query_data.3[i]).collect(),
                 &sample.iter().map(|&i| query_data.4[i]).collect(),
                 &graph,
+                routing_threads,
             )
         });
         logger.log(&format!("routing (batch {batch_idx})"), duration.as_nanos());

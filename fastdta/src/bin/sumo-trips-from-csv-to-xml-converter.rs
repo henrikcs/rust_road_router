@@ -86,7 +86,13 @@ fn main() {
     let customized_graph = customize(&cch, &graph);
 
     println!("Calculating paths...");
-    let (shortest_paths, _, _) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
+    let (shortest_paths, _, _) = get_paths_with_cch(
+        &cch,
+        &customized_graph,
+        &temp_cch_dir,
+        &graph,
+        std::thread::available_parallelism().unwrap().get(),
+    );
 
     // filter trips which can be routed on the graph
     println!("Filter trips according to paths...");

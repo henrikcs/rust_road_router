@@ -8,7 +8,7 @@ use conversion::{
 use conversion::MIN_EDGE_WEIGHT;
 
 #[cfg(not(feature = "queries-disable-par"))]
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::iter::ParallelIterator;
 #[cfg(not(feature = "queries-disable-par"))]
 use rust_road_router::algo::{catchup::floating_td_stepped_elimination_tree::FloatingTDSteppedEliminationTree, customizable_contraction_hierarchy::CCHT};
 
@@ -26,6 +26,7 @@ pub fn get_paths_with_cch(
     customized_graph: &CustomizedGraph,
     input_dir: &Path,
     graph: &TDGraph,
+    routing_threads: usize,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let (queries_from, queries_to, queries_departure, queries_original_from_edges, queries_original_to_edges) = read_queries(input_dir);
     get_paths_with_cch_queries(
@@ -37,6 +38,7 @@ pub fn get_paths_with_cch(
         &queries_original_from_edges,
         &queries_original_to_edges,
         graph,
+        routing_threads,
     )
 }
 
@@ -49,6 +51,7 @@ pub fn get_paths_with_cch_queries(
     queries_original_from_edges: &Vec<u32>,
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
+    routing_threads: usize,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     #[cfg(feature = "queries-disable-par")]
     {
@@ -136,11 +139,12 @@ pub fn get_paths_with_cch_queries(
             queries_original_from_edges,
             queries_original_to_edges,
             graph,
+            routing_threads,
         )
     }
 }
 
-pub fn get_paths_with_dijkstra(input_dir: &Path, graph: &TDGraph) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
+pub fn get_paths_with_dijkstra(input_dir: &Path, graph: &TDGraph, routing_threads: usize) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     let (queries_from, queries_to, queries_departure, queries_original_from_edges, queries_original_to_edges) = read_queries(input_dir);
     get_paths_with_dijkstra_queries(
         &queries_from,
@@ -149,6 +153,7 @@ pub fn get_paths_with_dijkstra(input_dir: &Path, graph: &TDGraph) -> (Vec<Vec<Ed
         &queries_original_from_edges,
         &queries_original_to_edges,
         graph,
+        routing_threads,
     )
 }
 pub fn get_paths_with_dijkstra_queries(
@@ -158,6 +163,7 @@ pub fn get_paths_with_dijkstra_queries(
     queries_original_from_edges: &Vec<u32>,
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
+    routing_threads: usize,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     #[cfg(feature = "queries-disable-par")]
     {
@@ -243,6 +249,7 @@ pub fn get_paths_with_dijkstra_queries(
             queries_original_from_edges,
             queries_original_to_edges,
             graph,
+            routing_threads,
         )
     }
 }
@@ -311,11 +318,12 @@ fn get_paths_from_queries_par<
     queries_original_from_edges: &Vec<u32>,
     queries_original_to_edges: &Vec<u32>,
     graph: &TDGraph,
+    routing_threads: usize,
 ) -> (Vec<Vec<EdgeId>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     use rayon::iter::IntoParallelRefIterator;
 
     let num_queries = queries_from.len();
-    let num_threads = rayon::current_num_threads();
+    let num_threads = routing_threads;
     let num_chunks = num_threads.min(num_queries);
 
     // Calculate chunk size, ensuring all queries are covered
@@ -588,6 +596,7 @@ mod tests {
             &queries_original_from_edges,
             &queries_original_to_edges,
             &graph,
+            1,
         );
 
         assert_eq!(paths.len(), 1);

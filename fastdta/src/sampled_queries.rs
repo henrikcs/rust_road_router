@@ -31,6 +31,7 @@ pub fn get_paths_by_samples_with_keep_routes(
     meandata: &mut MeandataDocumentRoot,
     edge_ids: &Vec<String>,
     keep_routes: &Vec<bool>,
+    routing_threads: usize,
 ) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     // customize with previous travel times
     // while not all trips have been sampled:
@@ -66,8 +67,18 @@ pub fn get_paths_by_samples_with_keep_routes(
 
         logger.log(format!("cch customization (sample {i})").as_str(), duration.as_nanos());
 
-        let (sampled_new_paths, duration) =
-            measure(|| get_sampled_queries_with_keep_routes(&graph, &cch, &customized_graph, keep_routes, sample, query_data, previous_paths));
+        let (sampled_new_paths, duration) = measure(|| {
+            get_sampled_queries_with_keep_routes(
+                &graph,
+                &cch,
+                &customized_graph,
+                keep_routes,
+                sample,
+                query_data,
+                previous_paths,
+                routing_threads,
+            )
+        });
 
         logger.log(format!("routing (sample {i})").as_str(), duration.as_nanos());
 
@@ -126,6 +137,7 @@ pub fn get_sampled_queries_with_keep_routes(
     sample: &Vec<usize>,
     query_data: &(Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>, Vec<u32>),
     previous_paths: &Vec<&Vec<u32>>,
+    routing_threads: usize,
 ) -> Vec<Vec<u32>> {
     // queries which are not reroutable keep their previous paths
     // for other queries, find new shortest paths
@@ -141,6 +153,7 @@ pub fn get_sampled_queries_with_keep_routes(
         &reroutable_samples.iter().map(|&i| query_data.3[*i]).collect(),
         &reroutable_samples.iter().map(|&i| query_data.4[*i]).collect(),
         &graph,
+        routing_threads,
     );
 
     // combine new paths with previous paths for non-reroutable queries
@@ -172,6 +185,7 @@ pub fn get_paths_by_samples(
     previous_paths: &Vec<&Vec<u32>>,
     meandata: &mut MeandataDocumentRoot,
     edge_ids: &Vec<String>,
+    routing_threads: usize,
 ) -> (TDGraph, Vec<Vec<u32>>, Vec<FlWeight>, Vec<SerializedTimestamp>) {
     // customize with previous travel times
     // while not all trips have been sampled:
@@ -216,6 +230,7 @@ pub fn get_paths_by_samples(
                 &sample.iter().map(|&i| query_data.3[i]).collect(),
                 &sample.iter().map(|&i| query_data.4[i]).collect(),
                 &graph,
+                routing_threads,
             )
         });
 

@@ -70,7 +70,13 @@ fn main() {
         let graph = TDGraph::reconstruct_from(&temp_cch_dir).unwrap();
         let cch = get_cch(&temp_cch_dir, &graph);
         let customized_graph = customize(&cch, &graph);
-        let (best_paths, _best_travel_times, departures) = get_paths_with_cch(&cch, &customized_graph, &temp_cch_dir, &graph);
+        let (best_paths, _best_travel_times, departures) = get_paths_with_cch(
+            &cch,
+            &customized_graph,
+            &temp_cch_dir,
+            &graph,
+            std::thread::available_parallelism().unwrap().get(),
+        );
 
         let routes_path = dta_iteration_dir.join(get_routes_file_name_in_iteration(&trips_file, iteration));
         println!("Reading routes from file {}", routes_path.display());

@@ -20,6 +20,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let choice_algorithm = args.get_choice_algorithm();
 
+    let routing_threads = args.routing_threads as usize;
+    println!("[sumo-tdcch-router] Using {} routing threads", routing_threads);
+
     assert!(args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
     let ((edge_ids, graph, cch), duration) = measure(|| get_graph_data_for_cch(input_dir, iteration));
@@ -28,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (customized_graph, duration) = measure(|| customize(&cch, &graph));
     logger.log("cch customization", duration.as_nanos());
 
-    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_cch(&cch, &customized_graph, &input_dir, &graph));
+    let ((shortest_paths, travel_times, departures), duration) = measure(|| get_paths_with_cch(&cch, &customized_graph, &input_dir, &graph, routing_threads));
     logger.log("cch routing", duration.as_nanos());
 
     for shortest_path in &shortest_paths {

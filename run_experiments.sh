@@ -19,6 +19,8 @@ declare repetitions=1
 declare use_logit=false
 declare disable_parallel_queries=false
 declare expand_nodes=false
+declare threads
+threads=$(nproc)
 
 # --- Function to display usage ---
 usage() {
@@ -49,6 +51,7 @@ usage() {
     echo "  --logit                Use logit choice model with default parameters."
     echo "  --disable-parallel-queries  Compile with 'queries-disable-par' feature."
     echo "  --expand-nodes         Compile with 'expand-sumo-nodes' feature."
+    echo "  --threads <N>          Number of threads to use (default: nproc)."
     exit 1
 }
 
@@ -158,6 +161,10 @@ while [[ $# -gt 0 ]]; do
         --expand-nodes)
         expand_nodes=true
         shift
+        ;;
+        --threads)
+        threads="$2"
+        shift 2
         ;;
         *)
         echo "Unknown option: $1"
@@ -348,7 +355,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
             # if queries-disable-par is set, we do not use parallel queries in duarouter
             if [ "$disable_parallel_queries" = false ]; then
                 dua_args+=(
-                    duarouter--routing-threads $(nproc)
+                    duarouter--routing-threads "$threads"
                 )
             fi
             
@@ -360,7 +367,7 @@ while IFS=';' read -r in_dir prefix trip_file_name begin end aggregation converg
                 sumo--time-to-teleport.disconnected 0
                 sumo--seed $seed
                 sumo--step-length 1.0
-                sumo--threads $(nproc)
+                sumo--threads "$threads"
             )
 
             # Add preprocessor args only for CCH

@@ -58,6 +58,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let seed = args.router_args.seed.unwrap_or(42);
 
+    let routing_threads = args.router_args.routing_threads as usize;
+    println!("[sumo-fastdta2-router] Using {} routing threads", routing_threads);
+
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
     let logger = Logger::new("sumo-fastdta2-router", &input_dir.display().to_string(), iteration as i32);
@@ -130,6 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &query_data.3,
             &query_data.4,
             &graph,
+            routing_threads,
         )
     });
 
@@ -205,6 +209,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &query_data.3,
             &query_data.4,
             &graph,
+            routing_threads,
         );
         fastdta2_paths
     });

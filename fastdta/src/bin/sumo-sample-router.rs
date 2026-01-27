@@ -26,6 +26,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let choice_algorithm = router_args.get_choice_algorithm();
     let samples = args.get_samples();
 
+    let routing_threads = router_args.routing_threads as usize;
+    println!("[sumo-sample-router] Using {} routing threads", routing_threads);
+
     assert!(args.router_args.max_alternatives > 0, "max_alternatives must be greater than 0");
 
     let logger = Logger::new("sumo-sample-router", &input_dir.display().to_string(), iteration as i32);
@@ -74,6 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &query_data,
                 &samples,
                 &edge_ids,
+                routing_threads,
             );
         }
 
@@ -90,6 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &alternative_paths.get_chosen_paths(),
             &edge_ids,
             &keep_routes,
+            routing_threads,
         )
     });
 
