@@ -71,6 +71,13 @@ NETWORK_NAMES = {
     "karlsruhe": "Karlsruhe",
 }
 
+# Phases to ignore (will not be included in plots)
+IGNORED_PHASES = {
+    "get preferred paths",
+    "calculate travel times on original",
+    "add fastdta2 alternatives",
+}
+
 
 def normalize_phase_name(phase_name: str) -> str:
     """Normalize phase name for consistent coloring."""
@@ -84,10 +91,14 @@ def normalize_phase_name(phase_name: str) -> str:
     if "customization" in phase_lower:
         return "customization"
 
+    # Handle adjust weights phases (including "adjust weights (sample X)")
+    if "adjust weights" in phase_lower:
+        return "adjust weights"
+
     # Handle known specific phases
     known_phases = [
         "preprocessing", "postprocessing", "calibration",
-        "sample", "choice model", "adjust weights",
+        "choice model", "sample",
         "read edge ids", "read queries"
     ]
 
@@ -140,7 +151,7 @@ def get_phase_legend_name(phase_name: str) -> str:
         return phase_name.title()
 
 
-def get_phase_times_for_experiment(exp: Experiment, skip_first: bool = True) -> Dict[str, List[float]]:
+def get_phase_times_for_experiment(exp: Experiment, skip_first: bool = False) -> Dict[str, List[float]]:
     """Get phase times grouped by phase name for an experiment."""
     phase_times: Dict[str, List[float]] = defaultdict(list)
 
@@ -149,6 +160,9 @@ def get_phase_times_for_experiment(exp: Experiment, skip_first: bool = True) -> 
             continue
 
         for pd in step.phase_details:
+            # Skip ignored phases (normalize for comparison)
+            if pd.phase_name.lower() in IGNORED_PHASES:
+                continue
             if pd.duration_seconds is not None:
                 normalized_name = normalize_phase_name(pd.phase_name)
                 phase_times[normalized_name].append(pd.duration_seconds)
@@ -161,7 +175,7 @@ def calculate_average_phase_times(experiments: List[Experiment]) -> Dict[str, fl
     all_phase_times: Dict[str, List[float]] = defaultdict(list)
 
     for exp in experiments:
-        phase_times = get_phase_times_for_experiment(exp, skip_first=True)
+        phase_times = get_phase_times_for_experiment(exp, skip_first=False)
         for phase_name, times in phase_times.items():
             all_phase_times[phase_name].extend(times)
 
@@ -181,7 +195,8 @@ def create_broken_axis_subplot(
     break_lower: float,
     break_upper: float,
     show_ylabel: bool = True,
-    title: str = ""
+    title: str = "",
+    show_route_time: bool = False
 ):
     """
     Create a stacked bar chart with broken y-axis on a single subplot.
@@ -230,14 +245,16 @@ def create_broken_axis_subplot(
         ax_lower,
         algorithms,
         phase_data,
-        show_ylabel=False
+        show_ylabel=False,
+        show_route_time=show_route_time
     )
 
     legend_handles_upper, legend_labels_upper = create_stacked_bar_chart_on_axis(
         ax_upper,
         algorithms,
         phase_data,
-        show_ylabel=False
+        show_ylabel=False,
+        show_route_time=show_route_time
     )
 
     # Set y-axis limits
@@ -271,7 +288,7 @@ def create_broken_axis_subplot(
 
     # Set title on the upper axis
     if title:
-        ax_upper.set_title(title, fontsize=16, pad=10)
+        ax_upper.set_title(title, fontsize=16)
 
     # Hide spines where break occurs
     ax_upper.spines['bottom'].set_visible(False)
@@ -326,7 +343,8 @@ def create_stacked_bar_chart_on_axis(
     ax,
     algorithms: List[str],
     phase_data: Dict[str, Dict[str, float]],
-    show_ylabel: bool = True
+    show_ylabel: bool = True,
+    show_route_time: bool = False
 ):
     """
     Create a stacked bar chart on a given axis.
@@ -345,9 +363,17 @@ def create_stacked_bar_chart_on_axis(
                 if phase not in all_phases:
                     all_phases.append(phase)
 
-    # Move postprocessing to the end if present
+    # Move preprocessing and postprocessing to the end if present
+    # preprocessing should be second to last, postprocessing should be last
+    if "preprocessing" in all_phases:
+        all_phases.remove("preprocessing")
     if "postprocessing" in all_phases:
         all_phases.remove("postprocessing")
+
+    # Add them back in the correct order
+    if "preprocessing" in [phase for algo in algorithms if algo in phase_data for phase in phase_data[algo].keys()]:
+        all_phases.append("preprocessing")
+    if "postprocessing" in [phase for algo in algorithms if algo in phase_data for phase in phase_data[algo].keys()]:
         all_phases.append("postprocessing")
 
     # Prepare data for stacked bars
@@ -388,6 +414,24 @@ def create_stacked_bar_chart_on_axis(
             legend_labels.append(legend_name)
             seen_phases.add(legend_name)
 
+        # Add time annotation for routing phases if requested
+        if show_route_time and normalize_phase_name(phase) == "routing":
+            for i, (x_pos, height) in enumerate(zip(x_positions, heights)):
+                if height > 0:
+                    # Calculate y position (top of this phase segment)
+                    y_pos = bottoms[i] + height
+                    # Add text annotation
+                    ax.text(
+                        x_pos,
+                        y_pos,
+                        f"{height:.3f}s",
+                        ha='center',
+                        va='bottom',
+                        fontsize=10,
+                        color='black',
+                        fontweight='bold'
+                    )
+
         bottoms += heights
 
     # Style the axis
@@ -407,31 +451,39 @@ def create_network_comparison_plot(
     network: str,
     exp_by_network_agg: Dict[Tuple[str, int], Dict[str, List[Experiment]]],
     out_dir: str,
-    y_axis_breaks: Dict[int, Optional[Tuple[float, float]]] = None
+    y_axis_breaks: Dict[int, Optional[Tuple[float, float]]] = None,
+    no_io: bool = False,
+    algorithms: Optional[List[str]] = None,
+    show_route_time: bool = False
 ):
     """Create comparison plot for one network across aggregations."""
 
     if y_axis_breaks is None:
         y_axis_breaks = {}
 
-    # Create figure with 3 subplots (one per aggregation)
-    fig, axes = plt.subplots(1, 3, figsize=(
-        16, 5), sharey=False)
+    # For Karlsruhe, only show 60s aggregation
+    if network.lower() == 'karlsruhe':
+        aggregations_to_plot = [60]
+        fig, ax_single = plt.subplots(1, 1, figsize=(4.5, 4.5), sharey=False)
+        axes = [ax_single]  # Wrap in list for consistent indexing
+    else:
+        aggregations_to_plot = AGGREGATIONS
+        # Create figure with 3 subplots (one per aggregation)
+        fig, axes = plt.subplots(1, 3, figsize=(11, 4.5), sharey=False)
 
-    # Get network display name
+    # Overall title
     network_name = NETWORK_NAMES.get(network.lower(), network)
-    fig.suptitle(network_name, fontsize=16, fontweight='bold', y=1.02)
+    fig.suptitle(network_name, fontsize=16, fontweight='bold')
 
     all_legend_handles = []
     all_legend_labels = []
 
-    for idx, aggregation in enumerate(AGGREGATIONS):
-        ax = axes[idx]
+    for idx, aggregation in enumerate(aggregations_to_plot):
+        ax = axes[idx] if len(axes) > 1 else axes[0]
         key = (network, aggregation)
 
         if key not in exp_by_network_agg:
-            ax.set_title(f"{aggregation}s", fontsize=16,
-                         fontweight='bold', pad=20)
+            ax.set_title(f"{aggregation}s", fontsize=16)
             ax.text(0.5, 0.5, "No data", ha='center', va='center',
                     transform=ax.transAxes, fontsize=12)
             continue
@@ -443,20 +495,42 @@ def create_network_comparison_plot(
         phase_data: Dict[str, Dict[str, float]] = {}
         present_algorithms = []
 
-        for algo in ALGORITHM_ORDER:
+        # Filter algorithm order based on provided list
+        algorithms_to_include = ALGORITHM_ORDER if algorithms is None else [
+            algo for algo in ALGORITHM_ORDER if algo in algorithms
+        ]
+
+        for algo in algorithms_to_include:
             if algo in algo_exps:
                 experiments = algo_exps[algo]
                 avg_times = calculate_average_phase_times(experiments)
+                # Filter out IO phases if --no-io flag is set
+                if no_io:
+                    avg_times = {
+                        phase: time for phase, time in avg_times.items()
+                        if phase.lower() not in ['preprocessing', 'postprocessing']
+                    }
                 if avg_times:
                     phase_data[algo] = avg_times
                     present_algorithms.append(algo)
 
         if not present_algorithms:
-            ax.set_title(f"{aggregation}s", fontsize=16,
-                         fontweight='bold', pad=20)
+            ax.set_title(f"{aggregation}s", fontsize=16)
             ax.text(0.5, 0.5, "No data", ha='center', va='center',
                     transform=ax.transAxes, fontsize=12)
             continue
+
+        # Print phase breakdown to console
+        print(f"\n{network_name} - Aggregation {aggregation}s:")
+        print("=" * 60)
+        for algo in present_algorithms:
+            total_time = sum(phase_data[algo].values())
+            print(f"\n{get_display_label(algo)} (Total: {total_time:.2f}s):")
+            for phase_name, avg_time in sorted(phase_data[algo].items(), key=lambda x: -x[1]):
+                percentage = (avg_time / total_time *
+                              100) if total_time > 0 else 0
+                print(
+                    f"  {get_phase_legend_name(phase_name):20s}: {avg_time:8.3f}s ({percentage:5.1f}%)")
 
         # Check if we need to break the y-axis for this aggregation
         y_breaks = y_axis_breaks.get(aggregation)
@@ -471,7 +545,8 @@ def create_network_comparison_plot(
                 y_breaks[0],
                 y_breaks[1],
                 show_ylabel=show_ylabel,
-                title=f"{aggregation}s"
+                title=f"{aggregation}s",
+                show_route_time=show_route_time
             )
         else:
             # Create regular stacked bar chart
@@ -479,35 +554,35 @@ def create_network_comparison_plot(
                 ax,
                 present_algorithms,
                 phase_data,
-                show_ylabel=show_ylabel
+                show_ylabel=show_ylabel,
+                show_route_time=show_route_time
             )
             # Set subplot title for non-broken axis
-            ax.set_title(f"{aggregation}s", fontsize=16, pad=10)
+            ax.set_title(f"{aggregation}s", fontsize=16)
 
         # Collect legend items from first subplot
         if idx == 0:
             all_legend_handles = legend_handles
             all_legend_labels = legend_labels
 
-    # Add single legend at the top using middle subplot for positioning
-    # This ensures the legend takes up proper space in the layout
+        # X-label for middle subplot (or single subplot for Karlsruhe)
+        if idx == 1 or (network.lower() == 'karlsruhe' and idx == 0):
+            ax.set_xlabel("Algorithm", fontsize=15)
+
+    # Create single legend below all subplots
     if all_legend_handles:
-        # Use the middle subplot to anchor the legend
-        axes[1].legend(
+        fig.legend(
             all_legend_handles,
             all_legend_labels,
             loc='lower center',
-            bbox_to_anchor=(0.5, 1.0),
-            bbox_transform=fig.transFigure,
-            ncol=4,
+            bbox_to_anchor=(0.5, -0.1),
+            ncol=3,
             fontsize=14,
-            frameon=False,
-            fancybox=False,
-            shadow=False
+            frameon=False
         )
 
     # Adjust layout
-    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
     # Save plot
     output_filename = f"routing_phase_breakdown_{network.lower()}.pdf"
@@ -559,6 +634,21 @@ def main():
         metavar=('LOWER_MAX', 'UPPER_MIN'),
         help="Break y-axis for aggregation 900. Example: --y-axis-breaks-900 25 180"
     )
+    parser.add_argument(
+        "--no-io",
+        action="store_true",
+        help="Exclude preprocessing and postprocessing times from plots"
+    )
+    parser.add_argument(
+        "--algorithms",
+        nargs="+",
+        help="List of algorithms to include in plots (e.g., --algorithms cch dijkstra-rust)"
+    )
+    parser.add_argument(
+        "--show-route-time",
+        action="store_true",
+        help="Annotate routing phases with time in seconds"
+    )
 
     args = parser.parse_args()
 
@@ -604,7 +694,9 @@ def main():
     for network in networks:
         print(f"\nGenerating plot for network: {network}")
         create_network_comparison_plot(
-            dm, network, exp_by_network_agg, args.out_dir, y_axis_breaks)
+            dm, network, exp_by_network_agg, args.out_dir, y_axis_breaks,
+            no_io=args.no_io, algorithms=args.algorithms,
+            show_route_time=args.show_route_time)
 
     print(f"\nAll plots saved to: {args.out_dir}")
 

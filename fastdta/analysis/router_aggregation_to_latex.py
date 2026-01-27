@@ -116,7 +116,7 @@ def parse_data_for_subplot(dm: DataModel, subtract_pre_post: bool = True) -> Dic
     return result
 
 
-def compute_medians(data: Dict[Tuple[str, int], List[float]]) -> Dict[Tuple[str, int], float]:
+def compute_means(data: Dict[Tuple[str, int], List[float]]) -> Dict[Tuple[str, int], float]:
     """
     Compute median for each (algorithm, aggregation) pair.
     Returns: {(algorithm, aggregation): median_time}
@@ -124,7 +124,7 @@ def compute_medians(data: Dict[Tuple[str, int], List[float]]) -> Dict[Tuple[str,
     medians = {}
     for key, times in data.items():
         if times:
-            medians[key] = np.median(times)
+            medians[key] = np.mean(times)
     return medians
 
 
@@ -342,12 +342,12 @@ Example:
             # Parse for SUMO table: keep preprocessing/postprocessing times
             parsed_data_sumo = parse_data_for_subplot(
                 dm, subtract_pre_post=False)
-            medians_sumo = compute_medians(parsed_data_sumo)
+            medians_sumo = compute_means(parsed_data_sumo)
 
             # Parse for FastDTA table: subtract preprocessing/postprocessing times
             parsed_data_fastdta = parse_data_for_subplot(
                 dm, subtract_pre_post=True)
-            medians_fastdta = compute_medians(parsed_data_fastdta)
+            medians_fastdta = compute_means(parsed_data_fastdta)
 
             # Store SUMO medians indexed by (network, mode, algorithm)
             for (algo, agg), median_val in medians_sumo.items():
