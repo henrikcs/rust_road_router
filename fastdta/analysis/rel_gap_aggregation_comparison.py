@@ -204,7 +204,7 @@ def compute_pairwise_statistics(plot_data: Dict[int, Dict[str, Tuple[List[int], 
     print(f"\n{'='*80}\n")
 
 
-def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str, y_min: float = None, algorithms: List[str] = None, agg_method: str = "min"):
+def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str, y_min: float = None, algorithms: List[str] = None, agg_method: str = "min", max_iter: int = None):
     """Create comparison plot for one network across aggregations.
 
     Args:
@@ -214,6 +214,7 @@ def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str,
         y_min: Minimum y-axis value
         algorithms: List of algorithms to plot
         agg_method: Aggregation method for repetitions - "min", "mean", "median", "best", or a number (0 to n-1) to select specific repetition
+        max_iter: Maximum iteration to show (optional, cuts off data beyond this iteration)
     """
 
     # Use specified algorithms or default to all
@@ -338,6 +339,22 @@ def create_aggregation_comparison_plot(dm: DataModel, prefix: str, out_dir: str,
                             raise ValueError(
                                 f"Unknown aggregation method: {agg_method}")
                 plot_data[agg][algo] = (iterations, aggregated)
+
+    # Apply max_iter filter if specified
+    if max_iter is not None:
+        for agg in AGGREGATIONS:
+            for algo in list(plot_data[agg].keys()):
+                iterations, values = plot_data[agg][algo]
+                # Filter to only include iterations <= max_iter
+                filtered = [(it, val) for it, val in zip(
+                    iterations, values) if it <= max_iter]
+                if filtered:
+                    filtered_iters, filtered_vals = zip(*filtered)
+                    plot_data[agg][algo] = (
+                        list(filtered_iters), list(filtered_vals))
+                else:
+                    # No data within max_iter range, remove this entry
+                    del plot_data[agg][algo]
 
     # Check if we have data for any aggregation
     if not any(plot_data.values()):
@@ -501,6 +518,12 @@ def main():
         default="min",
         help="Method to aggregate repetitions: 'min', 'mean', 'median', 'best', or a number (0 to n-1) to select a specific repetition (default: min)"
     )
+    parser.add_argument(
+        "--max-iter",
+        type=int,
+        default=None,
+        help="Maximum iteration to show in the plot (optional, cuts off data beyond this iteration)"
+    )
 
     args = parser.parse_args()
 
@@ -534,11 +557,13 @@ def main():
     print(f"Using aggregation method: {args.agg_method}")
     if args.algorithms:
         print(f"Filtering algorithms: {', '.join(args.algorithms)}")
+    if args.max_iter:
+        print(f"Limiting to iterations 1-{args.max_iter}")
     for prefix, inst_indices in instances_by_prefix.items():
         # Create plot for this network prefix across all aggregations
         if inst_indices:
             create_aggregation_comparison_plot(
-                dm, prefix, args.out_dir, y_min=args.y_min, algorithms=args.algorithms, agg_method=args.agg_method)
+                dm, prefix, args.out_dir, y_min=args.y_min, algorithms=args.algorithms, agg_method=args.agg_method, max_iter=args.max_iter)
 
     print(f"\nPlots saved to: {args.out_dir}")
 

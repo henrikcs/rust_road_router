@@ -154,7 +154,7 @@ class RoutingCustomizationBreakdown(Plot):
             ax.set_xticklabels([f"Rep {r}" for r in reps])
             ax.tick_params(axis='both', labelsize=12)
             ax.legend(title="Phase", fontsize=8, loc='upper center',
-                      bbox_to_anchor=(0.5, -0.15), ncol=3)
+                      bbox_to_anchor=(0.5, -0.15), ncol=4)
             ax.grid(True, axis="y", linestyle="--", alpha=0.4)
 
             # Save

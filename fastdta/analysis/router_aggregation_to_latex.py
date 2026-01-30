@@ -11,18 +11,19 @@ Columns: Algorithms with sequential/parallel subcolumns
 Cells: Median router duration (s), with bold for fastest per row in seq/par
 """
 
-from plots.styles import get_display_label
+from typing import Dict, List, Tuple, Optional
+import numpy as np
+import argparse
+import os
+import sys
 from common import (
     build_model,
     DataModel,
     get_experiments_by_instance,
     get_routing_times,
 )
-import sys
-import os
-import argparse
-import numpy as np
-from typing import Dict, List, Tuple, Optional
+from plots.styles import get_display_label
+
 
 # Add analysis directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -43,8 +44,8 @@ FASTDTA_ALGORITHM_ORDER = [
     "fastdta_1_1",
     "fastdta_1_1_1",
     "fastdta_1_2_3_4",
-    "cch",
     "dijkstra-rust",
+    "cch",
 ]
 
 # Aggregation values to expect (in order for display)
@@ -58,14 +59,24 @@ NETWORK_NAMES = {
 }
 
 
+def is_fastdta_algorithm(algorithm: str) -> bool:
+    """Check if algorithm is a FastDTA variant."""
+    return algorithm.startswith("fastdta")
+
+
 def parse_data_for_subplot(dm: DataModel, subtract_pre_post: bool = True) -> Dict[Tuple[str, int], List[float]]:
     """
     Parse routing times from data model, grouped by algorithm and aggregation.
-    Optionally subtracts preprocessing and postprocessing times from total router duration.
+
+    For FastDTA algorithms (fastdta*): sums individual phase times (excluding pre/post)
+    to ensure consistency with breakdown plots, since not all phases may be logged.
+
+    For other algorithms: uses router duration, optionally subtracting pre/post times.
 
     Args:
         dm: DataModel to parse
         subtract_pre_post: If True, subtract preprocessing and postprocessing times
+                          (only applies to non-FastDTA algorithms)
 
     Returns: {(algorithm, aggregation): [routing_times]}
     """
@@ -83,31 +94,47 @@ def parse_data_for_subplot(dm: DataModel, subtract_pre_post: bool = True) -> Dic
         skip_first = instance.last_iter > 1
 
         for exp in exps:
-            times = get_routing_times(exp, skip_first=skip_first)
-
-            # Calculate adjusted times by optionally subtracting preprocessing and postprocessing
             adjusted_times = []
-            step_idx = 1 if skip_first else 0  # Track which step we're on
 
-            for time in times:
-                if subtract_pre_post and step_idx < len(exp.steps):
-                    step = exp.steps[step_idx]
+            # For FastDTA algorithms, sum phases directly (excluding pre/post)
+            # This ensures consistency with breakdown plots
+            if is_fastdta_algorithm(exp.algorithm):
+                for step in exp.steps:
+                    if skip_first and step.iteration == 0:
+                        continue
 
-                    # Sum up preprocessing and postprocessing times for this step
-                    pre_post_time = 0.0
+                    # Sum all phases except preprocessing and postprocessing
+                    phase_sum = 0.0
                     for phase in step.phase_details:
                         phase_name_lower = phase.phase_name.lower()
-                        if "preprocessing" in phase_name_lower or "postprocessing" in phase_name_lower:
-                            pre_post_time += phase.duration_seconds
+                        if "preprocessing" not in phase_name_lower and "postprocessing" not in phase_name_lower and "sample" != phase_name_lower:
+                            phase_sum += phase.duration_seconds
 
-                    # Subtract from total time (ensure non-negative)
-                    adjusted_time = max(0.0, time - pre_post_time)
-                    adjusted_times.append(adjusted_time)
-                else:
-                    # Don't subtract, use original time
-                    adjusted_times.append(time)
+                    adjusted_times.append(phase_sum)
+            else:
+                # For non-FastDTA algorithms, use router duration
+                times = get_routing_times(exp, skip_first=skip_first)
+                step_idx = 1 if skip_first else 0
 
-                step_idx += 1
+                for time in times:
+                    if subtract_pre_post and step_idx < len(exp.steps):
+                        step = exp.steps[step_idx]
+
+                        # Sum up preprocessing and postprocessing times for this step
+                        pre_post_time = 0.0
+                        for phase in step.phase_details:
+                            phase_name_lower = phase.phase_name.lower()
+                            if "preprocessing" in phase_name_lower or "postprocessing" in phase_name_lower:
+                                pre_post_time += phase.duration_seconds
+
+                        # Subtract from total time (ensure non-negative)
+                        adjusted_time = max(0.0, time - pre_post_time)
+                        adjusted_times.append(adjusted_time)
+                    else:
+                        # Don't subtract, use original time
+                        adjusted_times.append(time)
+
+                    step_idx += 1
 
             if adjusted_times:
                 key = (exp.algorithm, aggregation)

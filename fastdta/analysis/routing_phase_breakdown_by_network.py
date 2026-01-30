@@ -171,19 +171,50 @@ def get_phase_times_for_experiment(exp: Experiment, skip_first: bool = False) ->
 
 
 def calculate_average_phase_times(experiments: List[Experiment]) -> Dict[str, float]:
-    """Calculate average time for each phase across all experiments."""
-    all_phase_times: Dict[str, List[float]] = defaultdict(list)
+    """
+    Calculate average time for each phase across all experiments.
+
+    For each step, sums all phases with the same normalized name (e.g., 'first routing'
+    and 'second routing' both become 'routing'), then averages across all steps.
+    This ensures that phases occurring multiple times per step are correctly summed.
+
+    Skips the first iteration (iteration 0) unless the experiment only has a single
+    iteration, which is the case for single-iteration experiments like Karlsruhe.
+    """
+    # Collect per-step sums for each normalized phase
+    # Structure: {phase_name: [sum_for_step1, sum_for_step2, ...]}
+    phase_sums_per_step: Dict[str, List[float]] = defaultdict(list)
 
     for exp in experiments:
-        phase_times = get_phase_times_for_experiment(exp, skip_first=False)
-        for phase_name, times in phase_times.items():
-            all_phase_times[phase_name].extend(times)
+        # Determine if we should skip the first iteration
+        # Skip first iteration unless there's only one step (single-iteration experiment)
+        is_single_iteration = len(exp.steps) == 1
 
-    # Calculate averages
+        for step in exp.steps:
+            # Skip iteration 0 unless it's a single-iteration experiment
+            if not is_single_iteration and step.iteration == 0:
+                continue
+
+            # Sum phases by normalized name for this step
+            step_phase_sums: Dict[str, float] = defaultdict(float)
+
+            for pd in step.phase_details:
+                # Skip ignored phases
+                if pd.phase_name.lower() in IGNORED_PHASES:
+                    continue
+                if pd.duration_seconds is not None:
+                    normalized_name = normalize_phase_name(pd.phase_name)
+                    step_phase_sums[normalized_name] += pd.duration_seconds
+
+            # Add this step's sums to the overall collection
+            for phase_name, phase_sum in step_phase_sums.items():
+                phase_sums_per_step[phase_name].append(phase_sum)
+
+    # Calculate averages across steps
     avg_times = {}
-    for phase_name, times in all_phase_times.items():
-        if times:
-            avg_times[phase_name] = sum(times) / len(times)
+    for phase_name, step_sums in phase_sums_per_step.items():
+        if step_sums:
+            avg_times[phase_name] = sum(step_sums) / len(step_sums)
 
     return avg_times
 
