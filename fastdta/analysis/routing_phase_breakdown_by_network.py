@@ -59,6 +59,20 @@ PHASE_COLORS = {
 ROUTING_COLOR = "#56B4E9"
 CUSTOMIZATION_COLOR = "#E69F00"
 
+# Simulation bar color (RGB: 0.635, 0.133, 0.137)
+SIMULATION_COLOR = "#a22223"
+
+# Simulation time values by (network, aggregation)
+SIMULATION_TIMES = {
+    ("leopoldshafen", 900): 2.08,
+    ("leopoldshafen", 300): 2.36,
+    ("leopoldshafen", 60): 3.17,
+    ("rastatt", 900): 34.29,
+    ("rastatt", 300): 37.06,
+    ("rastatt", 60): 46.13,
+    ("karlsruhe", 60): 14400.0,
+}
+
 DEFAULT_PHASE_COLOR = "#999999"
 
 # Aggregation order (left to right in plot)
@@ -76,6 +90,7 @@ IGNORED_PHASES = {
     "get preferred paths",
     "calculate travel times on original",
     "add fastdta2 alternatives",
+    "sample"
 }
 
 
@@ -123,12 +138,21 @@ def get_phase_color(phase_name: str) -> str:
         return DEFAULT_PHASE_COLOR
 
 
+def darken_color(hex_color: str, factor: float = 0.7) -> str:
+    """Darken a hex color by a factor (0-1, lower is darker)."""
+    hex_color = hex_color.lstrip('#')
+    r, g, b = int(hex_color[0:2], 16), int(
+        hex_color[2:4], 16), int(hex_color[4:6], 16)
+    r, g, b = int(r * factor), int(g * factor), int(b * factor)
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+
 def get_phase_legend_name(phase_name: str) -> str:
     """Get legend label for a phase."""
     normalized = normalize_phase_name(phase_name)
 
     if normalized == "routing":
-        return "Routing"
+        return "Querying"
     elif normalized == "customization":
         return "Customization"
     elif normalized == "calibration":
@@ -227,7 +251,8 @@ def create_broken_axis_subplot(
     break_upper: float,
     show_ylabel: bool = True,
     title: str = "",
-    show_route_time: bool = False
+    show_route_time: bool = False,
+    simulation_time: Optional[float] = None
 ):
     """
     Create a stacked bar chart with broken y-axis on a single subplot.
@@ -241,6 +266,10 @@ def create_broken_axis_subplot(
     for algo_data in phase_data.values():
         total = sum(algo_data.values())
         max_val = max(max_val, total)
+
+    # Include simulation time in max calculation if present
+    if simulation_time is not None:
+        max_val = max(max_val, simulation_time)
 
     # Add some padding to max value
     upper_limit = max_val * 1.05
@@ -277,7 +306,8 @@ def create_broken_axis_subplot(
         algorithms,
         phase_data,
         show_ylabel=False,
-        show_route_time=show_route_time
+        show_route_time=show_route_time,
+        simulation_time=simulation_time
     )
 
     legend_handles_upper, legend_labels_upper = create_stacked_bar_chart_on_axis(
@@ -285,7 +315,8 @@ def create_broken_axis_subplot(
         algorithms,
         phase_data,
         show_ylabel=False,
-        show_route_time=show_route_time
+        show_route_time=show_route_time,
+        simulation_time=simulation_time
     )
 
     # Set y-axis limits
@@ -375,7 +406,8 @@ def create_stacked_bar_chart_on_axis(
     algorithms: List[str],
     phase_data: Dict[str, Dict[str, float]],
     show_ylabel: bool = True,
-    show_route_time: bool = False
+    show_route_time: bool = False,
+    simulation_time: Optional[float] = None
 ):
     """
     Create a stacked bar chart on a given axis.
@@ -385,6 +417,7 @@ def create_stacked_bar_chart_on_axis(
         algorithms: List of algorithm names in order
         phase_data: {algorithm: {phase_name: avg_time}}
         show_ylabel: Whether to show the y-axis label
+        simulation_time: Optional simulation time to add as rightmost bar
     """
     # Collect all unique phases across all algorithms, preserving order
     all_phases = []
@@ -408,11 +441,21 @@ def create_stacked_bar_chart_on_axis(
         all_phases.append("postprocessing")
 
     # Prepare data for stacked bars
+    # Add extra position for simulation bar if needed
+    num_bars = len(algorithms) + (1 if simulation_time is not None else 0)
     x_positions = np.arange(len(algorithms))
+    x_labels = [get_display_label(a) for a in algorithms]
+
+    if simulation_time is not None:
+        x_labels.append("Simulation")
+
     bar_width = 0.6
 
     # Track bottom position for stacking
     bottoms = np.zeros(len(algorithms))
+
+    # Track positions of routing phase top for annotations
+    routing_top_positions = np.zeros(len(algorithms))
 
     # Plot each phase as a stacked segment
     legend_handles = []
@@ -445,31 +488,74 @@ def create_stacked_bar_chart_on_axis(
             legend_labels.append(legend_name)
             seen_phases.add(legend_name)
 
-        # Add time annotation for routing phases if requested
-        if show_route_time and normalize_phase_name(phase) == "routing":
-            for i, (x_pos, height) in enumerate(zip(x_positions, heights)):
-                if height > 0:
-                    # Calculate y position (top of this phase segment)
-                    y_pos = bottoms[i] + height
-                    # Add text annotation
+        bottoms += heights
+
+        # Track top of routing phase for annotations
+        if normalize_phase_name(phase) == "routing":
+            routing_top_positions = bottoms.copy()
+
+    # Add time annotations for customization and routing phases if requested
+    if show_route_time:
+        for i, algo in enumerate(algorithms):
+            algo_data = phase_data.get(algo, {})
+            customization_time = algo_data.get("customization", 0.0)
+            routing_time = algo_data.get("routing", 0.0)
+
+            if routing_time > 0:
+                # Place annotations right after the routing bar
+                y_offset = routing_top_positions[i]
+                annotations = []
+
+                # If algorithm has customization, show both labels
+                if customization_time > 0:
+                    # Customization label first (lower)
+                    cust_color = darken_color(CUSTOMIZATION_COLOR, 0.6)
+                    annotations.append(
+                        (f"{customization_time:.2f}s", cust_color))
+
+                # Routing/Querying label (upper or only)
+                route_color = darken_color(ROUTING_COLOR, 0.6)
+                annotations.append((f"{routing_time:.2f}s", route_color))
+
+                # Place annotations right after routing bar
+                line_height = 0.07 * ax.get_ylim()[1]  # Dynamic line spacing
+                for j, (text, color) in enumerate(annotations):
                     ax.text(
-                        x_pos,
-                        y_pos,
-                        f"{height:.3f}s",
+                        x_positions[i],
+                        y_offset + j * line_height,
+                        text,
                         ha='center',
                         va='bottom',
-                        fontsize=10,
-                        color='black',
+                        fontsize=9,
+                        color=color,
                         fontweight='bold'
                     )
 
-        bottoms += heights
+    # Add simulation bar if requested
+    if simulation_time is not None:
+        sim_x = len(algorithms)  # Position after all algorithm bars
+        sim_bar = ax.bar(
+            sim_x,
+            simulation_time,
+            bar_width,
+            color=SIMULATION_COLOR,
+            label="Simulation",
+            alpha=0.85,
+            edgecolor='white',
+            linewidth=0.5
+        )
+        # Add to legend
+        if "Simulation" not in seen_phases:
+            legend_handles.append(sim_bar[0])
+            legend_labels.append("Simulation")
+            seen_phases.add("Simulation")
 
     # Style the axis
     if show_ylabel:
         ax.set_ylabel("Average Time (s)", fontsize=15)
-    ax.set_xticks(x_positions)
-    ax.set_xticklabels([get_display_label(a) for a in algorithms],
+    all_x_positions = np.arange(num_bars)
+    ax.set_xticks(all_x_positions)
+    ax.set_xticklabels(x_labels,
                        rotation=45, ha="right", fontsize=13)
     ax.tick_params(axis='y', labelsize=13)
     ax.grid(True, axis="y", linestyle="--", alpha=0.3)
@@ -485,15 +571,22 @@ def create_network_comparison_plot(
     y_axis_breaks: Dict[int, Optional[Tuple[float, float]]] = None,
     no_io: bool = False,
     algorithms: Optional[List[str]] = None,
-    show_route_time: bool = False
+    show_route_time: bool = False,
+    png: bool = False,
+    simulation: bool = False
 ):
     """Create comparison plot for one network across aggregations."""
 
     if y_axis_breaks is None:
         y_axis_breaks = {}
 
+    # When simulation is set, only show 60s aggregation
+    if simulation:
+        aggregations_to_plot = [60]
+        fig, ax_single = plt.subplots(1, 1, figsize=(4.5, 4.5), sharey=False)
+        axes = [ax_single]
     # For Karlsruhe, only show 60s aggregation
-    if network.lower() == 'karlsruhe':
+    elif network.lower() == 'karlsruhe':
         aggregations_to_plot = [60]
         fig, ax_single = plt.subplots(1, 1, figsize=(4.5, 4.5), sharey=False)
         axes = [ax_single]  # Wrap in list for consistent indexing
@@ -502,9 +595,10 @@ def create_network_comparison_plot(
         # Create figure with 3 subplots (one per aggregation)
         fig, axes = plt.subplots(1, 3, figsize=(11, 4.5), sharey=False)
 
-    # Overall title
+    # Overall title (skip if simulation mode)
     network_name = NETWORK_NAMES.get(network.lower(), network)
-    fig.suptitle(network_name, fontsize=16, fontweight='bold')
+    if not simulation:
+        fig.suptitle(network_name, fontsize=16, fontweight='bold')
 
     all_legend_handles = []
     all_legend_labels = []
@@ -567,6 +661,11 @@ def create_network_comparison_plot(
         y_breaks = y_axis_breaks.get(aggregation)
         show_ylabel = (idx == 0)  # Only show y-label on leftmost subplot
 
+        # Get simulation time for this network+aggregation if requested
+        sim_time = None
+        if simulation:
+            sim_time = SIMULATION_TIMES.get((network.lower(), aggregation))
+
         if y_breaks:
             # Create broken axis for this subplot
             legend_handles, legend_labels = create_broken_axis_subplot(
@@ -576,8 +675,9 @@ def create_network_comparison_plot(
                 y_breaks[0],
                 y_breaks[1],
                 show_ylabel=show_ylabel,
-                title=f"{aggregation}s",
-                show_route_time=show_route_time
+                title="" if simulation else f"{aggregation}s",
+                show_route_time=show_route_time,
+                simulation_time=sim_time
             )
         else:
             # Create regular stacked bar chart
@@ -586,22 +686,24 @@ def create_network_comparison_plot(
                 present_algorithms,
                 phase_data,
                 show_ylabel=show_ylabel,
-                show_route_time=show_route_time
+                show_route_time=show_route_time,
+                simulation_time=sim_time
             )
-            # Set subplot title for non-broken axis
-            ax.set_title(f"{aggregation}s", fontsize=16)
+            # Set subplot title for non-broken axis (skip if simulation mode)
+            if not simulation:
+                ax.set_title(f"{aggregation}s", fontsize=16)
 
         # Collect legend items from first subplot
         if idx == 0:
             all_legend_handles = legend_handles
             all_legend_labels = legend_labels
 
-        # X-label for middle subplot (or single subplot for Karlsruhe)
-        if idx == 1 or (network.lower() == 'karlsruhe' and idx == 0):
+        # X-label for middle subplot (or single subplot for Karlsruhe) - skip if simulation mode
+        if not simulation and (idx == 1 or (network.lower() == 'karlsruhe' and idx == 0)):
             ax.set_xlabel("Algorithm", fontsize=15)
 
-    # Create single legend below all subplots
-    if all_legend_handles:
+    # Create single legend below all subplots (skip if simulation mode)
+    if all_legend_handles and not simulation:
         fig.legend(
             all_legend_handles,
             all_legend_labels,
@@ -616,7 +718,8 @@ def create_network_comparison_plot(
     plt.tight_layout(rect=[0, 0.05, 1, 0.95])
 
     # Save plot
-    output_filename = f"routing_phase_breakdown_{network.lower()}.pdf"
+    ext = "png" if png else "pdf"
+    output_filename = f"routing_phase_breakdown_{network.lower()}.{ext}"
     output_path = os.path.join(out_dir, output_filename)
     fig.savefig(output_path, bbox_inches='tight', dpi=150)
     plt.close(fig)
@@ -678,7 +781,17 @@ def main():
     parser.add_argument(
         "--show-route-time",
         action="store_true",
-        help="Annotate routing phases with time in seconds"
+        help="Annotate bars with customization and querying times (both for algorithms with customization, querying only for others)"
+    )
+    parser.add_argument(
+        "--png",
+        action="store_true",
+        help="Output PNG instead of PDF"
+    )
+    parser.add_argument(
+        "--simulation",
+        action="store_true",
+        help="Add simulation time bar as rightmost bar"
     )
 
     args = parser.parse_args()
@@ -727,7 +840,8 @@ def main():
         create_network_comparison_plot(
             dm, network, exp_by_network_agg, args.out_dir, y_axis_breaks,
             no_io=args.no_io, algorithms=args.algorithms,
-            show_route_time=args.show_route_time)
+            show_route_time=args.show_route_time, png=args.png,
+            simulation=args.simulation)
 
     print(f"\nAll plots saved to: {args.out_dir}")
 
