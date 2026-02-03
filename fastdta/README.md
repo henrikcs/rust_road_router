@@ -148,6 +148,22 @@ Use the `run_experiments.sh` script to run experiments:
 
 See `./run_experiments.sh --help` for all available options and routing algorithms.
 
+### 8. Test Instances
+
+The thesis experiments use the **Leopoldshafen** and **Rastatt** SUMO network instances. These are provided as compressed archives in `import/sumo-zipped/`:
+
+```bash
+# Extract the test instances to the import/sumo directory
+cd import/sumo-zipped
+unzip leopoldshafen.zip -d ../sumo/
+unzip rastatt.zip -d ../sumo/
+```
+
+After extraction, the instances will be available at:
+
+- `import/sumo/leopoldshafen/`
+- `import/sumo/rastatt/`
+
 ---
 
 ## Run Locally (Ubuntu) - Quick Start
