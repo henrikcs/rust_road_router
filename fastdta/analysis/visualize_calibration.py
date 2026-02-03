@@ -138,7 +138,8 @@ def compute_axis_limits(invocations):
 
 def plot_invocation(invocation, output_path, invocation_index, max_density, max_speed):
     """Create a plot for a single calibration invocation."""
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # DIN A4 is 210mm x 297mm, for 3 plots side by side: ~70mm each (~2.75 inches)
+    fig, ax = plt.subplots(figsize=(3.5, 2.8))
 
     if invocation.model_type == "ModifiedLee":
         # Extract parameters
@@ -151,12 +152,12 @@ def plot_invocation(invocation, output_path, invocation_index, max_density, max_
 
         # Plot the traffic model curve
         ax.plot(density_range, speeds_model, 'b-',
-                linewidth=2, label='Traffic Model')
+                linewidth=1.5, label='Traffic Model', zorder=10)
 
         # Plot observed data points
         if invocation.densities:
             ax.scatter(invocation.densities, invocation.speeds,
-                       c='red', s=50, alpha=0.7, label='Observed Data', zorder=5)
+                       c='red', s=20, alpha=0.8, label='Observed Data', zorder=5)
 
             # Calculate R²
             r_squared = calculate_r_squared(invocation.speeds, invocation.densities,
@@ -167,12 +168,12 @@ def plot_invocation(invocation, output_path, invocation_index, max_density, max_
         # Add parameter text box
         param_text = (
             f"Model: Modified Lee\n"
-            f"Free Flow Speed: {free_flow_speed:.2f} km/h\n"
+            f"t_0: {free_flow_speed:.2f} km/h\n"
             f"a: {a:.4f}\n"
-            f"e: {e:.4f}\n"
+            f"E: {e:.4f}\n"
             f"θ: {theta:.4f}\n"
-            f"k_j (Jam Density): {jam_density:.2f} veh/km\n"
-            f"Observations: {len(invocation.densities)}\n"
+            f"k_j: {jam_density:.2f} veh/km\n"
+            # f"Observations: {len(invocation.densities)}\n"
             f"R²: {r_squared:.4f}"
         )
 
@@ -180,26 +181,26 @@ def plot_invocation(invocation, output_path, invocation_index, max_density, max_
         ax.text(0.98, 0.97, param_text, transform=ax.transAxes,
                 verticalalignment='top', horizontalalignment='right',
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
-                fontsize=9, family='monospace')
+                fontsize=7, family='monospace')
 
     else:
         raise ValueError(
             f"Unknown traffic model type: {invocation.model_type}")
 
     # Set labels and title
-    ax.set_xlabel('Density (veh/km)', fontsize=12)
-    ax.set_ylabel('Speed (km/h)', fontsize=12)
-    ax.set_title(
-        f'Traffic Model Calibration - Invocation {invocation_index}', fontsize=14)
+    ax.set_xlabel('Density (veh/km)', fontsize=9)
+    ax.set_ylabel('Speed (km/h)', fontsize=9)
+    ax.set_title(f'{len(invocation.densities)} observations', fontsize=10)
     ax.grid(True, alpha=0.3)
-    ax.legend(loc='upper left')
+    ax.legend(loc='upper left', fontsize=7)
+    ax.tick_params(axis='both', labelsize=7)
 
     # Set consistent axis limits across all plots
     ax.set_xlim(0, max_density)
     ax.set_ylim(0, max_speed)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', format='pdf')
     plt.close()
 
     print(f"Created plot: {output_path}")
@@ -240,7 +241,7 @@ def main():
 
     # Generate plots for each invocation
     for i, invocation in enumerate(invocations):
-        output_path = output_dir / f"{base_name}.{i}.png"
+        output_path = output_dir / f"{base_name}.{i}.pdf"
         plot_invocation(invocation, output_path, i, max_density, max_speed)
 
     print(f"\nSuccessfully created {len(invocations)} plots in {output_dir}")
