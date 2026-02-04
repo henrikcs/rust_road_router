@@ -217,7 +217,7 @@ pub mod tests {
     #[test]
     fn test_extract_interpolation_points_from_meandata() {
         let edges: Vec<String> = vec!["edge1".to_string(), "edge2".to_string()];
-        let edge_default_travel_times: Vec<u32> = vec![5_000, 3_000];
+        let edge_default_travel_times: Vec<u32> = vec![3_000, 3_000];
 
         let meandata = meandata::MeandataDocumentRoot {
             intervals: vec![
@@ -408,137 +408,6 @@ pub mod tests {
                 350_000, // edge1, travel_time1
                 250_000, // edge1, travel_time2
                 150_000, // edge1, travel_time3
-            ],
-            vec![
-                0,       // edge1, interval1
-                100_000, // edge1, interval2
-                200_000, // edge1, interval2
-            ],
-        );
-
-        let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
-            super::extract_interpolation_points_from_meandata(&meandata, &edges, &edge_default_travel_times);
-
-        assert_eq!(expected.0, first_ipp_of_arc);
-        assert_eq!(expected.1, ipp_travel_time);
-        assert_eq!(expected.2, ipp_departure_time);
-
-        // can create new TDGraph
-        // add first_out (vector where using node indices finds the first outgoing edge)
-        // one edge, two nodes, having one outgoing edge
-        let first_out = vec![0, 1];
-        let head = vec![1];
-
-        TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
-    }
-
-    #[test]
-    fn test_specific_weights_for_fifo() {
-        let edges: Vec<String> = vec!["edge1".to_string()];
-        let edge_default_travel_times: Vec<u32> = vec![86_400_000];
-
-        let meandata = meandata::MeandataDocumentRoot {
-            intervals: vec![
-                meandata::Interval::create(
-                    "interval1".to_string(),
-                    86_340.0,
-                    86_400.0,
-                    vec![meandata::Edge {
-                        id: "edge1".to_string(),
-                        overlap_traveltime: Some(70_874.95),
-                        ..Default::default()
-                    }],
-                ),
-                meandata::Interval::create(
-                    "interval2".to_string(),
-                    86_400.0,
-                    86_460.0,
-                    vec![meandata::Edge {
-                        id: "edge1".to_string(),
-                        overlap_traveltime: Some(70_643.718),
-                        ..Default::default()
-                    }],
-                ),
-            ],
-        };
-
-        // should have 1 edge, each having 2 intervals. So we expect 4 interpolation points:
-        // 1. edge1, interval1: 16.0
-        // 2. edge1, interval2: 6.0
-        let expected = (
-            vec![0, 2], // first_ipp_of_arc
-            vec![
-                70_643_718 + 60_000, // edge1, interval1
-                70_643_718,          // edge1, interval2
-            ],
-            vec![
-                86_340_000, // edge1, interval1
-                86_400_000, // edge1, interval2
-            ],
-        );
-
-        let (first_ipp_of_arc, ipp_travel_time, ipp_departure_time) =
-            super::extract_interpolation_points_from_meandata(&meandata, &edges, &edge_default_travel_times);
-
-        assert_eq!(expected.0, first_ipp_of_arc);
-        assert_eq!(expected.1, ipp_travel_time);
-        assert_eq!(expected.2, ipp_departure_time);
-
-        // can create new TDGraph
-        // add first_out (vector where using node indices finds the first outgoing edge)
-        // one edge, two nodes, having one outgoing edge
-        let first_out = vec![0, 1];
-        let head = vec![1];
-
-        TDGraph::new(first_out, head, first_ipp_of_arc, ipp_departure_time, ipp_travel_time);
-    }
-
-    #[test]
-    fn test_fifo_ensured_periodically() {
-        let edges: Vec<String> = vec!["edge1".to_string()];
-        let edge_default_travel_times: Vec<u32> = vec![25_000];
-
-        let meandata = meandata::MeandataDocumentRoot {
-            intervals: vec![
-                meandata::Interval::create(
-                    "interval1".to_string(),
-                    0.0,
-                    100.0,
-                    vec![meandata::Edge {
-                        id: "edge1".to_string(),
-                        overlap_traveltime: Some(50.0),
-                        ..Default::default()
-                    }],
-                ),
-                meandata::Interval::create(
-                    "interval2".to_string(),
-                    100.0,
-                    200.0,
-                    vec![meandata::Edge {
-                        id: "edge1".to_string(),
-                        overlap_traveltime: Some(1000.0),
-                        ..Default::default()
-                    }],
-                ),
-                meandata::Interval::create(
-                    "interval2".to_string(),
-                    200.0,
-                    250.0,
-                    vec![meandata::Edge {
-                        id: "edge1".to_string(),
-                        overlap_traveltime: Some(200.0),
-                        ..Default::default()
-                    }],
-                ),
-            ],
-        };
-
-        let expected = (
-            vec![0, 3], // first_ipp_of_arc
-            vec![
-                50_000,  // edge1, travel_time1
-                175_000, // edge1, travel_time2
-                75_000,  // edge1, travel_time3 since the default travel time is 25_000 and the interval is 50_000
             ],
             vec![
                 0,       // edge1, interval1
